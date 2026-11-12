@@ -1479,4 +1479,99 @@ document.addEventListener('DOMContentLoaded', init);
   // Estado inicial (por si ya hay sesión activa o se carga directamente en móvil)
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply);
   else apply();
+  /* =====================================================================
+   PANDALA KAWAI · PERFORMANCE PACK
+   Pegar AL FINAL de admin.js. Autónomo: no editar nada más del archivo.
+   ===================================================================== */
+(function () {
+  'use strict';
+  if (window.__pkPerf) return; window.__pkPerf = true;
+
+  /* ---------- 1) Caché + deduplicación de peticiones GET ---------- */
+  var TTL = 30000; // 30 s de datos "frescos"; luego refresca en segundo plano
+  var NO_CACHE = ['/api/orders/reports/pending']; // abonos por confirmar: siempre en vivo
+  var cache = new Map(), inflight = new Map(), gen = 0;
+  var _api = api;
+
+  /* Barra de progreso superior (feedback visible de carga) */
+  var bar = document.createElement('div'); bar.id = 'pkLoadBar';
+  var st = document.createElement('style');
+  st.textContent = '#pkLoadBar{position:fixed;top:0;left:0;height:3px;width:0;z-index:99999;background:linear-gradient(90deg,#7c5cff,#f59e0b,#ff4d8d);box-shadow:0 0 10px rgba(124,92,255,.55);transition:width .25s ease,opacity .35s ease;opacity:0;pointer-events:none}';
+  document.head.appendChild(st); document.body.appendChild(bar);
+  var active = 0, prog = 0, barTimer = null, slowWarned = false;
+  function barStart() {
+    active++;
+    if (active === 1) {
+      prog = 12; bar.style.opacity = '1'; bar.style.width = prog + '%';
+      barTimer = setInterval(function () { prog = Math.min(88, prog + (88 - prog) * 0.07); bar.style.width = prog + '%'; }, 280);
+    }
+  }
+  function barEnd() {
+    active = Math.max(0, active - 1);
+    if (active === 0) {
+      clearInterval(barTimer); bar.style.width = '100%';
+      setTimeout(function () { bar.style.opacity = '0'; setTimeout(function () { bar.style.width = '0'; }, 380); }, 160);
+    }
+  }
+
+  api = function (path, opts) {
+    opts = opts || {};
+    var method = (opts.method || 'GET').toUpperCase();
+    if (method !== 'GET') { // escritura: invalida la caché al confirmar
+      barStart();
+      return _api(path, opts).then(function (r) { gen++; cache.clear(); barEnd(); return r; })
+        .catch(function (e) { barEnd(); throw e; });
+    }
+    var cacheable = !NO_CACHE.some(function (p) { return path.indexOf(p) === 0; });
+    var k = 'GET ' + path, hit = cache.get(k), now = Date.now();
+    if (cacheable && hit && now - hit.t < TTL) return Promise.resolve(hit.data); // instantáneo
+    if (inflight.has(k)) return inflight.get(k); // no duplicar la misma petición
+    var g = gen;
+    barStart();
+    var slowT = setTimeout(function () {
+      if (!slowWarned) { slowWarned = true; toast('⏳ El servidor está despertando (plan gratuito). La primera carga puede tardar hasta ~1 minuto.'); }
+    }, 8000);
+    var p = _api(path, opts).then(function (data) {
+      if (cacheable && g === gen) cache.set(k, { t: Date.now(), data: data });
+      inflight.delete(k); clearTimeout(slowT); barEnd(); return data;
+    }).catch(function (e) { inflight.delete(k); clearTimeout(slowT); barEnd(); throw e; });
+    inflight.set(k, p);
+    if (cacheable && hit) { p.catch(function () {}); return Promise.resolve(hit.data); } // muestra lo anterior y refresca detrás
+    return p;
+  };
+
+  /* ---------- 2) Configuración y Dashboard sin esperas en cadena ---------- */
+  var _loadConfig = loadConfig;
+  loadConfig = function () {
+    ['settings', 'goals', 'donations'].forEach(function (r) { api('/api/admin/' + r).catch(function () {}); });
+    return _loadConfig();
+  };
+  var _loadDash = loadDash;
+  loadDash = function () { api('/api/admin/settings').catch(function () {}); return _loadDash(); };
+
+  /* ---------- 3) PDF bajo demanda (ya no bloquea el inicio) ---------- */
+  function loadScript(src) {
+    return new Promise(function (res, rej) {
+      var s = document.createElement('script'); s.src = src;
+      s.onload = res; s.onerror = function () { rej(new Error('No se pudo cargar la librería PDF')); };
+      document.head.appendChild(s);
+    });
+  }
+  function ensurePDF() {
+    if (window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API && typeof window.jspdf.jsPDF.API.autoTable === 'function') return Promise.resolve();
+    return loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+      .then(function () { return loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'); });
+  }
+  var _generateInvoice = generateInvoice;
+  generateInvoice = function (id) {
+    toast('📄 Preparando factura…');
+    return ensurePDF().then(function () { return _generateInvoice(id); }).catch(function (e) { toast('⚠ ' + e.message); });
+  };
+
+  /* ---------- 4) Mantiene despiertos Render y Neon mientras usas el panel ---------- */
+  function ping() { try { fetch('/health', { cache: 'no-store' }).catch(function () {}); } catch (e) {} }
+  ping();
+  setInterval(ping, 4 * 60 * 1000); // cada 4 min: Render (15 min) y Neon (5 min) no se duermen
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) ping(); });
+})();
 })();

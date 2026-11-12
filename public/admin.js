@@ -1,4 +1,4 @@
-<meta name='viewport' content='width=device-width, initial-scale=1'/><script>/* ===== Pandala Kawaii · Panel Administrador (paridad total + Excel + importación + responsive) ===== */
+/* ===== Pandala Kawaii · Panel Administrador (paridad total + Excel + importación + responsive) ===== */
 let token = localStorage.getItem('token') || '';
 let user = JSON.parse(localStorage.getItem('user') || 'null');
 let CFG = null, PRODUCTS = [], KITS = [], CATS = [], CLIENTS = [], ORDERS = [];
@@ -336,7 +336,7 @@ function impRender() {
   </tr>`).join(''));
   const ok = impRows.filter(r => !r.errs.length);
   const nuevos = ok.filter(r => r.estado === 'nuevo').length;
-  put('impSummary', `<b>${esc(impFileName)}</b> -- ${impRows.length} fila(s): <b>${nuevos}</b> nueva(s), <b>${ok.length - nuevos}</b> existente(s)${impRows.length - ok.length ? `, <span class="pill danger">${impRows.length - ok.length} con error (se omiten)</span>` : ''}.`);
+  put('impSummary', `<b>${esc(impFileName)}</b> — ${impRows.length} fila(s): <b>${nuevos}</b> nueva(s), <b>${ok.length - nuevos}</b> existente(s)${impRows.length - ok.length ? `, <span class="pill danger">${impRows.length - ok.length} con error (se omiten)</span>` : ''}.`);
   const b = $('impSaveBtn'); if (b) b.disabled = !ok.length;
 }
 function closeInvImport() { closeModal('invImportModal'); impRows = []; }
@@ -389,7 +389,7 @@ function chartBars(id, labels, series, opt) {
   for (let i = 0; i <= 4; i++) { const v = bot + (top - bot) * i / 4, yy = y(v); g += `<line x1="${ml}" x2="${W - mr}" y1="${yy.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="var(--border)" stroke-width="1"/><text x="${ml - 6}" y="${(yy + 3).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--muted)">${esc(fmt(v))}</text>`; }
   series.forEach((sr, si) => sr.values.forEach((v, i) => {
     v = Number(v) || 0; const x = ml + gw * i + (gw - bw * series.length) / 2 + bw * si, y0 = y(0), y1 = y(v);
-    g += `<rect x="${x.toFixed(1)}" y="${Math.min(y0, y1).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(v ? 1 : 0, Math.abs(y0 - y1)).toFixed(1)}" rx="2" fill="${sr.color || CH_COLORS[si % CH_COLORS.length]}"><title>${esc(labels[i])} -- ${esc(sr.name)}: ${esc(full(v))}</title></rect>`;
+    g += `<rect x="${x.toFixed(1)}" y="${Math.min(y0, y1).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(v ? 1 : 0, Math.abs(y0 - y1)).toFixed(1)}" rx="2" fill="${sr.color || CH_COLORS[si % CH_COLORS.length]}"><title>${esc(labels[i])} — ${esc(sr.name)}: ${esc(full(v))}</title></rect>`;
   }));
   labels.forEach((l, i) => { if (i % step) return; g += `<text x="${(ml + gw * i + gw / 2).toFixed(1)}" y="${H - mb + 14}" text-anchor="middle" font-size="10" fill="var(--muted)">${esc(l)}</text>`; });
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img">${g}</svg>` + (series.length > 1 ? legendHtml(series.map((sr, si) => ({ color: sr.color || CH_COLORS[si % CH_COLORS.length], text: sr.name }))) : '');
@@ -412,7 +412,7 @@ function chartDonut(id, items, opt) {
     ang = a1;
   });
   const center = `<text x="${C}" y="${C - 2}" text-anchor="middle" font-size="11" fill="var(--muted)">Total</text><text x="${C}" y="${C + 14}" text-anchor="middle" font-size="13" font-weight="700" fill="currentColor">${esc((opt.fmt || compactMoney)(tot))}</text>`;
-  el.innerHTML = `<div class="donutwrap"><svg viewBox="0 0 170 170" role="img">${arcs}${center}</svg><div class="legend">${list.map(it => `<span><i style="background:${it.color}"></i>${esc(it.label)} -- <b>${(it.value / tot * 100).toFixed(1)}%</b> · ${esc(full(it.value))}</span>`).join('')}</div></div>`;
+  el.innerHTML = `<div class="donutwrap"><svg viewBox="0 0 170 170" role="img">${arcs}${center}</svg><div class="legend">${list.map(it => `<span><i style="background:${it.color}"></i>${esc(it.label)} — <b>${(it.value / tot * 100).toFixed(1)}%</b> · ${esc(full(it.value))}</span>`).join('')}</div></div>`;
 }
 function chartHBars(id, items, opt) {
   const el = $(id); if (!el) return; opt = opt || {}; const full = opt.full || money;
@@ -682,7 +682,7 @@ function renderGoalsBox() {
 function openGoalPay() {
   const act = GOALS.filter(g => g.active);
   if (!act.length) { toast('⚠ Crea o activa un objetivo en Configuración primero'); return; }
-  $('gpGoal').innerHTML = act.map(g => `<option value="${g.id}">${esc(g.name)} -- ${money(g.contributed)} / ${money(g.target)}</option>`).join('');
+  $('gpGoal').innerHTML = act.map(g => `<option value="${g.id}">${esc(g.name)} — ${money(g.contributed)} / ${money(g.target)}</option>`).join('');
   $('gpAmount').value = ''; $('gpDate').value = today();
   openModal('goalPayModal');
 }
@@ -760,7 +760,7 @@ function renderRecent() {
   const last = [...ORDERS].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 10);
   const rev = last.slice().reverse();
   chartBars('chRecent', rev.map(o => o.order_number.replace(/^.*-0*/, '#') || o.order_number), [{ name: 'Total', values: rev.map(o => o.total), color: CH_COLORS[0] }, { name: 'Abonado', values: rev.map(o => o.paid), color: CH_COLORS[2] }], { label: 'Total y abonado de los últimos pedidos', h: 190 });
-  put('recentOrders', last.length ? `<div class="tablewrap"><table class="adm"><thead><tr><th>Pedido</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Saldo</th></tr></thead><tbody>${last.map(o => `<tr><td>${esc(o.order_number)}</td><td>${String(o.created_at || '').slice(0, 10)}</td><td>${esc(o.client_name || '--')}</td><td>${money(o.total)}</td><td>${money(o.balance)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No hay pedidos.</div>');
+  put('recentOrders', last.length ? `<div class="tablewrap"><table class="adm"><thead><tr><th>Pedido</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Saldo</th></tr></thead><tbody>${last.map(o => `<tr><td>${esc(o.order_number)}</td><td>${String(o.created_at || '').slice(0, 10)}</td><td>${esc(o.client_name || '—')}</td><td>${money(o.total)}</td><td>${money(o.balance)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No hay pedidos.</div>');
 }
 function renderLow() {
   const low = (ANALYTICS.stockRows || []).filter(x => x.status !== 'EN STOCK');
@@ -796,8 +796,8 @@ function renderInventory() {
   const list = PRODUCTS.filter(p => (!q || p.name.toLowerCase().includes(q) || String(p.code || '').includes(q)) && (!f || p.status === f));
   put('invTable', '<div class="tablewrap"><table class="adm"><thead><tr><th>Producto</th><th>Código</th><th>Categoría</th><th>Costo</th><th>Envío</th><th>Stock</th><th>Disponible</th><th>Estado</th><th>Precio</th><th>Margen</th><th>Fecha compra</th><th>Acciones</th></tr></thead><tbody>' +
     (list.length ? list.map(p => {
-      const marg = p.price > 0 ? (((Number(p.price) - Number(p.cost) - Number(p.shipping_cost)) / Number(p.price)) * 100).toFixed(1) + '%' : '--';
-      return `<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.code || '--')}</td><td>${esc(p.category || '--')}</td><td>${money(p.cost)}</td><td>${money(p.shipping_cost)}</td><td>${p.stock}</td><td>${p.available}</td><td>${pillStock(p.status)}</td><td>${money(p.price)}</td><td>${marg}</td><td>${esc(p.purchase_date || '--')}</td>
+      const marg = p.price > 0 ? (((Number(p.price) - Number(p.cost) - Number(p.shipping_cost)) / Number(p.price)) * 100).toFixed(1) + '%' : '—';
+      return `<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.code || '—')}</td><td>${esc(p.category || '—')}</td><td>${money(p.cost)}</td><td>${money(p.shipping_cost)}</td><td>${p.stock}</td><td>${p.available}</td><td>${pillStock(p.status)}</td><td>${money(p.price)}</td><td>${marg}</td><td>${esc(p.purchase_date || '—')}</td>
         <td class="acts"><button class="btn" onclick="openStock('${p.id}')">+ Stock</button><button class="btn" onclick="openProduct('${p.id}')">Editar</button><button class="btn danger" onclick="delProduct('${p.id}')">Eliminar</button></td></tr>`;
     }).join('') : '<tr><td colspan="12" class="empty">Sin productos.</td></tr>') + '</tbody></table></div>');
 }
@@ -921,7 +921,7 @@ function renderClients() {
   const q = ($('cliSearch') ? $('cliSearch').value : '').toLowerCase();
   const list = CLIENTS.filter(c => !q || (c.name + ' ' + (c.whatsapp || '')).toLowerCase().includes(q));
   put('clientsTable', '<div class="tablewrap"><table class="adm"><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Ciudad</th><th>Dirección</th><th>Estado</th><th>Pedidos</th><th>Total</th><th>Abonado</th><th>Saldo</th><th>Acciones</th></tr></thead><tbody>' +
-    (list.length ? list.map(c => `<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.whatsapp || '--')}</td><td>${esc(c.city || '--')}</td><td>${esc(c.address || '--')}</td><td>${c.status === 'Activo' ? '<span class="pill ok">Activo</span>' : '<span class="pill danger">Inactivo</span>'}</td><td>${c.orders}</td><td>${money(c.total)}</td><td>${money(c.paid)}</td><td>${money(c.balance)}</td>
+    (list.length ? list.map(c => `<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.whatsapp || '—')}</td><td>${esc(c.city || '—')}</td><td>${esc(c.address || '—')}</td><td>${c.status === 'Activo' ? '<span class="pill ok">Activo</span>' : '<span class="pill danger">Inactivo</span>'}</td><td>${c.orders}</td><td>${money(c.total)}</td><td>${money(c.paid)}</td><td>${money(c.balance)}</td>
       <td class="acts"><button class="btn" onclick="openClient('${c.id}')">Editar</button></td></tr>`).join('') : '<tr><td colspan="10" class="empty">Sin clientes.</td></tr>') + '</tbody></table></div>');
 }
 function openClient(id) {
@@ -953,13 +953,13 @@ async function loadOrders() {
   const rows = await api('/api/admin/orders?' + new URLSearchParams({ q, status: f }));
   ORDERS = rows;
   put('ordersTable', rows.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>N.º</th><th>Cliente</th><th>Fecha</th><th>Estado</th><th>Ítems</th><th>Total</th><th>Abonado</th><th>Saldo</th><th>Acciones</th></tr></thead><tbody>' +
-    rows.map(o => `<tr><td><b>${esc(o.order_number)}</b></td><td>${esc(o.client_name || '--')}</td><td>${String(o.created_at || '').slice(0, 10)}</td><td>${pill(o.status)}</td><td>${o.items_count}</td><td>${money(o.total)}</td><td>${money(o.paid)}</td><td>${money(o.balance)}</td>
+    rows.map(o => `<tr><td><b>${esc(o.order_number)}</b></td><td>${esc(o.client_name || '—')}</td><td>${String(o.created_at || '').slice(0, 10)}</td><td>${pill(o.status)}</td><td>${o.items_count}</td><td>${money(o.total)}</td><td>${money(o.paid)}</td><td>${money(o.balance)}</td>
       <td class="acts"><button class="btn primary" onclick="openOrder('${o.id}')">Abrir</button></td></tr>`).join('') +
     '</tbody></table></div>' : '<p class="note">No hay pedidos con ese filtro.</p>');
 }
 function optGroups() {
-  return `<optgroup label="Productos">${PRODUCTS.map(p => `<option value="p:${p.id}" ${Number(p.available) <= 0 ? 'disabled' : ''}>${esc(p.name)} -- ${money(p.price)}${Number(p.available) <= 0 ? ' -- AGOTADO' : ' (disp ' + p.available + ')'}</option>`).join('')}</optgroup>` +
-    `<optgroup label="Kits">${KITS.map(k => `<option value="k:${k.id}" ${Number(k.available) <= 0 ? 'disabled' : ''}>${esc(k.name)} -- ${money(k.price)}${Number(k.available) <= 0 ? ' -- AGOTADO' : ' (disp ' + k.available + ')'}</option>`).join('')}</optgroup>`;
+  return `<optgroup label="Productos">${PRODUCTS.map(p => `<option value="p:${p.id}" ${Number(p.available) <= 0 ? 'disabled' : ''}>${esc(p.name)} — ${money(p.price)}${Number(p.available) <= 0 ? ' — AGOTADO' : ' (disp ' + p.available + ')'}</option>`).join('')}</optgroup>` +
+    `<optgroup label="Kits">${KITS.map(k => `<option value="k:${k.id}" ${Number(k.available) <= 0 ? 'disabled' : ''}>${esc(k.name)} — ${money(k.price)}${Number(k.available) <= 0 ? ' — AGOTADO' : ' (disp ' + k.available + ')'}</option>`).join('')}</optgroup>`;
 }
 async function openOrder(id) {
   try {
@@ -1078,17 +1078,17 @@ async function loadLogistics() {
   LOGIS = await api('/api/admin/logistics');
   const pend = LOGIS.filter(s => s.status !== 'enviado'), sent = LOGIS.filter(s => s.status === 'enviado');
   put('logisPending', pend.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Pedido</th><th>Cliente</th><th>Ciudad</th><th>Estado</th><th>Pago</th><th>Transportadora</th><th>Monto</th><th>Acciones</th></tr></thead><tbody>' +
-    pend.map(s => `<tr><td><b>${esc(s.order_number)}</b></td><td>${esc(s.client_name || '')}</td><td>${esc(s.city || '--')}</td><td>${s.status === 'guardado' ? '<span class="pill warn">Guardado</span>' : '<span class="pill">Por enviar</span>'}</td><td>${s.pay_mode === 'adelantado' ? 'Adelantado' : 'Por cobrar'}</td><td>${esc(s.carrier)}${s.carrier_other ? ' (' + esc(s.carrier_other) + ')' : ''}</td><td>${money(s.amount)}</td>
+    pend.map(s => `<tr><td><b>${esc(s.order_number)}</b></td><td>${esc(s.client_name || '')}</td><td>${esc(s.city || '—')}</td><td>${s.status === 'guardado' ? '<span class="pill warn">Guardado</span>' : '<span class="pill">Por enviar</span>'}</td><td>${s.pay_mode === 'adelantado' ? 'Adelantado' : 'Por cobrar'}</td><td>${esc(s.carrier)}${s.carrier_other ? ' (' + esc(s.carrier_other) + ')' : ''}</td><td>${money(s.amount)}</td>
       <td class="acts"><button class="btn primary" onclick="openShip('${s.id}')">Preparar envío</button><button class="btn" onclick="openOrder('${s.order_id}')">Ver pedido</button></td></tr>`).join('') + '</tbody></table></div>'
     : '<p class="note">No hay pedidos por enviar. Los pedidos que pasan a Pagado entran aquí automáticamente.</p>');
   put('logisSent', sent.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Pedido</th><th>Cliente</th><th>Enviado</th><th>Transportadora</th><th>Pago</th><th>Monto</th><th>Dirección de envío</th></tr></thead><tbody>' +
-    sent.map(s => `<tr><td><b>${esc(s.order_number)}</b></td><td>${esc(s.client_name || '')}</td><td>${String(s.shipped_at || '').slice(0, 10)}</td><td>${esc(s.carrier)}${s.carrier_other ? ' (' + esc(s.carrier_other) + ')' : ''}</td><td>${s.pay_mode === 'adelantado' ? 'Adelantado' : 'Por cobrar'}</td><td>${money(s.amount)}</td><td>${esc(s.city || '')} -- ${esc(s.address || '')}</td></tr>`).join('') + '</tbody></table></div>'
+    sent.map(s => `<tr><td><b>${esc(s.order_number)}</b></td><td>${esc(s.client_name || '')}</td><td>${String(s.shipped_at || '').slice(0, 10)}</td><td>${esc(s.carrier)}${s.carrier_other ? ' (' + esc(s.carrier_other) + ')' : ''}</td><td>${s.pay_mode === 'adelantado' ? 'Adelantado' : 'Por cobrar'}</td><td>${money(s.amount)}</td><td>${esc(s.city || '')} — ${esc(s.address || '')}</td></tr>`).join('') + '</tbody></table></div>'
     : '<p class="note">Aún no hay envíos registrados.</p>');
 }
 function openShip(id) {
   const s = LOGIS.find(x => x.id === id); if (!s) return;
   $('shId').value = s.id;
-  $('shTitle').textContent = 'Preparar envío -- ' + s.order_number;
+  $('shTitle').textContent = 'Preparar envío — ' + s.order_number;
   $('shPay').value = s.pay_mode || 'adelantado';
   $('shAmount').value = s.amount || '';
   $('shCarrier').value = s.carrier || 'Interrapidísimo';
@@ -1208,7 +1208,7 @@ async function delGoal(id) {
 }
 function renderDonations() {
   put('donList', DONATIONS.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Fecha</th><th>Entidad</th><th>Valor</th><th>Certificado</th><th>Nota</th><th></th></tr></thead><tbody>' +
-    DONATIONS.map(d => `<tr><td>${esc(d.donation_date)}</td><td><b>${esc(d.entity)}</b></td><td>${money(d.amount)}</td><td>${esc(d.certificate || '--')}</td><td>${esc(d.note || '')}</td><td class="acts"><button class="btn danger" onclick="delDonation('${d.id}')">Eliminar</button></td></tr>`).join('') + '</tbody></table></div>'
+    DONATIONS.map(d => `<tr><td>${esc(d.donation_date)}</td><td><b>${esc(d.entity)}</b></td><td>${money(d.amount)}</td><td>${esc(d.certificate || '—')}</td><td>${esc(d.note || '')}</td><td class="acts"><button class="btn danger" onclick="delDonation('${d.id}')">Eliminar</button></td></tr>`).join('') + '</tbody></table></div>'
     : '<p class="note">Sin donaciones certificadas registradas.</p>');
 }
 async function saveDonation() {
@@ -1366,7 +1366,7 @@ async function generateInvoice(orderId) {
       doc.autoTable({
         startY: py + 3,
         head: [['Fecha', 'Medio', 'Referencia', 'Nota', 'Valor']],
-        body: o.payments.map(p => [String(p.payment_date || ''), bt(String(p.method || '')), bt(String(p.reference || '--')), bt(String(p.note || '')), pdfMoney(p.amount)]),
+        body: o.payments.map(p => [String(p.payment_date || ''), bt(String(p.method || '')), bt(String(p.reference || '—')), bt(String(p.note || '')), pdfMoney(p.amount)]),
         theme: 'plain',
         styles: { font: BF, fontSize: 8.5, textColor: dark, cellPadding: 2 },
         headStyles: { font: TF, fontStyle: 'bold', fillColor: [247, 250, 247], textColor: muted },
@@ -1391,4 +1391,4 @@ async function generateInvoice(orderId) {
   } catch (e) { console.error(e); toast('⚠ ' + e.message); }
 }
 
-document.addEventListener('DOMContentLoaded', init);</script>
+document.addEventListener('DOMContentLoaded', init);

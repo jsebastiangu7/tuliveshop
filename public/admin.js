@@ -1886,4 +1886,113 @@ document.addEventListener('DOMContentLoaded', init);
   ensureUi();
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ensureUi);
 })();
+  /* ===== PANDALA · ADMIN EXTRA (recuperación, import en config, notificación abonos) ===== */
+(function () {
+  'use strict';
+  if (window.__pkAdminExtra) return; window.__pkAdminExtra = true;
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* CSS con contraste fijo (no depende del tema) */
+  var st = document.createElement('style');
+  st.textContent = [
+    '.pk-link{display:inline-block;margin-top:10px;color:#7c5cff;font-weight:700;font-size:13px;cursor:pointer;text-decoration:underline}',
+    '#pkAbonoBubble{position:fixed;left:16px;bottom:16px;z-index:9600;max-width:320px;display:none;gap:10px;align-items:flex-start;',
+    '  background:#241f31;color:#ffffff;border:2px solid #f59e0b;border-radius:14px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.4);font-size:13px}',
+    '[data-theme="dark"] #pkAbonoBubble{background:#fff8e7;color:#241f31;border-color:#7c5cff}',
+    '#pkAbonoBubble b{color:#f59e0b}[data-theme="dark"] #pkAbonoBubble b{color:#7c5cff}',
+    '#pkAbonoBubble .pk-b-actions{display:flex;gap:8px;margin-top:8px}',
+    '#pkAbonoBubble button{border:0;border-radius:8px;padding:6px 10px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}',
+    '#pkAbonoBubble .pk-see{background:#f59e0b;color:#241f31}[data-theme="dark"] #pkAbonoBubble .pk-see{background:#7c5cff;color:#fff}',
+    '#pkAbonoBubble .pk-x{background:transparent;color:inherit;border:1px solid currentColor}',
+    '.pk-modal-back{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:9700}',
+    '.pk-modal-back.open{display:flex}',
+    '.pk-modal{background:var(--card,#fff);color:var(--ink,#241f31);border-radius:16px;padding:20px;width:min(420px,92vw);display:grid;gap:10px}',
+    '.pk-modal input{padding:10px;border:1px solid var(--border,#ccc);border-radius:10px;font:inherit;background:var(--card,#fff);color:var(--ink,#241f31)}',
+    '.pk-modal .pk-err{color:#ef4444;font-size:12px;min-height:14px}'
+  ].join('\n');
+  document.head.appendChild(st);
+
+  function modal(id, title, fields, btnText, onSubmit) {
+    var back = document.createElement('div'); back.className = 'pk-modal-back'; back.id = id;
+    back.innerHTML = '<div class="pk-modal"><h3 style="margin:0">' + title + '</h3>' +
+      fields.map(function (f) { return '<input id="' + f.id + '" type="' + (f.type || 'text') + '" placeholder="' + f.ph + '">'; }).join('') +
+      '<div class="pk-err" id="' + id + 'Err"></div><button class="btn primary" id="' + id + 'Go">' + btnText + '</button>' +
+      '<button class="btn" id="' + id + 'Close">Cerrar</button></div>';
+    document.body.appendChild(back);
+    $(id + 'Close').onclick = function () { back.classList.remove('open'); };
+    $(id + 'Go').onclick = function () { onSubmit(back); };
+    return back;
+  }
+
+  /* ── ¿Olvidaste contraseña? (admin) ── */
+  var fp = modal('pkForgotPwd', 'Recuperar contraseña', [{ id: 'pkFpEmail', type: 'email', ph: 'Tu correo de administrador' }], 'Enviar contraseña temporal',
+    function (back) {
+      api('/api/auth/admin/forgot-password', { method: 'POST', body: { email: $('pkFpEmail').value.trim() } })
+        .then(function (d) { toast('✔ ' + d.message); back.classList.remove('open'); })
+        .catch(function (e) { $('pkForgotPwdErr').textContent = e.message; });
+    });
+  var loginForm = document.querySelector('#view-login form');
+  if (loginForm) loginForm.insertAdjacentHTML('beforeend', '<span class="pk-link" id="pkForgotLink">¿Olvidaste tu contraseña?</span>');
+  $('pkForgotLink').onclick = function () { fp.classList.add('open'); };
+
+  /* ── Cambio obligatorio de contraseña + login envuelto ── */
+  var cp = modal('pkChangePwd', 'Crea una nueva contraseña', [{ id: 'pkCpNew', type: 'password', ph: 'Nueva contraseña (mín. 6)' }], 'Guardar contraseña',
+    function (back) {
+      api('/api/auth/admin/change-password', { method: 'POST', body: { new_password: $('pkCpNew').value } })
+        .then(function () { toast('✔ Contraseña actualizada'); back.classList.remove('open'); })
+        .catch(function (e) { $('pkChangePwdErr').textContent = e.message; });
+    });
+  var _adminLogin = adminLogin;
+  adminLogin = async function (ev) {
+    ev.preventDefault(); $('aErr').textContent = '';
+    try {
+      var d = await api('/api/auth/admin/login', { method: 'POST', body: { email: $('aEmail').value.trim(), password: $('aPass').value } });
+      token = d.token; user = d.user;
+      localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user));
+      if (d.portfolio) localStorage.setItem('portfolio', JSON.stringify(d.portfolio));
+      if (user.role === 'super_admin') { location.href = '/super.html'; return; }
+      enterPanel();
+      if (d.must_change_password) cp.classList.add('open');
+    } catch (e) { $('aErr').textContent = e.message; }
+  };
+
+  /* ── Importar JSON dentro de Configuración ── */
+  function moveImport() {
+    var impPanel = document.querySelector('#view-import .panel');
+    var cfg = $('view-config');
+    if (impPanel && cfg && !cfg.contains(impPanel)) {
+      var h = document.createElement('h2'); h.textContent = 'Importar datos actuales (JSON)'; h.style.marginTop = '18px';
+      cfg.appendChild(h); cfg.appendChild(impPanel);
+    }
+    var iv = $('view-import'); if (iv) iv.style.display = 'none';
+    for (var i = TABS.length - 1; i >= 0; i--) if (TABS[i][0] === 'import') TABS.splice(i, 1);
+    renderTabs();
+  }
+
+  /* ── Burbuja de abonos (abajo-izquierda, todos los temas) ── */
+  var bubble = document.createElement('div'); bubble.id = 'pkAbonoBubble';
+  bubble.innerHTML = '<div style="flex:1"><b>💰 Nuevo abono reportado</b><div id="pkAbonoTxt" style="margin-top:4px"></div>' +
+    '<div class="pk-b-actions"><button class="pk-see" id="pkAbonoSee">Ver abonos</button><button class="pk-x" id="pkAbonoX">✕</button></div></div>';
+  document.body.appendChild(bubble);
+  $('pkAbonoSee').onclick = function () { bubble.style.display = 'none'; showTab('abonos'); };
+  $('pkAbonoX').onclick = function () { bubble.style.display = 'none'; };
+  var seen = {}; try { seen = JSON.parse(localStorage.getItem('pkSeenReports') || '{}'); } catch (e) {}
+  function checkReports() {
+    if (!token || !user || user.role !== 'admin') return;
+    api('/api/orders/reports/pending').then(function (rows) {
+      var nuevo = null;
+      rows.forEach(function (r) { if (!seen[r.id]) { seen[r.id] = 1; nuevo = r; } });
+      localStorage.setItem('pkSeenReports', JSON.stringify(seen));
+      if (nuevo) {
+        $('pkAbonoTxt').textContent = (nuevo.client_name || 'Cliente') + ' · ' + money(nuevo.amount) + ' · bolsita ' + (nuevo.order_number || '');
+        bubble.style.display = 'flex';
+      }
+    }).catch(function () {});
+  }
+  setInterval(checkReports, 20000);
+
+  var _enter = enterPanel;
+  enterPanel = function () { _enter(); moveImport(); checkReports(); };
+  if (document.readyState !== 'loading' && user && user.role === 'admin') { moveImport(); checkReports(); }
+})();
 })();

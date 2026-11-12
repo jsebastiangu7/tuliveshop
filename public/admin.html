@@ -1,4 +1,4 @@
-<!doctype html>
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="/styles.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="/invoice-fonts.js" defer></script>
 <script src="/legal-docs.js" defer></script>
 <script src="/admin.js" defer></script>
@@ -35,7 +36,7 @@ body.layout-side .hdr-top .brand{margin:0 0 6px}
 body.layout-side .hdr-bottom{flex-direction:column;align-items:stretch;border-top:0;padding-top:0;gap:8px}
 body.layout-side nav#tabs{flex-direction:column;flex-wrap:nowrap}
 body.layout-side .hdr-icons{margin-left:0}
-/* ===== Menú del administrador (nombre → Configuración / Legal / Salir) ===== */
+/* ===== Menú del administrador (👑 nombre → Configuración / Legal / Salir) ===== */
 .who-wrap{position:relative}
 .who-btn{display:flex;align-items:center;gap:7px;font-weight:800}
 .user-menu{position:absolute;right:0;top:calc(100% + 8px);background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-lg);min-width:210px;padding:6px;z-index:80;display:grid;gap:2px}
@@ -50,6 +51,11 @@ body.layout-side .hdr-icons{margin-left:0}
 .legal-doc .meta{color:var(--muted);font-size:13px}
 .legal-doc code{background:var(--thead-bg);padding:1px 6px;border-radius:5px;font-size:12.5px;word-break:break-all}
 .legal-doc a{color:var(--primary-text)}
+/* ===== Responsivo (tablet / celular) ===== */
+@media(max-width:900px){nav#tabs{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:thin}.hdr-top{gap:8px}.hdr-bottom{gap:8px}}
+@media(max-width:650px){.toolbar{gap:6px}.toolbar input,.toolbar select{flex:1 1 46%;min-width:0}.modal{padding:16px}.fgrid{grid-template-columns:1fr 1fr}.who-btn span{max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.metric{font-size:23px}}
+@media(max-width:430px){.fgrid{grid-template-columns:1fr}.cards{grid-template-columns:1fr 1fr}.metric{font-size:21px;white-space:nowrap}}
+.imp-table input,.imp-table select{padding:6px 8px;font-size:12.5px;min-width:70px}
 </style>
 </head>
 <body>
@@ -58,7 +64,7 @@ body.layout-side .hdr-icons{margin-left:0}
     <div class="brand" style="cursor:pointer" onclick="location.href='/'" title="Ir a la tienda">Pandala <span>Kawaii</span> · Admin</div>
     <span id="who" class="pill hidden"></span>
     <div class="who-wrap">
-      <button id="whoBtn" class="btn who-btn" onclick="toggleUserMenu()" title="Menú del administrador">👑 <span id="whoName">—</span> ▾</button>
+      <button id="whoBtn" class="btn who-btn" onclick="toggleUserMenu()" title="Menú del administrador">👑 <span id="whoName">--</span> ▾</button>
       <div id="userMenu" class="user-menu hidden">
         <button type="button" onclick="menuGo('config')">⚙️ Configuración</button>
         <button type="button" onclick="menuGo('legal')">📜 Legal</button>
@@ -97,6 +103,14 @@ body.layout-side .hdr-icons{margin-left:0}
   <!-- DASHBOARD -->
   <section id="view-dash" class="view">
     <h1>Dashboard</h1><p class="subtitle">Control rápido de ventas, pedidos, pagos, logística e inventario.</p>
+    <div class="toolbar" id="sumBaseWrap" style="margin-bottom:10px">
+      <label class="note" style="display:flex;gap:6px;align-items:center">Base del resumen
+        <select id="sumBase" onchange="renderSummary()">
+          <option value="cobrado" selected>Lo cobrado (como tu app original)</option>
+          <option value="vendido">Lo vendido</option>
+        </select>
+      </label>
+    </div>
     <div id="dashSummary"></div>
     <div class="grid cards" style="margin-top:14px">
       <div class="card"><div class="label">Ventas</div><div class="metric" id="mVentas">$0</div></div>
@@ -140,13 +154,8 @@ body.layout-side .hdr-icons{margin-left:0}
       <div class="chart" id="chInv" style="margin-top:12px"></div>
       <div class="note" style="margin-top:8px">Utilidad bruta = ventas − costo de lo vendido (costo del producto y, si está marcado, su envío). Pedidos no cancelados, en la fecha de cada línea.</div>
     </div>
-    <div class="grid dashboard-grid" style="margin-top:14px">
-      <div class="panel"><h2>Diezmo, ofrenda y reinversión</h2><div id="profitBox" class="note">Se activa con el admin.js de la Parte B.</div></div>
-      <div class="panel"><h2>Objetivos</h2><div id="goalsBox" class="note">Se activa con el admin.js de la Parte B.</div>
-        <div class="actions"><button class="btn primary" onclick="openGoalPay()">+ Registrar aporte</button></div></div>
-    </div>
     <div class="panel" style="margin-top:14px">
-      <h2>Impuesto de renta estimado — persona natural, Colombia</h2>
+      <h2>Impuesto de renta estimado -- persona natural, Colombia</h2>
       <div class="toolbar" style="margin-bottom:10px">
         <label class="note">Año a estimar <select id="taxYear" onchange="renderTax()"></select></label>
         <label class="note">UVT 2027 (estimada) <input id="taxUvt" type="number" min="1" style="width:110px" oninput="taxCfgChanged()"></label>
@@ -188,7 +197,7 @@ body.layout-side .hdr-icons{margin-left:0}
     </div>
     <div class="panel" style="margin-top:14px">
       <h2>Logística (vista rápida)</h2>
-      <div id="dashLogis" class="note">Se activa con el admin.js de la Parte B.</div>
+      <div id="dashLogis" class="note"></div>
     </div>
     <div class="panel" style="margin-top:14px">
       <h2>Pedidos por cliente</h2>
@@ -213,6 +222,10 @@ body.layout-side .hdr-icons{margin-left:0}
     <h1>Inventario</h1><p class="subtitle">El stock disponible descuenta bolsitas activas y ventas.</p>
     <div class="toolbar">
       <button class="btn primary" onclick="openProduct()">+ Agregar producto</button>
+      <button class="btn" id="btnInvTpl" onclick="downloadInventoryTemplate()">Plantilla Excel</button>
+      <button class="btn" id="btnInvLoad" onclick="$('invImportFile').click()">📥 Cargar inventario</button>
+      <input type="file" id="invImportFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleInventoryFile(event)">
+      <button class="btn" onclick="exportInventoryExcel()">⬇ Excel</button>
       <input id="invSearch" placeholder="Buscar producto o código" oninput="renderInventory()">
       <select id="invFilter" onchange="renderInventory()"><option value="">Todos</option><option>EN STOCK</option><option>REPOSICIÓN</option><option>AGOTADO</option></select>
       <button class="btn" onclick="loadTab('inv')">🔄</button>
@@ -237,7 +250,12 @@ body.layout-side .hdr-icons{margin-left:0}
   <!-- CLIENTES -->
   <section id="view-clients" class="view">
     <h1>Clientes</h1><p class="subtitle">Base de clientes con su historial de compras y saldos.</p>
-    <div class="toolbar"><button class="btn primary" onclick="openClient()">+ Nuevo cliente</button><input id="cliSearch" placeholder="Buscar cliente" oninput="renderClients()"><button class="btn" onclick="loadTab('clients')">🔄</button></div>
+    <div class="toolbar">
+      <button class="btn primary" onclick="openClient()">+ Nuevo cliente</button>
+      <input id="cliSearch" placeholder="Buscar cliente" oninput="renderClients()">
+      <button class="btn" id="btnCliXlsx" onclick="exportClientsExcel()">⬇ Excel</button>
+      <button class="btn" onclick="loadTab('clients')">🔄</button>
+    </div>
     <div id="clientsTable"></div>
   </section>
 
@@ -251,6 +269,7 @@ body.layout-side .hdr-icons{margin-left:0}
         <option value="apartada">Apartada</option><option value="paid">Pagada</option><option value="shipped">Enviada</option>
         <option value="delivered">Entregada</option><option value="canceled">Cancelada</option><option value="expired">Vencida</option>
       </select>
+      <button class="btn" id="btnOrdXlsx" onclick="exportOrdersExcel()">⬇ Excel</button>
       <button class="btn" onclick="loadTab('orders')">🔄</button>
     </div>
     <div id="ordersTable"></div>
@@ -259,13 +278,14 @@ body.layout-side .hdr-icons{margin-left:0}
   <!-- LOGÍSTICA -->
   <section id="view-logis" class="view">
     <h1>Logística</h1><p class="subtitle">Pedidos pagados por despachar y envíos registrados.</p>
+    <div class="toolbar"><button class="btn" id="btnLogXlsx" onclick="exportShipmentsExcel()">⬇ Excel envíos</button></div>
     <h2 style="margin:0 0 8px">📦 Por enviar</h2>
-    <div id="logisPending" class="note">Se activa con el admin.js de la Parte B.</div>
+    <div id="logisPending" class="note"></div>
     <h2 style="margin:18px 0 8px">🚚 Enviados</h2>
-    <div id="logisSent" class="note">Se activa con el admin.js de la Parte B.</div>
+    <div id="logisSent" class="note"></div>
   </section>
 
-  <!-- CONFIGURACIÓN (se abre desde el menú del administrador) -->
+  <!-- CONFIGURACIÓN (se abre desde el menú 👑) -->
   <section id="view-config" class="view">
     <h1>Configuración</h1><p class="subtitle">Apariencia, utilidad, objetivos, donaciones, factura, pagos y numeración.</p>
     <div class="panel">
@@ -287,7 +307,7 @@ body.layout-side .hdr-icons{margin-left:0}
     </div>
     <div class="panel">
       <h2 style="margin-top:0">Objetivos (máximo 3)</h2>
-      <div id="goalsCfg" class="note">Se activa con el admin.js de la Parte B.</div>
+      <div id="goalsCfg" class="note"></div>
       <div class="fgrid" style="margin-top:10px">
         <div class="field"><label>Nombre del objetivo</label><input id="gcName"></div>
         <div class="field"><label>Monto meta</label><input id="gcTarget" type="number" min="0"></div>
@@ -296,7 +316,7 @@ body.layout-side .hdr-icons{margin-left:0}
     </div>
     <div class="panel">
       <h2 style="margin-top:0">Donaciones certificadas</h2>
-      <div id="donList" class="note">Se activa con el admin.js de la Parte B.</div>
+      <div id="donList" class="note"></div>
       <div class="fgrid" style="margin-top:10px">
         <div class="field"><label>Entidad / destinatario</label><input id="dnEntity"></div>
         <div class="field"><label>Valor</label><input id="dnAmount" type="number" min="0"></div>
@@ -343,19 +363,23 @@ body.layout-side .hdr-icons{margin-left:0}
     </div>
   </section>
 
-  <!-- LEGAL (se abre desde el menú del administrador) -->
+  <!-- LEGAL (se abre desde el menú 👑) -->
   <section id="view-legal" class="view">
     <h1>Legal</h1><p class="subtitle">Política de privacidad y términos de servicio de la Aplicación.</p>
     <div class="panel">
-      <div class="toolbar"><button class="btn primary" id="legalBtnPrivacy" onclick="setLegalDoc('privacy')">Política de privacidad</button><button class="btn" id="legalBtnTerms" onclick="setLegalDoc('terms')">Términos de servicio</button><select id="legalLang" onchange="renderLegal()" style="width:auto"><option value="es">Español</option><option value="en">English</option></select></div>
+      <div class="toolbar">
+        <button class="btn primary" id="legalBtnPrivacy" onclick="setLegalDoc('privacy')">Política de privacidad</button>
+        <button class="btn" id="legalBtnTerms" onclick="setLegalDoc('terms')">Términos de servicio</button>
+        <select id="legalLang" onchange="renderLegal()" style="width:auto"><option value="es">Español</option><option value="en">English</option></select>
+      </div>
       <div id="legalContent" class="legal-doc"></div>
     </div>
   </section>
 
-  <!-- IMPORTAR -->
+  <!-- IMPORTAR JSON -->
   <section id="view-import" class="view">
     <h1>Importar datos actuales (JSON)</h1>
-    <p class="subtitle">Sube el respaldo JSON de tu Administrador Emprendedor. No duplica registros existentes.</p>
+    <p class="subtitle">Sube el respaldo JSON de tu Administrador Emprendedor. No duplica registros existentes ni abonos idénticos.</p>
     <div class="panel">
       <input type="file" id="importFile" accept=".json,application/json" onchange="onImportFile(event)">
       <div id="importResult" class="note" style="margin-top:12px"></div>
@@ -447,6 +471,19 @@ body.layout-side .hdr-icons{margin-left:0}
     <div class="field"><label>Fecha del ingreso</label><input id="gpDate" type="date"></div>
   </div>
   <div class="modal-actions"><button class="btn" onclick="closeModal('goalPayModal')">Cancelar</button><button class="btn primary" onclick="saveGoalPayment()">Registrar aporte</button></div>
+</div></div>
+
+<!-- MODAL CARGAR INVENTARIO (vista previa editable) -->
+<div id="invImportModal" class="modal-backdrop"><div class="modal" style="width:min(1080px,100%)">
+  <h2>Revisar archivo de inventario</h2>
+  <p class="note">Nada se guarda hasta confirmar. En <b>existentes</b> la cantidad se suma al stock y se actualizan costo/envío/categoría/fecha; en <b>nuevos</b> define el stock inicial.</p>
+  <div id="impSummary" class="note" style="margin:8px 0"></div>
+  <div class="tablewrap" style="max-height:52vh"><table class="adm imp-table"><thead><tr><th>Estado</th><th>Producto</th><th>Código</th><th>Categoría</th><th>Costo</th><th>Envío</th><th>Cant.</th><th>Precio</th><th>Fecha compra</th><th>Avisos</th></tr></thead><tbody id="impBody"></tbody></table></div>
+  <div class="modal-actions">
+    <button class="btn" onclick="closeInvImport()">Cerrar</button>
+    <button class="btn" onclick="closeInvImport()">Cancelar</button>
+    <button class="btn primary" id="impSaveBtn" onclick="confirmInventoryImport()">Guardar</button>
+  </div>
 </div></div>
 
 <div id="toast" class="toast hidden"></div>

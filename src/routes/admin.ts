@@ -918,5 +918,69 @@ router.post('/import-json', async (req: AuthRequest, res) => {
     client.release();
   }
 });
+/* ─────────────── BORRADO TOTAL (Zona de peligro) ─────────────── */
+router.post('/wipe', async (req: AuthRequest, res) => {
+  try {
+    const pf = pfOf(req);
+    const { confirmText } = req.body;
+    
+    if (confirmText !== 'Estoy seguro de hacer el borrado') {
+      return res.status(400).json({ error: 'Texto de confirmación incorrecto' });
+    }
 
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // 1. Borrado de datos transaccionales y logística
+      await client.query(`DELETE FROM shipments WHERE portfolio_id=$1`, [pf]);
+      await client.query(`DELETE FROM payments WHERE portfolio_id=$1`, [pf]);
+      await client.query(`DELETE FROM payment_reports WHERE portfolio_id=$1`, [pf]);
+      
+      // order_items (por seguridad, aunque haya CASCADE)
+      await client.query(`DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE portfolio_id=$1)`, [pf]);
+      await client.query(`DELETE FROM orders WHERE portfolio_id=$1`, [pf]);
+
+      // 2. Borrado de inventario y kits
+      await client.query(`DELETE FROM kit_components WHERE kit_id IN (SELECT id FROM kits WHERE portfolio_id=$1)`, [pf]);
+      await client.query(`DELETE FROM kits WHERE portfolio_id=$1`, [pf]);
+      await client.query(`DELETE FROM products WHERE portfolio_id=$1`, [pf]);
+      await client.query(`DELETE FROM categories WHERE portfolio_id=$1`, [pf]);
+
+      // 3. Borrado de clientes (solo role='client', se preservan admins)
+      await client.query(`DELETE FROM users WHERE portfolio_id=$1 AND role='client'`, [pf]);
+
+      // 4. Borrado de objetivos, aportes y donaciones
+      await client.query(`DELETE FROM goal_payments WHERE portfolio_id=$1`, [pf]);
+      await client.query(`DELETE FROM goals WHERE portfolio_id=$1`, [pf]);
+      await client.query(`DELETE FROM donations WHERE portfolio_id=$1`, [pf]);
+
+      // 5. Resetear configuración personalizada a valores por defecto
+      await client.query(`DELETE FROM settings WHERE portfolio_id=$1`, [pf]);
+      await client.query(`
+        UPDATE portfolios SET 
+          bre_b_key = '3058173611',
+          whatsapp_number = '+573058173611',
+          whatsapp_template = 'Hola, Mar. Te envío el abono a mi bolsita {ORDER_NUMBER}. Total: {TOTAL}. Abono: {AMOUNT}.',
+          order_prefix = 'BOL',
+          order_digits = 5,
+          order_start = 1
+        WHERE id = $1
+      `, [pf]);
+
+      await client.query('COMMIT');
+      res.json({ ok: true, message: 'Tienda borrada exitosamente' });
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+  } catch (e: any) {
+    console.error('ERROR wipe:', e);
+    res.status(500).json({ error: 'Error al borrar la tienda: ' + (e.message || 'desconocido') });
+  }
+});
+
+export default router;
 export default router;

@@ -1574,4 +1574,316 @@ document.addEventListener('DOMContentLoaded', init);
   setInterval(ping, 4 * 60 * 1000); // cada 4 min: Render (15 min) y Neon (5 min) no se duermen
   document.addEventListener('visibilitychange', function () { if (!document.hidden) ping(); });
 })();
+  /* =====================================================================
+   PANDALA KAWAI · DATA RESILIENCE PACK + DIAGNÓSTICO
+   Pegar AL FINAL de admin.js. Autónomo.
+   ===================================================================== */
+(function () {
+  'use strict';
+  if (window.__pkDataFix) return; window.__pkDataFix = true;
+
+  var DIAG = {};            // path -> {state, ms, message, attempts, count, at}
+  var TIMEOUT = 25000;      // 25 s por intento
+  var RETRIES = 2;          // hasta 3 intentos total
+  var renderTimer = null;
+
+  /* ---------- UI: botón flotante + panel de diagnóstico ---------- */
+  function injectCss() {
+    if (document.getElementById('pkDataFixCss')) return;
+    var s = document.createElement('style'); s.id = 'pkDataFixCss';
+    s.textContent = [
+      '#pkDiagFab{position:fixed;right:16px;bottom:16px;z-index:9400;display:none;align-items:center;gap:8px;padding:11px 16px;border:0;border-radius:999px;cursor:pointer;font:inherit;font-weight:800;font-size:13px;color:#fff;background:linear-gradient(135deg,#7c5cff,#f59e0b);box-shadow:0 8px 24px rgba(60,40,120,.35);transition:transform .15s}',
+      '#pkDiagFab:hover{transform:translateY(-2px)}',
+      '#pkDiagFab.pk-bad{background:linear-gradient(135deg,#ef4444,#f59e0b);animation:pkPulse 1.6s infinite}',
+      '#pkDiagFab .pk-dot{width:9px;height:9px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e}',
+      '#pkDiagFab.pk-bad .pk-dot{background:#fff;box-shadow:0 0 8px #fff}',
+      '@keyframes pkPulse{0%,100%{box-shadow:0 8px 24px rgba(239,68,68,.35)}50%{box-shadow:0 8px 32px rgba(239,68,68,.65)}}',
+      '#pkDiagPanel{position:fixed;top:0;right:0;height:100vh;width:min(460px,94vw);z-index:9500;display:none;flex-direction:column;background:var(--card,#fffdf8);color:var(--ink,#241f31);border-left:1.5px solid var(--border,#e8e1d2);box-shadow:-12px 0 40px rgba(40,20,80,.25)}',
+      '#pkDiagPanel.open{display:flex}',
+      '.pk-diag-head{padding:16px;border-bottom:1px solid var(--border,#e8e1d2);background:linear-gradient(135deg,rgba(124,92,255,.12),rgba(245,158,11,.12))}',
+      '.pk-diag-head h3{margin:0 0 4px;font-size:16px}',
+      '.pk-diag-head p{margin:0;font-size:12px;color:var(--muted,#8a8398)}',
+      '.pk-diag-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}',
+      '.pk-diag-actions button{padding:8px 12px;border-radius:10px;border:1px solid var(--border,#e8e1d2);background:var(--card,#fff);color:var(--ink,#241f31);font:inherit;font-size:12px;font-weight:700;cursor:pointer}',
+      '.pk-diag-actions button:hover{border-color:#7c5cff;color:#7c5cff}',
+      '#pkDiagList{flex:1;overflow:auto;padding:12px;scrollbar-width:thin;scrollbar-color:#7c5cff rgba(124,92,255,.12)}',
+      '#pkDiagList::-webkit-scrollbar{width:9px}',
+      '#pkDiagList::-webkit-scrollbar-track{background:rgba(124,92,255,.10);border-radius:9px}',
+      '#pkDiagList::-webkit-scrollbar-thumb{background:linear-gradient(#7c5cff,#f59e0b);border-radius:9px}',
+      '.pk-diag-row{border:1px solid var(--border,#e8e1d2);border-radius:12px;padding:11px 12px;margin-bottom:9px;background:rgba(124,92,255,.04)}',
+      '.pk-diag-row.pk-fail{border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.06)}',
+      '.pk-diag-path{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;word-break:break-all;margin-bottom:6px}',
+      '.pk-diag-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--muted,#8a8398)}',
+      '.pk-diag-pill{padding:2px 8px;border-radius:999px;font-weight:800;font-size:10.5px;color:#fff}',
+      '.pk-diag-pill.ok{background:#22c55e}.pk-diag-pill.error{background:#ef4444}.pk-diag-pill.timeout{background:#f59e0b}.pk-diag-pill.retry{background:#3b82f6}',
+      '.pk-diag-msg{margin-top:6px;font-size:11px;color:#ef4444;word-break:break-word}',
+      '.pk-diag-row button{margin-top:8px;padding:5px 10px;border-radius:8px;border:1px solid var(--border,#e8e1d2);background:transparent;color:var(--ink);font:inherit;font-size:11px;font-weight:700;cursor:pointer}',
+      '.pk-diag-row button:hover{border-color:#7c5cff;color:#7c5cff}',
+      '.pk-banner{margin:10px 0;padding:11px 13px;border-radius:12px;border:1.5px solid rgba(245,158,11,.55);background:rgba(245,158,11,.10);color:var(--ink,#241f31);font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}',
+      '.pk-banner .btn{padding:6px 11px;font-size:12px}',
+      '.pk-diag-empty{padding:24px;text-align:center;color:var(--muted,#8a8398);font-size:13px}'
+    ].join('\n');
+    document.head.appendChild(s);
+  }
+
+  function ensureUi() {
+    injectCss();
+    if (!document.getElementById('pkDiagFab')) {
+      var fab = document.createElement('button');
+      fab.id = 'pkDiagFab'; fab.type = 'button';
+      fab.innerHTML = '<span class="pk-dot"></span><span id="pkDiagFabText">Diagnóstico</span>';
+      fab.addEventListener('click', function () { togglePanel(true); });
+      document.body.appendChild(fab);
+    }
+    if (!document.getElementById('pkDiagPanel')) {
+      var p = document.createElement('div'); p.id = 'pkDiagPanel';
+      p.innerHTML =
+        '<div class="pk-diag-head"><h3>🩺 Diagnóstico de datos</h3><p>Estado de cada ruta consultada por el panel.</p>' +
+        '<div class="pk-diag-actions"><button id="pkDiagRetryAll">↻ Reintentar todo</button><button id="pkDiagCopy">⧉ Copiar diagnóstico</button><button id="pkDiagClose">✕ Cerrar</button></div></div>' +
+        '<div id="pkDiagList"></div>';
+      document.body.appendChild(p);
+      document.getElementById('pkDiagClose').addEventListener('click', function () { togglePanel(false); });
+      document.getElementById('pkDiagRetryAll').addEventListener('click', function () { loadTab(currentTab); });
+      document.getElementById('pkDiagCopy').addEventListener('click', copyDiag);
+      document.getElementById('pkDiagList').addEventListener('click', function (e) {
+        var b = e.target.closest('button[data-path]'); if (!b) return;
+        retryPath(b.getAttribute('data-path'));
+      });
+    }
+  }
+
+  function togglePanel(open) {
+    ensureUi();
+    var p = document.getElementById('pkDiagPanel');
+    p.classList.toggle('open', open);
+    if (open) renderPanel();
+  }
+  window.pkOpenDiag = function () { togglePanel(true); };
+  window.pkCloseDiag = function () { togglePanel(false); };
+
+  function fails() { return Object.keys(DIAG).filter(function (k) { return DIAG[k].state === 'error' || DIAG[k].state === 'timeout'; }); }
+
+  function updateFab() {
+    ensureUi();
+    var fab = document.getElementById('pkDiagFab'); if (!fab) return;
+    var n = fails().length;
+    fab.style.display = 'flex';
+    fab.classList.toggle('pk-bad', n > 0);
+    document.getElementById('pkDiagFabText').textContent = n ? ('⚠ ' + n + ' ruta(s) con fallo') : '🩺 Datos OK';
+    var panel = document.getElementById('pkDiagPanel');
+    if (panel && panel.classList.contains('open')) renderPanel();
+  }
+
+  function record(path, state, ms, message, attempts, count) {
+    DIAG[path] = { state: state, ms: ms, message: message || '', attempts: attempts || 1, count: count, at: new Date() };
+    updateFab();
+  }
+
+  function renderPanel() {
+    var list = document.getElementById('pkDiagList'); if (!list) return;
+    var keys = Object.keys(DIAG).sort(function (a, b) {
+      var fa = DIAG[a].state !== 'ok', fb = DIAG[b].state !== 'ok';
+      return fa === fb ? a.localeCompare(b) : (fa ? -1 : 1);
+    });
+    if (!keys.length) { list.innerHTML = '<div class="pk-diag-empty">Aún no hay peticiones registradas.</div>'; return; }
+    var labels = { ok: 'OK', error: 'ERROR', timeout: 'TIMEOUT', retry: 'REINTENTANDO' };
+    list.innerHTML = keys.map(function (k) {
+      var d = DIAG[k];
+      var meta = d.ms + ' ms · intento ' + d.attempts + (typeof d.count === 'number' ? ' · ' + d.count + ' registros' : '') + ' · ' + d.at.toLocaleTimeString('es-CO');
+      return '<div class="pk-diag-row' + (d.state !== 'ok' ? ' pk-fail' : '') + '">' +
+        '<div class="pk-diag-path">' + esc(k) + '</div>' +
+        '<div class="pk-diag-meta"><span class="pk-diag-pill ' + d.state + '">' + (labels[d.state] || d.state) + '</span><span>' + meta + '</span></div>' +
+        (d.message ? '<div class="pk-diag-msg">' + esc(d.message) + '</div>' : '') +
+        '<button data-path="' + esc(k) + '">↻ Reintentar esta ruta</button></div>';
+    }).join('');
+  }
+
+  function copyDiag() {
+    var lines = ['Diagnóstico Pandala Kawaii · ' + new Date().toLocaleString('es-CO')];
+    Object.keys(DIAG).sort().forEach(function (k) {
+      var d = DIAG[k];
+      lines.push('[' + d.state.toUpperCase() + '] ' + k + ' · ' + d.ms + 'ms · intento ' + d.attempts + (typeof d.count === 'number' ? ' · ' + d.count + ' registros' : '') + (d.message ? ' · ' + d.message : ''));
+    });
+    var txt = lines.join('\n');
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function () { toast('✔ Diagnóstico copiado'); });
+    else { var ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast('✔ Diagnóstico copiado'); }
+  }
+
+  function retryPath(path) {
+    toast('↻ Reintentando ' + path);
+    api(path).then(function () { toast('✔ Ruta responde OK'); loadTab(currentTab); })
+      .catch(function (e) { toast('⚠ ' + e.message); });
+  }
+  window.pkRetryPath = retryPath;
+
+  /* ---------- Capa resiliente sobre api(): timeout + reintentos + registro ---------- */
+  var _apiBase = api;
+  api = function (path, opts) {
+    opts = opts || {};
+    var method = (opts.method || 'GET').toUpperCase();
+    if (method !== 'GET') return _apiBase(path, opts); // escrituras (import, login) sin timeout
+    var attempt = 0;
+    function run() {
+      attempt++;
+      var ctrl = ('AbortController' in window) ? new AbortController() : null;
+      var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, TIMEOUT) : null;
+      var t0 = performance.now();
+      var o = Object.assign({}, opts, ctrl ? { signal: ctrl.signal } : {});
+      return _apiBase(path, o).then(function (data) {
+        if (timer) clearTimeout(timer);
+        record(path, 'ok', Math.round(performance.now() - t0), '', attempt, Array.isArray(data) ? data.length : undefined);
+        return data;
+      }).catch(function (err) {
+        if (timer) clearTimeout(timer);
+        var msg = (err && err.message) || String(err);
+        var aborted = err && (err.name === 'AbortError' || /abort/i.test(msg));
+        var permanent = /401|404|400|Sesi[oó]n/i.test(msg);
+        if (!permanent && attempt <= RETRIES) {
+          record(path, 'retry', Math.round(performance.now() - t0), msg, attempt);
+          return new Promise(function (r) { setTimeout(r, 700 * attempt); }).then(run);
+        }
+        record(path, aborted ? 'timeout' : 'error', Math.round(performance.now() - t0), msg, attempt);
+        throw err;
+      });
+    }
+    return run();
+  };
+
+  /* ---------- Render seguro del dashboard (nunca se bloquea en 0) ---------- */
+  function normAnalytics(a) {
+    a = a || {};
+    return {
+      salesLines: Array.isArray(a.salesLines) ? a.salesLines : [],
+      paysMonth: Array.isArray(a.paysMonth) ? a.paysMonth : [],
+      stockRows: Array.isArray(a.stockRows) ? a.stockRows : [],
+      inventory: Object.assign({ totalCosto: 0, totalEnvio: 0, over90: 0, over90Pct: 0 }, a.inventory || {})
+    };
+  }
+  function safeRender() {
+    [renderSummary, renderResumenCharts, renderUtilidad, renderProfitBox, renderGoalsBox,
+      renderInventoryValue, renderLogisDash, fillDashboardClients, renderClientOrders, renderRecent, renderLow]
+      .forEach(function (fn) { try { fn(); } catch (e) { console.warn('Render parcial:', e); } });
+  }
+  function scheduleRender() { if (!renderTimer) renderTimer = setTimeout(function () { renderTimer = null; safeRender(); }, 90); }
+
+  function banner(view, html) {
+    var v = document.getElementById('view-' + view); if (!v) return;
+    var b = document.getElementById('pkBanner-' + view);
+    if (!html) { if (b) b.remove(); return; }
+    if (!b) {
+      b = document.createElement('div'); b.id = 'pkBanner-' + view; b.className = 'pk-banner';
+      var anchor = v.querySelector('.toolbar') || v.querySelector('.subtitle') || v.querySelector('h1');
+      if (anchor) anchor.insertAdjacentElement('afterend', b); else v.insertBefore(b, v.firstChild);
+    }
+    b.innerHTML = html;
+  }
+  function failBanner(view, fails) {
+    banner(view, fails.length
+      ? '⚠ No se pudo cargar: <b>' + fails.map(esc).join(', ') + '</b>. Se muestra lo que sí llegó. <button class="btn" onclick="pkOpenDiag()">Ver diagnóstico</button> <button class="btn" onclick="loadTab(currentTab)">↻ Reintentar</button>'
+      : null);
+  }
+
+  /* ---------- loadDash: cada fuente independiente, render progresivo ---------- */
+  loadDash = async function () {
+    var fails = [], dashOk = false;
+    ANALYTICS = normAnalytics(ANALYTICS);
+    if (!Array.isArray(GOALS)) GOALS = []; if (!Array.isArray(DONATIONS)) DONATIONS = [];
+    if (!Array.isArray(LOGIS)) LOGIS = []; if (!Array.isArray(CLIENTS)) CLIENTS = []; if (!Array.isArray(ORDERS)) ORDERS = [];
+    ['mVentas', 'mAbonos', 'mSaldo', 'mAbiertos', 'mStock'].forEach(function (id) { var el = $(id); if (el) el.textContent = '…'; });
+    function job(path, apply) {
+      return api(path).then(function (d) { try { apply(d); } catch (e) { console.warn(e); } scheduleRender(); })
+        .catch(function () { fails.push(path.replace('/api/admin/', '')); scheduleRender(); });
+    }
+    await Promise.all([
+      job('/api/admin/dashboard', function (d) {
+        dashOk = true; var set = function (id, v) { var el = $(id); if (el) el.textContent = v; };
+        set('mVentas', money(d.ventas)); set('mAbonos', money(d.abonos)); set('mSaldo', money(d.saldo));
+        set('mAbiertos', d.abiertos); set('mStock', d.stockBajo);
+      }),
+      job('/api/admin/analytics', function (a) { ANALYTICS = normAnalytics(a); }),
+      job('/api/admin/goals', function (g) { GOALS = Array.isArray(g) ? g : []; }),
+      job('/api/admin/donations', function (d) { DONATIONS = Array.isArray(d) ? d : []; }),
+      job('/api/admin/logistics', function (l) { LOGIS = Array.isArray(l) ? l : []; }),
+      job('/api/admin/clients', function (c) { CLIENTS = Array.isArray(c) ? c : []; }),
+      job('/api/admin/orders', function (o) { ORDERS = Array.isArray(o) ? o : []; }),
+      job('/api/admin/settings', function (s) { CFG = s; }),
+      job('/api/admin/products', function (p) { PRODUCTS = Array.isArray(p) ? p : []; }),
+      job('/api/admin/kits', function (k) { KITS = Array.isArray(k) ? k : []; }),
+      job('/api/admin/categories', function (c) { CATS = Array.isArray(c) ? c : []; })
+    ]);
+    if (!dashOk) ['mVentas', 'mAbonos', 'mSaldo', 'mAbiertos', 'mStock'].forEach(function (id) { var el = $(id); if (el) el.textContent = '—'; });
+    safeRender();
+    failBanner('dash', fails);
+  };
+
+  /* ---------- fetchCaches / inventario / kits: ya no se cae todo por un fallo ---------- */
+  fetchCaches = async function () {
+    var r = await Promise.all([
+      api('/api/admin/products').then(function (p) { PRODUCTS = Array.isArray(p) ? p : []; return true; }).catch(function () { return false; }),
+      api('/api/admin/kits').then(function (k) { KITS = Array.isArray(k) ? k : []; return true; }).catch(function () { return false; }),
+      api('/api/admin/categories').then(function (c) { CATS = Array.isArray(c) ? c : []; return true; }).catch(function () { return false; })
+    ]);
+    return { products: r[0], kits: r[1], categories: r[2] };
+  };
+  loadInventory = async function () {
+    var r = await fetchCaches(); renderInventory();
+    var f = []; if (!r.products) f.push('products'); if (!r.kits) f.push('kits'); if (!r.categories) f.push('categories');
+    failBanner('inv', f);
+  };
+  loadKits = async function () {
+    var r = await fetchCaches(); renderKits();
+    failBanner('kits', !r.kits ? ['kits'] : (!r.products ? ['products'] : []));
+  };
+
+  /* ---------- Configuración: fuentes independientes ---------- */
+  loadConfig = async function () {
+    var f = [];
+    await Promise.all([
+      api('/api/admin/settings').then(function (s) { CFG = s; }).catch(function () { f.push('settings'); }),
+      api('/api/admin/goals').then(function (g) { GOALS = Array.isArray(g) ? g : []; }).catch(function () { f.push('goals'); }),
+      api('/api/admin/donations').then(function (d) { DONATIONS = Array.isArray(d) ? d : []; }).catch(function () { f.push('donations'); })
+    ]);
+    if (CFG) {
+      var ic = CFG.invoice_config || {};
+      var set = function (id, v) { var el = $(id); if (el) el.value = v; };
+      set('iEmpresa', ic.empresa || ''); set('iNit', ic.nit || ''); set('iTel', ic.telefono || '');
+      set('iEmail', ic.email || ''); set('iDir', ic.direccion || ''); set('iMsg', ic.mensaje || '');
+      set('iFontTitulos', ic.fontTitulos || 'Arial'); set('iFontCuerpo', ic.fontCuerpo || 'Arial');
+      logoData = ic.logo || null; wmData = ic.watermark || null; wmW = ic.watermarkW || 0; wmH = ic.watermarkH || 0;
+      var lp = $('iLogoPrev'); if (lp) { lp.src = logoData || ''; lp.style.display = logoData ? 'inline-block' : 'none'; }
+      var wp = $('iWmPrev'); if (wp) { wp.src = wmData || ''; wp.style.display = wmData ? 'inline-block' : 'none'; }
+      set('gBreb', CFG.bre_b_key || ''); set('gWa', CFG.whatsapp_number || ''); set('gTpl', CFG.whatsapp_template || '');
+      set('gPrefix', CFG.order_prefix || ''); set('gStart', CFG.order_start || 1); set('gDigits', CFG.order_digits || 5);
+      set('gMin', CFG.min_payment_amount || 0);
+      var pc = profitConfig();
+      set('gDiezmo', pc.diezmoPct); set('gOfrenda', pc.ofrendaPct);
+      set('gReinv', pc.reinvEnabled ? '1' : '0'); set('gReinvPct', pc.reinvPct);
+      set('uiThemeSel', localStorage.getItem('uiTheme') || 'light');
+      set('uiLayoutSel', localStorage.getItem('uiLayout') || 'top');
+    }
+    try { renderGoalsCfg(); } catch (e) {} try { renderDonations(); } catch (e) {}
+    failBanner('config', f);
+  };
+
+  /* ---------- Resto de vistas: timeout/retry ya viene de api(); aquí solo error visible ---------- */
+  [['clients', 'loadClients'], ['orders', 'loadOrders'], ['logis', 'loadLogistics'], ['abonos', 'loadReports'], ['cats', 'loadCats']].forEach(function (pair) {
+    var view = pair[0], name = pair[1], orig = window[name];
+    if (typeof orig !== 'function') return;
+    var wrapped = function () {
+      return orig().then(function () { banner(view, null); }).catch(function (e) {
+        banner(view, '⚠ ' + esc(e.message) + ' <button class="btn" onclick="pkOpenDiag()">Diagnóstico</button> <button class="btn" onclick="loadTab(currentTab)">↻ Reintentar</button>');
+      });
+    };
+    window[name] = wrapped;
+    if (typeof LOADERS !== 'undefined' && LOADERS[view]) LOADERS[view] = wrapped;
+  });
+
+  /* ---------- LOADERS captura referencias viejas: actualizarlas ---------- */
+  if (typeof LOADERS !== 'undefined') {
+    LOADERS.dash = loadDash; LOADERS.inv = loadInventory; LOADERS.kits = loadKits; LOADERS.config = loadConfig;
+  }
+
+  ensureUi();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ensureUi);
+})();
 })();

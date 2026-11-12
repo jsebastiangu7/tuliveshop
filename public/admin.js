@@ -1,12 +1,14 @@
-/* ===== Pandala Kawaii · Panel Administrador (Parte B) ===== */
+<meta name='viewport' content='width=device-width, initial-scale=1'/><script>/* ===== Pandala Kawaii · Panel Administrador (paridad total + Excel + importación) ===== */
 let token = localStorage.getItem('token') || '';
 let user = JSON.parse(localStorage.getItem('user') || 'null');
 let CFG = null, PRODUCTS = [], KITS = [], CATS = [], CLIENTS = [], ORDERS = [];
 let ANALYTICS = null, GOALS = [], DONATIONS = [], LOGIS = [];
 let curOrderId = null, logoData = null, wmData = null, wmW = 0, wmH = 0;
 let legalDoc = 'privacy';
+let impRows = [], impFileName = '';
 
 const $ = (id) => document.getElementById(id);
+const put = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
 const money = (n) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Number(n) || 0);
 const pdfMoney = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-CO');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
@@ -29,7 +31,7 @@ async function api(path, opts = {}) {
   if (!res.ok) throw new Error(data.error || 'Error ' + res.status);
   return data;
 }
-function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.add('hidden'), 3200); }
+function toast(msg) { const t = $('toast'); if (!t) return; t.textContent = msg; t.classList.remove('hidden'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.add('hidden'), 3200); }
 function closeModal(id) { $(id).classList.remove('open'); }
 function openModal(id) { $(id).classList.add('open'); }
 
@@ -57,12 +59,12 @@ function init() {
 }
 function showLogin() {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  $('view-login').classList.add('active');
-  $('hdr').classList.add('hidden');
+  const v = $('view-login'); if (v) v.classList.add('active');
+  const h = $('hdr'); if (h) h.classList.add('hidden');
 }
 function enterPanel() {
   $('hdr').classList.remove('hidden');
-  $('whoName').textContent = user.name;
+  if ($('whoName')) $('whoName').textContent = user.name;
   showTab('dash');
 }
 async function adminLogin(ev) {
@@ -79,20 +81,19 @@ async function adminLogin(ev) {
 function logout() {
   token = ''; user = null;
   localStorage.removeItem('token'); localStorage.removeItem('user'); localStorage.removeItem('portfolio');
-  closeUserMenu();
   showLogin();
 }
 
-/* ---------- Menú del administrador (Configuración / Legal / Salir) ---------- */
+/* ---------- Menú del administrador ---------- */
 function toggleUserMenu() { $('userMenu').classList.toggle('hidden'); }
-function closeUserMenu() { $('userMenu').classList.add('hidden'); }
+function closeUserMenu() { const m = $('userMenu'); if (m) m.classList.add('hidden'); }
 function menuGo(v) { closeUserMenu(); showTab(v); }
 document.addEventListener('click', (e) => { if (!e.target.closest('.who-wrap')) closeUserMenu(); });
 
 /* ---------- Navegación ---------- */
 const TABS = [['dash', 'Dashboard'], ['abonos', 'Abonos por confirmar'], ['inv', 'Inventario'], ['kits', 'Kits'], ['cats', 'Categorías'], ['clients', 'Clientes'], ['orders', 'Pedidos'], ['logis', 'Logística'], ['import', 'Importar JSON']];
 let currentTab = 'dash';
-function renderTabs() { $('tabs').innerHTML = TABS.map(([id, t]) => `<button class="chip ${currentTab === id ? 'active' : ''}" onclick="showTab('${id}')">${t}</button>`).join(''); }
+function renderTabs() { const t = $('tabs'); if (t) t.innerHTML = TABS.map(([id, n]) => `<button class="chip ${currentTab === id ? 'active' : ''}" onclick="showTab('${id}')">${n}</button>`).join(''); }
 function showTab(id) {
   currentTab = id; renderTabs();
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -113,14 +114,14 @@ async function fetchCaches() {
 function loadLegal() { renderLegal(); }
 function setLegalDoc(k) { legalDoc = k; renderLegal(); }
 function renderLegal() {
-  if (!window.LEGAL_DOCS) { $('legalContent').innerHTML = '<p class="note">Textos legales no cargados (legal-docs.js).</p>'; return; }
+  if (!window.LEGAL_DOCS || !$('legalContent')) return;
   const lang = $('legalLang').value || 'es';
   $('legalContent').innerHTML = window.LEGAL_DOCS[legalDoc][lang];
   $('legalBtnPrivacy').className = 'btn' + (legalDoc === 'privacy' ? ' primary' : '');
   $('legalBtnTerms').className = 'btn' + (legalDoc === 'terms' ? ' primary' : '');
 }
 
-/* ---------- Gráficas SVG ---------- */
+/* ---------- Gráficas SVG (mismos tipos que tu app original) ---------- */
 const CH_COLORS = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)', 'var(--c6)', 'var(--c7)', 'var(--c8)'];
 const compactMoney = n => { const a = Math.abs(n), sg = n < 0 ? '-' : ''; if (a >= 1e9) return sg + '$' + (a / 1e9).toFixed(1).replace(/\.0$/, '') + ' MM'; if (a >= 1e6) return sg + '$' + (a / 1e6).toFixed(1).replace(/\.0$/, '') + ' M'; if (a >= 1e3) return sg + '$' + Math.round(a / 1e3) + ' k'; return sg + '$' + Math.round(a); };
 function niceMax(v) { if (!(v > 0)) return 1; const pw = Math.pow(10, Math.floor(Math.log10(v))), f = v / pw; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * pw; }
@@ -139,7 +140,7 @@ function chartBars(id, labels, series, opt) {
   for (let i = 0; i <= 4; i++) { const v = bot + (top - bot) * i / 4, yy = y(v); g += `<line x1="${ml}" x2="${W - mr}" y1="${yy.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="var(--border)" stroke-width="1"/><text x="${ml - 6}" y="${(yy + 3).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--muted)">${esc(fmt(v))}</text>`; }
   series.forEach((sr, si) => sr.values.forEach((v, i) => {
     v = Number(v) || 0; const x = ml + gw * i + (gw - bw * series.length) / 2 + bw * si, y0 = y(0), y1 = y(v);
-    g += `<rect x="${x.toFixed(1)}" y="${Math.min(y0, y1).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(v ? 1 : 0, Math.abs(y0 - y1)).toFixed(1)}" rx="2" fill="${sr.color || CH_COLORS[si % CH_COLORS.length]}"><title>${esc(labels[i])} — ${esc(sr.name)}: ${esc(full(v))}</title></rect>`;
+    g += `<rect x="${x.toFixed(1)}" y="${Math.min(y0, y1).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(v ? 1 : 0, Math.abs(y0 - y1)).toFixed(1)}" rx="2" fill="${sr.color || CH_COLORS[si % CH_COLORS.length]}"><title>${esc(labels[i])} -- ${esc(sr.name)}: ${esc(full(v))}</title></rect>`;
   }));
   labels.forEach((l, i) => { if (i % step) return; g += `<text x="${(ml + gw * i + gw / 2).toFixed(1)}" y="${H - mb + 14}" text-anchor="middle" font-size="10" fill="var(--muted)">${esc(l)}</text>`; });
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img">${g}</svg>` + (series.length > 1 ? legendHtml(series.map((sr, si) => ({ color: sr.color || CH_COLORS[si % CH_COLORS.length], text: sr.name }))) : '');
@@ -162,19 +163,19 @@ function chartDonut(id, items, opt) {
     ang = a1;
   });
   const center = `<text x="${C}" y="${C - 2}" text-anchor="middle" font-size="11" fill="var(--muted)">Total</text><text x="${C}" y="${C + 14}" text-anchor="middle" font-size="13" font-weight="700" fill="currentColor">${esc((opt.fmt || compactMoney)(tot))}</text>`;
-  el.innerHTML = `<div class="donutwrap"><svg viewBox="0 0 170 170" role="img">${arcs}${center}</svg><div class="legend">${list.map(it => `<span><i style="background:${it.color}"></i>${esc(it.label)} — <b>${(it.value / tot * 100).toFixed(1)}%</b> · ${esc(full(it.value))}</span>`).join('')}</div></div>`;
+  el.innerHTML = `<div class="donutwrap"><svg viewBox="0 0 170 170" role="img">${arcs}${center}</svg><div class="legend">${list.map(it => `<span><i style="background:${it.color}"></i>${esc(it.label)} -- <b>${(it.value / tot * 100).toFixed(1)}%</b> · ${esc(full(it.value))}</span>`).join('')}</div></div>`;
 }
 function chartHBars(id, items, opt) {
   const el = $(id); if (!el) return; opt = opt || {}; const full = opt.full || money;
   const list = items.filter(it => Number(it.value) > 0);
   if (!list.length) { el.innerHTML = emptyChart; return; }
   const mx = Math.max(...list.map(it => it.value));
-  el.innerHTML = '<div class="hbars">' + list.map((it, i) => `<div class="row"><span class="lbl" title="${esc(it.label)}">${esc(it.label)}</span><span class="bar"><b style="width:${(it.value / mx * 100).toFixed(1)}%;background:${it.color || CH_COLORS[0]}"></b></span><span class="val">${esc(it.extra ? it.extra + ' · ' : '')}${esc(full(it.value))}</span></div>`).join('') + '</div>';
+  el.innerHTML = '<div class="hbars">' + list.map(it => `<div class="row"><span class="lbl" title="${esc(it.label)}">${esc(it.label)}</span><span class="bar"><b style="width:${(it.value / mx * 100).toFixed(1)}%;background:${it.color || CH_COLORS[0]}"></b></span><span class="val">${esc(it.extra ? it.extra + ' · ' : '')}${esc(full(it.value))}</span></div>`).join('') + '</div>';
 }
 const mesLabel = k => MES_CORTO[Number(k.slice(5, 7)) - 1] + ' ' + k.slice(2, 4);
 function monthKeysBack(n, endKey) { let y = Number(endKey.slice(0, 4)), m = Number(endKey.slice(5, 7)), out = []; for (let i = 0; i < n; i++) { out.unshift(y + '-' + String(m).padStart(2, '0')); m--; if (m < 1) { m = 12; y--; } } return out; }
 
-/* ---------- Utilidad: periodos ---------- */
+/* ---------- Utilidad: periodos y bases ---------- */
 const withShip = () => $('utilShip') ? $('utilShip').checked : true;
 function salesLines() {
   if (!ANALYTICS) return [];
@@ -204,9 +205,50 @@ function investmentOf(key) {
   return PRODUCTS.filter(p => String(p.purchase_date || '').slice(0, 7) === key)
     .reduce((a, p) => a + (Number(p.stock) || 0) * ((Number(p.cost) || 0) + (Number(p.shipping_cost) || 0)), 0);
 }
-function monthProfit(key) {
-  const rows = salesLines().filter(r => String(r.fecha).slice(0, 7) === key);
-  return rows.reduce((a, r) => a + r.venta, 0) - rows.reduce((a, r) => a + r.costo, 0);
+function monthSold(key) { const rows = salesLines().filter(r => String(r.fecha).slice(0, 7) === key); return { ventas: rows.reduce((a, r) => a + r.venta, 0), costo: rows.reduce((a, r) => a + r.costo, 0) }; }
+function monthProfit(key) { const s = monthSold(key); return s.ventas - s.costo; }
+function monthMargin(key) { const s = monthSold(key); return s.ventas > 0 ? (s.ventas - s.costo) / s.ventas : 0; }
+function monthCollected(key) { const p = (ANALYTICS && ANALYTICS.paysMonth || []).find(x => x.month === key); return p ? Number(p.amount) : 0; }
+/* Base "lo cobrado" (como tu app original): abonos del mes × margen bruto del mes */
+function monthUtilBase(key, base) { return base === 'cobrado' ? monthCollected(key) * monthMargin(key) : monthProfit(key); }
+
+/* ---------- Impuesto de renta ---------- */
+const UVT_2027_ESTIMADA = 55668;
+const TAX_TABLE = [[0, 1090, 0, 0], [1090, 1700, 0.19, 0], [1700, 4100, 0.28, 116], [4100, 8670, 0.33, 788], [8670, 18970, 0.35, 2296], [18970, 31000, 0.37, 5901], [31000, Infinity, 0.39, 10352]];
+const incomeTaxUvt = b => { const r = TAX_TABLE.find(x => b > x[0] && b <= x[1]); return r ? (b - r[0]) * r[2] + r[3] : 0; };
+function taxCfg() { try { return JSON.parse(localStorage.getItem('taxCfg') || 'null') || { uvt: UVT_2027_ESTIMADA, gastos: {} }; } catch (e) { return { uvt: UVT_2027_ESTIMADA, gastos: {} }; } }
+function computeTax(year) {
+  const c = taxCfg();
+  const uvt = Number(c.uvt) || UVT_2027_ESTIMADA, gastos = Number((c.gastos || {})[year]) || 0;
+  const rows = salesLines().filter(r => String(r.fecha).slice(0, 4) === String(year));
+  const ingresos = rows.reduce((a, r) => a + r.venta, 0), util = ingresos - rows.reduce((a, r) => a + r.costo, 0);
+  const base = Math.max(0, util - gastos), baseUvt = base / uvt, imp = Math.round(incomeTaxUvt(baseUvt) * uvt);
+  return { ingresos, util, base, baseUvt, imp, efectiva: util > 0 ? imp / util : 0 };
+}
+function taxCfgChanged() {
+  const c = taxCfg(), y = $('taxYear').value;
+  c.uvt = Number($('taxUvt').value) || UVT_2027_ESTIMADA; c.gastos[y] = Number($('taxExp').value) || 0;
+  localStorage.setItem('taxCfg', JSON.stringify(c));
+  renderTax(true);
+}
+function renderTax(keepInputs) {
+  if (!$('taxYear')) return;
+  const c = taxCfg(), yrs = yearOptions();
+  fillSelectKeep($('taxYear'), yrs.map(y => `<option>${y}</option>`).join(''), String(new Date().getFullYear()));
+  const y = $('taxYear').value;
+  if (!keepInputs) { $('taxUvt').value = c.uvt || UVT_2027_ESTIMADA; $('taxExp').value = (c.gastos || {})[y] || 0; }
+  const t = computeTax(y);
+  $('tIngresos').textContent = money(t.ingresos); $('tUtil').textContent = money(t.util); $('tBase').textContent = money(t.base);
+  $('tUvt').textContent = t.baseUvt.toLocaleString('es-CO', { maximumFractionDigits: 1 }) + ' UVT';
+  $('tImpuesto').textContent = money(t.imp);
+  $('tEfectiva').textContent = t.base > 0 ? (t.imp / t.base * 100).toFixed(1) + '%' : '0%';
+  const tope = 1400 * (Number(c.uvt) || UVT_2027_ESTIMADA);
+  const pct = tope > 0 ? Math.min(100, t.ingresos / tope * 100) : 0;
+  put('chTax', `<div class="hbars"><div class="row" style="grid-template-columns:1fr"><span class="bar" style="height:18px"><b style="width:${pct.toFixed(1)}%;background:${t.ingresos >= tope ? CH_COLORS[3] : CH_COLORS[0]}"></b></span></div></div><div class="note" style="margin-top:6px">${esc(money(t.ingresos))} de ${esc(money(tope))} (${pct.toFixed(0)}%) del tope de 1.400 UVT</div>`);
+  const el = $('taxObligation');
+  if (el) el.textContent = t.ingresos >= tope
+    ? `⚠ Tus ingresos brutos del año (${money(t.ingresos)}) superan 1.400 UVT (${money(tope)}): probablemente estás obligado a declarar renta.`
+    : `Tus ingresos brutos del año no superan 1.400 UVT (${money(tope)}). Aun así, podrías estar obligado a declarar por patrimonio, consumos con tarjeta, compras o consignaciones.`;
 }
 
 /* ---------- Dashboard ---------- */
@@ -217,44 +259,73 @@ async function loadDash() {
   ]);
   ANALYTICS = an; GOALS = goals; DONATIONS = dons; LOGIS = logis; CLIENTS = clients; ORDERS = orders;
   if (!CFG) CFG = await api('/api/admin/settings');
-  $('mVentas').textContent = money(d.ventas); $('mAbonos').textContent = money(d.abonos); $('mSaldo').textContent = money(d.saldo);
-  $('mAbiertos').textContent = d.abiertos; $('mStock').textContent = d.stockBajo;
+  const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+  set('mVentas', money(d.ventas)); set('mAbonos', money(d.abonos)); set('mSaldo', money(d.saldo));
+  set('mAbiertos', d.abiertos); set('mStock', d.stockBajo);
   renderSummary(); renderResumenCharts();
   renderUtilidad();
   renderProfitBox(); renderGoalsBox(); renderInventoryValue();
   renderLogisDash(); fillDashboardClients(); renderClientOrders(); renderRecent(); renderLow();
 }
 function renderSummary() {
+  const box = $('dashSummary'); if (!box) return;
   const pc = profitConfig();
+  const base = $('sumBase') ? $('sumBase').value : 'cobrado';
   const nowK = today().slice(0, 7), prevK = monthKeysBack(2, nowK)[0];
-  const utilM = monthProfit(nowK), utilP = monthProfit(prevK);
+  const utilOf = k => monthUtilBase(k, base);
+  const utilM = utilOf(nowK), utilP = utilOf(prevK);
+  const rate = y => computeTax(y).efectiva;
+  const libreOf = k => { const u = utilOf(k); return u - u * pc.diezmoPct / 100 - u * pc.ofrendaPct / 100 - (pc.reinvEnabled ? u * pc.reinvPct / 100 : 0) - u * rate(k.slice(0, 4)); };
   const diez = utilM * pc.diezmoPct / 100, ofr = utilM * pc.ofrendaPct / 100;
   const reinvS = pc.reinvEnabled ? utilM * pc.reinvPct / 100 : 0;
-  const libre = utilM - diez - ofr - reinvS;
+  const impM = utilM * rate(nowK.slice(0, 4));
+  const libre = libreOf(nowK);
   const act = GOALS.filter(g => g.active);
   const topGoal = act.map(g => ({ ...g, pct: g.target > 0 ? Math.min(100, g.contributed / g.target * 100) : 0 })).sort((a, b) => b.pct - a.pct)[0];
   const delta = utilP !== 0 ? ((utilM - utilP) / Math.abs(utilP) * 100) : null;
-  $('dashSummary').innerHTML = `
+  const y = nowK.slice(0, 4);
+  const utilY = monthKeysBack(12, y + '-12').reduce((a, k) => a + utilOf(k), 0);
+  const dyCalc = utilY * pc.diezmoPct / 100, ofCalc = utilY * pc.ofrendaPct / 100;
+  const entregado = DONATIONS.filter(d => String(d.donation_date || '').slice(0, 4) === y).reduce((a, d) => a + d.amount, 0);
+  const keys = monthKeysBack(6, nowK);
+  box.innerHTML = `
+  <div class="note" style="margin-bottom:8px">Resumen ${MONTHS_ES[Number(nowK.slice(5, 7)) - 1]} ${y} · base: <b>${base === 'cobrado' ? 'lo cobrado' : 'lo vendido'}</b></div>
   <div class="grid cards3">
     <div class="card"><div class="label">Utilidad neta del mes</div><div class="metric">${money(utilM)}</div>
       <div class="note">${delta === null ? 'Sin mes anterior para comparar' : (delta >= 0 ? '▲ ' : '▼ ') + Math.abs(delta).toFixed(1) + '% vs mes anterior (' + money(utilP) + ')'}</div></div>
     <div class="card"><div class="label">Libre del mes</div><div class="metric">${money(libre)}</div>
-      <div class="note">después de diezmo, ofrenda${pc.reinvEnabled ? ' y reinversión sugerida' : ''}</div></div>
-    <div class="card"><div class="label">Objetivos</div><div class="metric">${topGoal ? topGoal.pct.toFixed(0) + '%' : '—'}</div>
-      <div class="note">${topGoal ? esc(topGoal.name) + ' · ' + act.length + ' activo(s)' : GOALS.length + ' objetivo(s) · ninguno activo'}</div></div>
+      <div class="note">después de diezmo, ofrenda, impuesto y reinversión</div></div>
+    <div class="card"><div class="label">Objetivos</div><div class="metric">${topGoal ? topGoal.pct.toFixed(0) + '%' : 'Sin objetivos'}</div>
+      <div class="note">${act.length} activo(s) · ${GOALS.filter(g => g.target > 0 && g.contributed >= g.target).length} cumplido(s)</div></div>
+    <div class="card"><div class="label">Diezmo y ofrenda del año</div><div class="metric">${money(entregado)} entregado</div>
+      <div class="note">calculado ${money(dyCalc + ofCalc)} · pendiente ${money(Math.max(0, dyCalc + ofCalc - entregado))}</div></div>
     <div class="card"><div class="label">Reinversión sugerida</div><div class="metric">${pc.reinvEnabled ? money(reinvS) : 'Desactivada'}</div>
       <div class="note">listo para reponer inventario top</div></div>
+  </div>
+  <div class="grid dashboard-grid" style="margin-top:14px">
+    <div class="panel"><h2>Utilidad neta y libre (6 meses)</h2><div id="chUtilNetaLibre"></div></div>
+    <div class="panel"><h2>Reparto de la utilidad del mes</h2><div id="chReparto"></div></div>
   </div>
   <div class="grid dashboard-grid" style="margin-top:14px">
     <div class="panel"><h2>Cumplimiento de objetivos</h2><div id="sumGoals"></div></div>
     <div class="panel"><h2>Reinversión: sugerida vs real</h2><div id="sumReinv"></div></div>
   </div>`;
+  chartBars('chUtilNetaLibre', keys.map(mesLabel), [
+    { name: 'Utilidad neta', values: keys.map(utilOf), color: CH_COLORS[0] },
+    { name: 'Libre', values: keys.map(libreOf), color: CH_COLORS[1] },
+  ], { label: 'Utilidad neta y libre por mes' });
+  chartDonut('chReparto', [
+    { label: 'Libre', value: Math.max(0, libre), color: CH_COLORS[0] },
+    { label: 'Diezmo', value: diez, color: CH_COLORS[6] },
+    { label: 'Ofrenda', value: ofr, color: CH_COLORS[2] },
+    { label: 'Impuesto estimado', value: impM, color: CH_COLORS[3] },
+    { label: 'Reinversión', value: reinvS, color: CH_COLORS[1] },
+  ], { label: 'Reparto de la utilidad del mes' });
   const actG = GOALS.filter(g => g.active);
   if (actG.length) chartHBars('sumGoals', actG.map(g => ({ label: g.name, value: g.contributed, extra: (g.target > 0 ? Math.min(100, g.contributed / g.target * 100).toFixed(0) + '%' : '') })), { full: money });
-  else $('sumGoals').innerHTML = '<div class="empty">Sin objetivos activos. Créalos en Configuración.</div>';
-  const keys = monthKeysBack(6, nowK);
+  else put('sumGoals', '<div class="empty">Sin objetivos activos. Créalos en Configuración.</div>');
   chartBars('sumReinv', keys.map(mesLabel), [
-    { name: 'Reinversión sugerida', values: keys.map(k => monthProfit(k) * pc.reinvPct / 100), color: CH_COLORS[0] },
+    { name: 'Reinversión sugerida', values: keys.map(k => monthUtilBase(k, base) * pc.reinvPct / 100), color: CH_COLORS[0] },
     { name: 'Invertido en inventario', values: keys.map(k => investmentOf(k)), color: CH_COLORS[2] },
   ], { label: 'Reinversión sugerida vs real' });
 }
@@ -283,14 +354,15 @@ function renderUtilidad() {
   const per = utilPeriod();
   const rows = salesLines().filter(r => r.fecha >= per.from && r.fecha <= per.to);
   const ventas = rows.reduce((a, r) => a + r.venta, 0), costo = rows.reduce((a, r) => a + r.costo, 0), util = ventas - costo;
-  $('utilRange').textContent = 'Periodo: ' + per.label;
-  $('uVentas').textContent = money(ventas); $('uCosto').textContent = money(costo);
-  $('uUtil').textContent = money(util); $('uUtil').style.color = util < 0 ? 'var(--danger)' : '';
-  $('uMargen').textContent = ventas > 0 ? (util / ventas * 100).toFixed(1) + '%' : '0%';
+  const set = (id, t) => { const el = $(id); if (el) el.textContent = t; };
+  set('utilRange', 'Periodo: ' + per.label);
+  set('uVentas', money(ventas)); set('uCosto', money(costo)); set('uUtil', money(util));
+  const um = $('uUtil'); if (um) um.style.color = util < 0 ? 'var(--danger)' : '';
+  set('uMargen', ventas > 0 ? (util / ventas * 100).toFixed(1) + '%' : '0%');
   const by = {}; rows.forEach(r => { const o = by[r.producto] || (by[r.producto] = { producto: r.producto, qty: 0, venta: 0, costo: 0 }); o.qty += r.qty; o.venta += r.venta; o.costo += r.costo; });
   const top = Object.values(by).map(o => ({ ...o, util: o.venta - o.costo })).sort((a, b) => b.util - a.util).slice(0, 10);
   renderUtilChart(rows, per);
-  $('utilTop').innerHTML = top.length ? `<div class="tablewrap"><table class="adm"><thead><tr><th>Producto (top 10 por utilidad)</th><th>Unid.</th><th>Ventas</th><th>Costo</th><th>Utilidad</th></tr></thead><tbody>${top.map(o => `<tr><td>${esc(o.producto)}</td><td>${o.qty}</td><td>${money(o.venta)}</td><td>${money(o.costo)}</td><td>${money(o.util)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No hay ventas en este periodo.</div>';
+  put('utilTop', top.length ? `<div class="tablewrap"><table class="adm"><thead><tr><th>Producto (top 10 por utilidad)</th><th>Unid.</th><th>Ventas</th><th>Costo</th><th>Utilidad</th></tr></thead><tbody>${top.map(o => `<tr><td>${esc(o.producto)}</td><td>${o.qty}</td><td>${money(o.venta)}</td><td>${money(o.costo)}</td><td>${money(o.util)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No hay ventas en este periodo.</div>');
   renderInversion();
   renderTax();
   renderCategoriesDash(rows, per);
@@ -324,76 +396,45 @@ function renderInversion() {
   if (!$('invMonth').dataset.init) { $('invMonth').value = String(new Date().getMonth()); $('invMonth').dataset.init = '1'; }
   const y = $('invYear').value, m = Number($('invMonth').value), key = y + '-' + String(m + 1).padStart(2, '0');
   const inMonth = PRODUCTS.filter(p => String(p.purchase_date || '').slice(0, 7) === key);
-  $('invMes').textContent = money(inMonth.reduce((a, p) => a + (Number(p.stock) || 0) * ((Number(p.cost) || 0) + (Number(p.shipping_cost) || 0)), 0));
-  $('invUnid').textContent = inMonth.reduce((a, p) => a + (Number(p.stock) || 0), 0).toLocaleString('es-CO');
-  $('invCompras').textContent = inMonth.length;
-  $('invVentas').textContent = money(salesLines().filter(r => String(r.fecha).slice(0, 7) === key).reduce((a, r) => a + r.venta, 0));
+  const set = (id, t) => { const el = $(id); if (el) el.textContent = t; };
+  set('invMes', money(inMonth.reduce((a, p) => a + (Number(p.stock) || 0) * ((Number(p.cost) || 0) + (Number(p.shipping_cost) || 0)), 0)));
+  set('invUnid', inMonth.reduce((a, p) => a + (Number(p.stock) || 0), 0).toLocaleString('es-CO'));
+  set('invCompras', inMonth.length);
+  set('invVentas', money(salesLines().filter(r => String(r.fecha).slice(0, 7) === key).reduce((a, r) => a + r.venta, 0)));
   const keys = Array.from({ length: 12 }, (_, i) => y + '-' + String(i + 1).padStart(2, '0'));
   chartBars('chInv', keys.map(mesLabel), [
     { name: 'Inversión (inventario ingresado)', values: keys.map(k => investmentOf(k)), color: CH_COLORS[3] },
     { name: 'Ventas', values: keys.map(k => salesLines().filter(r => String(r.fecha).slice(0, 7) === k).reduce((a, r) => a + r.venta, 0)), color: CH_COLORS[0] },
   ], { label: 'Inversión y ventas por mes del año ' + y });
 }
-/* ---------- Impuesto de renta ---------- */
-const UVT_2027_ESTIMADA = 55668;
-const TAX_TABLE = [[0, 1090, 0, 0], [1090, 1700, 0.19, 0], [1700, 4100, 0.28, 116], [4100, 8670, 0.33, 788], [8670, 18970, 0.35, 2296], [18970, 31000, 0.37, 5901], [31000, Infinity, 0.39, 10352]];
-const incomeTaxUvt = b => { const r = TAX_TABLE.find(x => b > x[0] && b <= x[1]); return r ? (b - r[0]) * r[2] + r[3] : 0; };
-function taxCfg() { try { return JSON.parse(localStorage.getItem('taxCfg') || 'null') || { uvt: UVT_2027_ESTIMADA, gastos: {} }; } catch (e) { return { uvt: UVT_2027_ESTIMADA, gastos: {} }; } }
-function taxCfgChanged() {
-  const c = taxCfg(), y = $('taxYear').value;
-  c.uvt = Number($('taxUvt').value) || UVT_2027_ESTIMADA; c.gastos[y] = Number($('taxExp').value) || 0;
-  localStorage.setItem('taxCfg', JSON.stringify(c));
-  renderTax(true);
-}
-function renderTax(keepInputs) {
-  if (!$('taxYear')) return;
-  const c = taxCfg(), yrs = yearOptions();
-  fillSelectKeep($('taxYear'), yrs.map(y => `<option>${y}</option>`).join(''), String(new Date().getFullYear()));
-  const y = $('taxYear').value;
-  if (!keepInputs) { $('taxUvt').value = c.uvt || UVT_2027_ESTIMADA; $('taxExp').value = (c.gastos || {})[y] || 0; }
-  const uvt = Number($('taxUvt').value) || UVT_2027_ESTIMADA, gastos = Number($('taxExp').value) || 0;
-  const rows = salesLines().filter(r => String(r.fecha).slice(0, 4) === y);
-  const ingresos = rows.reduce((a, r) => a + r.venta, 0), util = ingresos - rows.reduce((a, r) => a + r.costo, 0);
-  const base = Math.max(0, util - gastos), baseUvt = base / uvt, imp = Math.round(incomeTaxUvt(baseUvt) * uvt);
-  $('tIngresos').textContent = money(ingresos); $('tUtil').textContent = money(util); $('tBase').textContent = money(base);
-  $('tUvt').textContent = baseUvt.toLocaleString('es-CO', { maximumFractionDigits: 1 }) + ' UVT';
-  $('tImpuesto').textContent = money(imp);
-  $('tEfectiva').textContent = base > 0 ? (imp / base * 100).toFixed(1) + '%' : '0%';
-  const tope = 1400 * uvt;
-  const pct = tope > 0 ? Math.min(100, ingresos / tope * 100) : 0;
-  $('chTax').innerHTML = `<div class="hbars"><div class="row" style="grid-template-columns:1fr"><span class="bar" style="height:18px"><b style="width:${pct.toFixed(1)}%;background:${ingresos >= tope ? CH_COLORS[3] : CH_COLORS[0]}"></b></span></div></div><div class="note" style="margin-top:6px">${esc(money(ingresos))} de ${esc(money(tope))} (${pct.toFixed(0)}%) del tope de 1.400 UVT</div>`;
-  $('taxObligation').textContent = ingresos >= tope
-    ? `⚠ Tus ingresos brutos del año (${money(ingresos)}) superan 1.400 UVT (${money(tope)}): probablemente estás obligado a declarar renta.`
-    : `Tus ingresos brutos del año no superan 1.400 UVT (${money(tope)}). Aun así, podrías estar obligado a declarar por patrimonio, consumos con tarjeta, compras o consignaciones.`;
-}
-/* ---------- Diezmo / ofrenda / reinversión ---------- */
 function renderProfitBox() {
+  const el = $('profitBox'); if (!el) return;
   const pc = profitConfig(), y = String(new Date().getFullYear());
   const utilY = monthKeysBack(12, y + '-12').reduce((a, k) => a + monthProfit(k), 0);
   const diez = utilY * pc.diezmoPct / 100, ofr = utilY * pc.ofrendaPct / 100;
   const reinvS = utilY * pc.reinvPct / 100;
   const reinvR = monthKeysBack(12, y + '-12').reduce((a, k) => a + investmentOf(k), 0);
-  $('profitBox').innerHTML = `
+  el.innerHTML = `
   <div class="grid cards3">
     <div class="card"><div class="label">Diezmo (${pc.diezmoPct}% utilidad ${y})</div><div class="metric">${money(diez)}</div></div>
     <div class="card"><div class="label">Ofrenda (${pc.ofrendaPct}% utilidad ${y})</div><div class="metric">${money(ofr)}</div></div>
     <div class="card"><div class="label">Reinversión sugerida (${pc.reinvPct}%)</div><div class="metric">${pc.reinvEnabled ? money(reinvS) : 'Desactivada'}</div>
       <div class="note">real invertido: ${money(reinvR)}</div></div>
   </div>
-  <div class="note" style="margin-top:8px">Utilidad ${y}: <b>${money(utilY)}</b>. Edita porcentajes y habilita el sugerido en el menú 👑 → Configuración → "Utilidad: diezmo, ofrenda y reinversión".</div>`;
+  <div class="note" style="margin-top:8px">Utilidad ${y}: <b>${money(utilY)}</b>. Edita porcentajes en el menú 👑 → Configuración.</div>`;
 }
-/* ---------- Objetivos ---------- */
 function renderGoalsBox() {
+  const el = $('goalsBox'); if (!el) return;
   const act = GOALS.filter(g => g.active);
   const done = GOALS.filter(g => g.target > 0 && g.contributed >= g.target).length;
-  $('goalsBox').innerHTML = GOALS.length ? `<div class="note" style="margin-bottom:8px">${act.length} activo(s) · ${done} cumplido(s)</div>` +
-    (GOALS.map(g => { const pct = g.target > 0 ? Math.min(100, g.contributed / g.target * 100) : 0; return `<div class="hbars"><div class="row"><span class="lbl" title="${esc(g.name)}">${esc(g.name)}${g.active ? '' : ' (inactivo)'}</span><span class="bar"><b style="width:${pct.toFixed(1)}%;background:${pct >= 100 ? 'var(--ok)' : CH_COLORS[0]}"></b></span><span class="val">${pct.toFixed(0)}% · ${money(g.contributed)} / ${money(g.target)}</span></div></div>`; }).join(''))
+  el.innerHTML = GOALS.length ? `<div class="note" style="margin-bottom:8px">${act.length} activo(s) · ${done} cumplido(s)</div>` +
+    GOALS.map(g => { const pct = g.target > 0 ? Math.min(100, g.contributed / g.target * 100) : 0; return `<div class="hbars"><div class="row"><span class="lbl" title="${esc(g.name)}">${esc(g.name)}${g.active ? '' : ' (inactivo)'}</span><span class="bar"><b style="width:${pct.toFixed(1)}%;background:${pct >= 100 ? 'var(--ok)' : CH_COLORS[0]}"></b></span><span class="val">${pct.toFixed(0)}% · ${money(g.contributed)} / ${money(g.target)}</span></div></div>`; }).join('')
     : '<div class="empty">Sin objetivos. Créalos en Configuración (máximo 3).</div>';
 }
 function openGoalPay() {
   const act = GOALS.filter(g => g.active);
   if (!act.length) { toast('⚠ Crea o activa un objetivo en Configuración primero'); return; }
-  $('gpGoal').innerHTML = act.map(g => `<option value="${g.id}">${esc(g.name)} — ${money(g.contributed)} / ${money(g.target)}</option>`).join('');
+  $('gpGoal').innerHTML = act.map(g => `<option value="${g.id}">${esc(g.name)} -- ${money(g.contributed)} / ${money(g.target)}</option>`).join('');
   $('gpAmount').value = ''; $('gpDate').value = today();
   openModal('goalPayModal');
 }
@@ -406,11 +447,11 @@ async function saveGoalPayment() {
     GOALS = await api('/api/admin/goals'); renderGoalsBox(); renderSummary();
   } catch (e) { toast('⚠ ' + e.message); }
 }
-/* ---------- Valor de inventario y categorías ---------- */
 function renderInventoryValue() {
   const inv = ANALYTICS.inventory;
-  $('mInvTotal').textContent = money(inv.totalCosto); $('mInvEnvio').textContent = money(inv.totalEnvio);
-  $('mInv90').textContent = money(inv.over90); $('mInv90Pct').textContent = inv.over90Pct.toFixed(1) + '%';
+  const set = (id, t) => { const el = $(id); if (el) el.textContent = t; };
+  set('mInvTotal', money(inv.totalCosto)); set('mInvEnvio', money(inv.totalEnvio));
+  set('mInv90', money(inv.over90)); set('mInv90Pct', inv.over90Pct.toFixed(1) + '%');
   const byCat = {};
   PRODUCTS.forEach(p => { const c = p.category || 'SIN CATEGORÍA'; byCat[c] = (byCat[c] || 0) + (Number(p.cost) || 0) * Math.max(0, Number(p.available) || 0); });
   chartDonut('chInvCat', Object.entries(byCat).map(([label, value]) => ({ label, value })), { label: 'Inventario por categoría' });
@@ -433,19 +474,18 @@ function renderCategoriesDash(rows, per) {
   const totI = list.reduce((a, r) => a + r.inv, 0), totV = list.reduce((a, r) => a + r.ven, 0);
   list.forEach(r => { r.invPct = totI > 0 ? r.inv / totI * 100 : 0; r.venPct = totV > 0 ? r.ven / totV * 100 : 0; });
   list = list.sort((a, b) => b.inv - a.inv);
-  $('catPeriod').textContent = 'Ventas del periodo: ' + per.label + ' (se cambia en "Utilidad bruta"). Inventario: valor actual.';
+  const cp = $('catPeriod'); if (cp) cp.textContent = 'Ventas del periodo: ' + per.label + ' (se cambia en "Utilidad bruta"). Inventario: valor actual.';
   $('catHead').innerHTML = '<tr><th>Categoría</th><th>Monto en inventario</th><th>% inventario</th><th>Monto vendido</th><th>% ventas</th></tr>';
   $('catBody').innerHTML = list.length ? list.map(r => `<tr><td>${esc(r.cat)}</td><td>${money(r.inv)}</td><td>${r.invPct.toFixed(1)}%</td><td>${money(r.ven)}</td><td>${r.venPct.toFixed(1)}%</td></tr>`).join('') + `<tr style="font-weight:800"><td>Total</td><td>${money(totI)}</td><td>${totI > 0 ? '100.0%' : '0.0%'}</td><td>${money(totV)}</td><td>${totV > 0 ? '100.0%' : '0.0%'}</td></tr>` : '<tr><td colspan="5" class="empty">Sin categorías.</td></tr>';
   chartDonut('chCatInv', list.map(r => ({ label: r.cat, value: r.inv })), { label: 'Participación en inventario' });
   chartDonut('chCatVen', list.map(r => ({ label: r.cat, value: r.ven })), { label: 'Participación en ventas' });
 }
-/* ---------- Logística en dashboard ---------- */
 function renderLogisDash() {
+  const el = $('dashLogis'); if (!el) return;
   const pend = LOGIS.filter(s => s.status !== 'enviado'), sent = LOGIS.filter(s => s.status === 'enviado');
-  $('dashLogis').innerHTML = `<div class="grid cards3"><div class="card"><div class="label">Por enviar</div><div class="metric">${pend.length}</div></div><div class="card"><div class="label">Enviados</div><div class="metric">${sent.length}</div></div></div>` +
+  el.innerHTML = `<div class="grid cards3"><div class="card"><div class="label">Por enviar</div><div class="metric">${pend.length}</div></div><div class="card"><div class="label">Enviados</div><div class="metric">${sent.length}</div></div></div>` +
     (pend.length ? '<div class="tablewrap" style="margin-top:10px"><table class="adm"><thead><tr><th>Pedido</th><th>Cliente</th><th>Estado</th><th></th></tr></thead><tbody>' + pend.slice(0, 5).map(s => `<tr><td><b>${esc(s.order_number)}</b></td><td>${esc(s.client_name || '')}</td><td>${s.status === 'guardado' ? '<span class="pill warn">Guardado</span>' : '<span class="pill">Por enviar</span>'}</td><td class="acts"><button class="btn primary" onclick="openShip('${s.id}')">Preparar envío</button></td></tr>`).join('') + '</tbody></table></div>' : '');
 }
-/* ---------- Pedidos por cliente / recientes / stock bajo ---------- */
 function fillDashboardClients() {
   const s = $('dashboardClient'); if (!s) return;
   const cur = s.value;
@@ -455,13 +495,13 @@ function fillDashboardClients() {
 function renderClientsChart() {
   const by = {}; ORDERS.filter(o => o.status !== 'canceled').forEach(o => { const k = o.client_name || 'Sin cliente'; by[k] = (by[k] || 0) + o.total; });
   const top = Object.entries(by).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value).slice(0, 10);
-  if (!top.length) { $('chClients').innerHTML = emptyChart; return; }
-  $('chClients').innerHTML = '<h3 style="margin:0 0 8px">Top 10 clientes por ventas</h3><div id="chClientsTop"></div>';
+  if (!top.length) { put('chClients', emptyChart); return; }
+  put('chClients', '<h3 style="margin:0 0 8px">Top 10 clientes por ventas</h3><div id="chClientsTop"></div>');
   chartHBars('chClientsTop', top);
 }
 function renderClientOrders() {
   const box = $('clientOrders'); if (!box) return;
-  const cid = $('dashboardClient').value;
+  const cid = $('dashboardClient') ? $('dashboardClient').value : '';
   if (!cid) { renderClientsChart(); box.innerHTML = '<div class="empty">Selecciona un cliente para ver sus pedidos.</div>'; return; }
   const cl = CLIENTS.find(c => c.id === cid);
   const os = ORDERS.filter(o => o.client_id === cid || (cl && o.client_name === cl.name));
@@ -472,25 +512,26 @@ function renderRecent() {
   const last = [...ORDERS].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 10);
   const rev = last.slice().reverse();
   chartBars('chRecent', rev.map(o => o.order_number.replace(/^.*-0*/, '#') || o.order_number), [{ name: 'Total', values: rev.map(o => o.total), color: CH_COLORS[0] }, { name: 'Abonado', values: rev.map(o => o.paid), color: CH_COLORS[2] }], { label: 'Total y abonado de los últimos pedidos', h: 190 });
-  $('recentOrders').innerHTML = last.length ? `<div class="tablewrap"><table class="adm"><thead><tr><th>Pedido</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Saldo</th></tr></thead><tbody>${last.map(o => `<tr><td>${esc(o.order_number)}</td><td>${String(o.created_at || '').slice(0, 10)}</td><td>${esc(o.client_name || '—')}</td><td>${money(o.total)}</td><td>${money(o.balance)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No hay pedidos.</div>';
+  put('recentOrders', last.length ? `<div class="tablewrap"><table class="adm"><thead><tr><th>Pedido</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Saldo</th></tr></thead><tbody>${last.map(o => `<tr><td>${esc(o.order_number)}</td><td>${String(o.created_at || '').slice(0, 10)}</td><td>${esc(o.client_name || '--')}</td><td>${money(o.total)}</td><td>${money(o.balance)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No hay pedidos.</div>');
 }
 function renderLow() {
   const low = (ANALYTICS.stockRows || []).filter(x => x.status !== 'EN STOCK');
-  if (!low.length) $('chLow').innerHTML = emptyChart;
+  if (!low.length) put('chLow', emptyChart);
   else {
     const mx = Math.max(1, ...low.map(x => Math.max(0, x.available)));
-    $('chLow').innerHTML = '<div class="hbars">' + low.slice(0, 12).map(x => `<div class="row"><span class="lbl" title="${esc(x.name)}">${esc(x.name)}</span><span class="bar"><b style="width:${(Math.max(0, x.available) / mx * 100).toFixed(1)}%;background:${x.available <= 0 ? CH_COLORS[3] : CH_COLORS[1]}"></b></span><span class="val">${Math.max(0, x.available)} u.</span></div>`).join('') + '</div>';
+    put('chLow', '<div class="hbars">' + low.slice(0, 12).map(x => `<div class="row"><span class="lbl" title="${esc(x.name)}">${esc(x.name)}</span><span class="bar"><b style="width:${(Math.max(0, x.available) / mx * 100).toFixed(1)}%;background:${x.available <= 0 ? CH_COLORS[3] : CH_COLORS[1]}"></b></span><span class="val">${Math.max(0, x.available)} u.</span></div>`).join('') + '</div>');
   }
-  $('lowStock').innerHTML = low.length ? low.map(p => `<div class="statusbar"><span>${esc(p.name)}</span>${pillStock(p.status)} <b>${Math.max(0, p.available)}</b></div>`).join('') : '<div class="empty">No hay productos con stock bajo.</div>';
+  put('lowStock', low.length ? low.map(p => `<div class="statusbar"><span>${esc(p.name)}</span>${pillStock(p.status)} <b>${Math.max(0, p.available)}</b></div>`).join('') : '<div class="empty">No hay productos con stock bajo.</div>');
 }
+
 /* ---------- Abonos por confirmar ---------- */
 async function loadReports() {
   const rows = await api('/api/orders/reports/pending');
-  $('reports').innerHTML = rows.length ?
+  put('reports', rows.length ?
     '<div class="tablewrap"><table class="adm"><thead><tr><th>Bolsita</th><th>Cliente</th><th>WhatsApp</th><th>Abono</th><th>Reportado</th><th>Acciones</th></tr></thead><tbody>' +
     rows.map(r => `<tr><td><b>${esc(r.order_number)}</b></td><td>${esc(r.client_name || '')}</td><td>${esc(r.client_whatsapp || '')}</td><td><b>${money(r.amount)}</b></td><td>${new Date(r.reported_at).toLocaleString('es-CO')}</td>
       <td class="acts"><button class="btn primary" onclick="resolveReport('${r.id}','approve')">Aprobar</button><button class="btn danger" onclick="resolveReport('${r.id}','reject')">Rechazar</button></td></tr>`).join('') +
-    '</tbody></table></div>' : '<p class="note">No hay abonos pendientes por confirmar. ✔</p>';
+    '</tbody></table></div>' : '<p class="note">No hay abonos pendientes por confirmar. ✔</p>');
 }
 async function resolveReport(id, decision) {
   try {
@@ -499,17 +540,220 @@ async function resolveReport(id, decision) {
     loadReports();
   } catch (e) { toast('⚠ ' + e.message); }
 }
+
+/* ---------- Excel (SheetJS) ---------- */
+function downloadExcel(filename, sheetName, rows) {
+  if (!window.XLSX) { toast('⚠ La librería de Excel aún carga; intenta en unos segundos'); return; }
+  if (!rows.length) { toast('⚠ No hay datos para exportar'); return; }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, filename);
+}
+async function exportOrdersExcel() {
+  try {
+    let rows = ORDERS;
+    if (!rows.length) rows = await api('/api/admin/orders');
+    downloadExcel('Pedidos_' + today() + '.xlsx', 'Pedidos', rows.map(o => ({
+      Pedido: o.order_number, Fecha: String(o.created_at || '').slice(0, 10), Cliente: o.client_name || '',
+      Estado: STATUS_LABEL[o.status] || o.status, Ítems: o.items_count, Total: o.total, Abonado: o.paid, Saldo: o.balance,
+    })));
+  } catch (e) { toast('⚠ ' + e.message); }
+}
+function exportClientsExcel() {
+  downloadExcel('Clientes_' + today() + '.xlsx', 'Clientes', CLIENTS.map(c => ({
+    Cliente: c.name, WhatsApp: c.whatsapp || '', Ciudad: c.city || '', Dirección: c.address || '',
+    Estado: c.status, Pedidos: c.orders, Total: c.total, Abonado: c.paid, Saldo: c.balance,
+  })));
+}
+function exportShipmentsExcel() {
+  downloadExcel('Envios_' + today() + '.xlsx', 'Envíos', LOGIS.map(s => ({
+    Pedido: s.order_number, Cliente: s.client_name || '', Estado: s.status === 'enviado' ? 'Enviado' : (s.status === 'guardado' ? 'Guardado' : 'Por enviar'),
+    Pago: s.pay_mode === 'adelantado' ? 'Adelantado' : 'Por cobrar', Monto: Number(s.amount) || 0,
+    Transportadora: s.carrier + (s.carrier_other ? ' (' + s.carrier_other + ')' : ''), Medidas: s.dimensions || '',
+    Ciudad: s.city || '', Dirección: s.address || '', 'Dirección principal': s.address_kind === 'principal' ? 'Sí' : 'No',
+    Enviado: s.shipped_at ? String(s.shipped_at).slice(0, 10) : '',
+  })));
+}
+function exportInventoryExcel() {
+  downloadExcel('Inventario_' + today() + '.xlsx', 'Inventario', PRODUCTS.map(p => ({
+    Producto: p.name, 'Código de barras': p.code || '', Categoría: p.category || '', Costo: Number(p.cost) || 0,
+    Envío: Number(p.shipping_cost) || 0, Stock: p.stock, Disponible: p.available, Estado: p.status,
+    'Precio venta': Number(p.price) || 0, 'Margen %': p.price > 0 ? Number((((Number(p.price) - Number(p.cost) - Number(p.shipping_cost)) / Number(p.price)) * 100).toFixed(1)) : 0,
+    'Fecha compra': p.purchase_date || '',
+  })));
+}
+const IMPORT_COLS = ['Producto', 'Código de barras', 'Categoría', 'Costo', 'Envío', 'Cantidad', 'Precio venta', 'Fecha compra'];
+function downloadInventoryTemplate() {
+  if (!window.XLSX) { toast('⚠ La librería de Excel aún carga; intenta en unos segundos'); return; }
+  const ws = XLSX.utils.aoa_to_sheet([IMPORT_COLS, ['Lapicero gel azul', '7701234567890', 'ESCRITURA', 1200, 100, 24, 3500, today()]]);
+  ws['!cols'] = IMPORT_COLS.map(() => ({ wch: 18 }));
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
+  XLSX.writeFile(wb, 'Plantilla_Inventario.xlsx');
+}
+
+/* ---------- Cargar inventario con plantilla (vista previa editable) ---------- */
+const impNorm = t => String(t == null ? '' : t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const IMP_ALIAS = { producto: 'nombre', nombre: 'nombre', codigodebarras: 'codigo', codigo: 'codigo', codbarras: 'codigo', barras: 'codigo', categoria: 'categoria', costo: 'costo', envio: 'envio', cantidad: 'cantidad', cant: 'cantidad', precioventa: 'precio', precio: 'precio', fechacompra: 'fecha', fecha: 'fecha' };
+function impNum(v) {
+  if (v == null || v === '') return { empty: true, n: 0 };
+  if (typeof v === 'number') return isFinite(v) ? { n: v } : { bad: true };
+  let t = String(v).replace(/[$\s]/g, '');
+  if (!t) return { empty: true, n: 0 };
+  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) t = t.replace(/\./g, '').replace(',', '.');
+  else if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(t)) t = t.replace(/,/g, '');
+  else if (/^-?\d+,\d{1,2}$/.test(t)) t = t.replace(',', '.');
+  const n = Number(t); return isFinite(n) ? { n } : { bad: true };
+}
+function impDate(v) {
+  if (v == null || v === '') return '';
+  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v)) return new Date(v.getTime() + 12 * 3600000).toISOString().slice(0, 10);
+  if (typeof v === 'number' && v > 20000 && v < 80000) return new Date(Math.round((v - 25569) * 86400000) + 12 * 3600000).toISOString().slice(0, 10);
+  const t = String(v).trim(); let m;
+  if ((m = t.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/))) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  if ((m = t.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/))) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  return '';
+}
+function handleInventoryFile(event) {
+  const input = event.target, file = input.files && input.files[0]; input.value = '';
+  if (!file) return;
+  if (!window.XLSX) { toast('⚠ La librería de Excel aún carga; intenta de nuevo'); return; }
+  const isCsv = /\.(csv|txt)$/i.test(file.name);
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const wb = isCsv ? XLSX.read(r.result, { type: 'string', raw: true }) : XLSX.read(r.result, { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const grid = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: false });
+      buildImportRows(grid, file.name);
+    } catch (e) { console.error(e); toast('⚠ No se pudo interpretar el archivo. Usa la plantilla .xlsx o un .csv con las columnas: ' + IMPORT_COLS.join(', ')); }
+  };
+  if (isCsv) r.readAsText(file, 'utf-8'); else r.readAsArrayBuffer(file);
+}
+function buildImportRows(grid, fileName) {
+  if (!grid || !grid.length) { toast('⚠ El archivo está vacío'); return; }
+  const hi = grid.findIndex(row => row.some(c => impNorm(c) === 'producto' || impNorm(c) === 'nombre'));
+  if (hi < 0) { toast('⚠ No encontré la columna "Producto". Usa la plantilla.'); return; }
+  const idx = {}; grid[hi].forEach((c, i) => { const k = IMP_ALIAS[impNorm(c)]; if (k && !(k in idx)) idx[k] = i; });
+  if (!('nombre' in idx) || !('cantidad' in idx)) { toast('⚠ Faltan columnas obligatorias: Producto y Cantidad'); return; }
+  const get = (row, k) => (k in idx ? row[idx[k]] : null);
+  impRows = [];
+  grid.slice(hi + 1).forEach((row, n) => {
+    const nombre = String(get(row, 'nombre') == null ? '' : get(row, 'nombre')).trim();
+    const codigo = String(get(row, 'codigo') == null ? '' : get(row, 'codigo')).trim();
+    if (!nombre && !codigo) return;
+    const byName = PRODUCTS.find(p => p.name.trim().toLowerCase() === nombre.toLowerCase());
+    const byCode = codigo ? PRODUCTS.find(p => p.code && String(p.code).trim() === codigo) : null;
+    const match = byCode || byName;
+    impRows.push({
+      line: hi + 2 + n,
+      estado: match ? 'existente' : 'nuevo',
+      nombre: match ? match.name : nombre,
+      codigo: match && match.code ? match.code : codigo,
+      categoria: String(get(row, 'categoria') == null ? '' : get(row, 'categoria')).trim(),
+      costo: impNum(get(row, 'costo')).n || 0,
+      envio: impNum(get(row, 'envio')).n || 0,
+      cantidad: Math.max(0, Math.floor(impNum(get(row, 'cantidad')).n || 0)),
+      precio: impNum(get(row, 'precio')).n || (match ? Number(match.price) || 0 : 0),
+      fecha: impDate(get(row, 'fecha')) || today(),
+      errs: [],
+    });
+  });
+  if (!impRows.length) { toast('⚠ No encontré filas con datos debajo de los encabezados'); return; }
+  impFileName = fileName;
+  impRows.forEach(impValidateRow);
+  impRender();
+  openModal('invImportModal');
+}
+function impValidateRow(r) {
+  const errs = [];
+  if (r.estado === 'existente') {
+    if (!PRODUCTS.some(p => p.name === r.nombre)) errs.push('El producto elegido no existe');
+  } else {
+    if (!r.nombre) errs.push('Falta el nombre');
+    else if (PRODUCTS.some(p => p.name.trim().toLowerCase() === r.nombre.trim().toLowerCase())) errs.push('Ya existe: márcalo como Existente');
+  }
+  if (!(r.cantidad > 0)) errs.push('Cantidad debe ser mayor a 0');
+  if (r.costo < 0 || r.envio < 0 || r.precio < 0) errs.push('Costos/precio no pueden ser negativos');
+  if (r.codigo && PRODUCTS.some(p => p.code && String(p.code).trim() === String(r.codigo).trim() && p.name !== r.nombre)) errs.push('Ese código pertenece a otro producto');
+  r.errs = errs;
+}
+function impSetState(i, v) {
+  const r = impRows[i]; if (!r) return;
+  r.estado = v;
+  if (v === 'existente' && !PRODUCTS.some(p => p.name === r.nombre)) r.nombre = '';
+  impValidateRow(r); impRender();
+}
+function impSetField(i, k, v) {
+  const r = impRows[i]; if (!r) return;
+  if (k === 'cantidad') r.cantidad = Math.max(0, Math.floor(Number(v) || 0));
+  else if (k === 'costo' || k === 'envio' || k === 'precio') r[k] = Number(v) || 0;
+  else r[k] = String(v == null ? '' : v);
+  impValidateRow(r); impRender();
+}
+function impRender() {
+  const names = [...PRODUCTS].sort((a, b) => a.name.localeCompare(b.name, 'es')).map(p => p.name);
+  put('impBody', impRows.map((r, i) => `<tr${r.errs.length ? ' style="opacity:.8"' : ''}>
+    <td><select onchange="impSetState(${i},this.value)"><option value="nuevo" ${r.estado === 'nuevo' ? 'selected' : ''}>Nuevo</option><option value="existente" ${r.estado === 'existente' ? 'selected' : ''}>Existente</option></select></td>
+    <td>${r.estado === 'existente'
+      ? `<select onchange="impSetField(${i},'nombre',this.value)"><option value="">Seleccionar…</option>${names.map(n => `<option ${n === r.nombre ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`
+      : `<input value="${esc(r.nombre)}" onchange="impSetField(${i},'nombre',this.value)">`}</td>
+    <td><input value="${esc(r.codigo)}" onchange="impSetField(${i},'codigo',this.value)"></td>
+    <td><input value="${esc(r.categoria)}" onchange="impSetField(${i},'categoria',this.value)"></td>
+    <td><input type="number" min="0" value="${r.costo}" onchange="impSetField(${i},'costo',this.value)"></td>
+    <td><input type="number" min="0" value="${r.envio}" onchange="impSetField(${i},'envio',this.value)"></td>
+    <td><input type="number" min="0" value="${r.cantidad}" onchange="impSetField(${i},'cantidad',this.value)"></td>
+    <td><input type="number" min="0" value="${r.precio}" onchange="impSetField(${i},'precio',this.value)"></td>
+    <td><input type="date" value="${esc(r.fecha)}" onchange="impSetField(${i},'fecha',this.value)"></td>
+    <td>${r.errs.length ? r.errs.map(e => `<span class="pill danger">${esc(e)}</span>`).join(' ') : '<span class="pill ok">Listo</span>'}</td>
+  </tr>`).join(''));
+  const ok = impRows.filter(r => !r.errs.length);
+  const nuevos = ok.filter(r => r.estado === 'nuevo').length;
+  put('impSummary', `<b>${esc(impFileName)}</b> -- ${impRows.length} fila(s): <b>${nuevos}</b> nueva(s), <b>${ok.length - nuevos}</b> existente(s)${impRows.length - ok.length ? `, <span class="pill danger">${impRows.length - ok.length} con error (se omiten)</span>` : ''}. En existentes la cantidad <b>se suma</b> al stock y se actualizan costo/envío/categoría/fecha; en nuevos define el stock inicial.`);
+  const btn = $('impSaveBtn'); if (btn) btn.disabled = !ok.length;
+}
+function closeInvImport() { closeModal('invImportModal'); impRows = []; }
+async function confirmInventoryImport() {
+  const ok = impRows.filter(r => !r.errs.length);
+  if (!ok.length) return toast('⚠ No hay filas válidas para guardar');
+  let nuevos = 0, existentes = 0, unidades = 0;
+  try {
+    for (const r of ok) {
+      let catId = null;
+      const catName = String(r.categoria || '').trim().toUpperCase();
+      if (catName) {
+        let c = CATS.find(x => x.name === catName);
+        if (!c) { c = await api('/api/admin/categories', { method: 'POST', body: { name: catName } }); CATS.push(c); }
+        catId = c.id;
+      }
+      if (r.estado === 'nuevo') {
+        await api('/api/admin/products', { method: 'POST', body: { name: r.nombre.trim(), code: r.codigo || null, category_id: catId, cost: r.costo, shipping_cost: r.envio, price: r.precio, stock: r.cantidad, min_stock: 1, purchase_date: r.fecha || today() } });
+        nuevos++; unidades += r.cantidad;
+      } else {
+        const p = PRODUCTS.find(x => x.name === r.nombre);
+        if (!p) continue;
+        await api('/api/admin/products/' + p.id, { method: 'PUT', body: { name: p.name, code: p.code, category_id: catId || p.category_id, cost: r.costo, shipping_cost: r.envio, price: Number(p.price), stock: p.stock, min_stock: p.min_stock, purchase_date: r.fecha || p.purchase_date } });
+        await api('/api/admin/products/' + p.id + '/stock', { method: 'POST', body: { qty: r.cantidad, fecha: r.fecha || today() } });
+        existentes++; unidades += r.cantidad;
+      }
+    }
+    closeInvImport();
+    toast(`✔ Inventario actualizado: ${nuevos} nuevo(s), ${existentes} existente(s), ${unidades} unidades`);
+    await fetchCaches(); renderInventory();
+  } catch (e) { toast('⚠ ' + e.message); }
+}
+
 /* ---------- Inventario ---------- */
 async function loadInventory() { await fetchCaches(); renderInventory(); }
 function renderInventory() {
-  const q = ($('invSearch').value || '').toLowerCase(), f = $('invFilter').value;
+  const q = ($('invSearch') ? $('invSearch').value : '').toLowerCase(), f = $('invFilter') ? $('invFilter').value : '';
   const list = PRODUCTS.filter(p => (!q || p.name.toLowerCase().includes(q) || String(p.code || '').includes(q)) && (!f || p.status === f));
-  $('invTable').innerHTML = '<div class="tablewrap"><table class="adm"><thead><tr><th>Producto</th><th>Código</th><th>Categoría</th><th>Costo</th><th>Envío</th><th>Stock</th><th>Disponible</th><th>Estado</th><th>Precio</th><th>Margen</th><th>Fecha compra</th><th>Acciones</th></tr></thead><tbody>' +
+  put('invTable', '<div class="tablewrap"><table class="adm"><thead><tr><th>Producto</th><th>Código</th><th>Categoría</th><th>Costo</th><th>Envío</th><th>Stock</th><th>Disponible</th><th>Estado</th><th>Precio</th><th>Margen</th><th>Fecha compra</th><th>Acciones</th></tr></thead><tbody>' +
     (list.length ? list.map(p => {
-      const marg = p.price > 0 ? (((Number(p.price) - Number(p.cost) - Number(p.shipping_cost)) / Number(p.price)) * 100).toFixed(1) + '%' : '—';
-      return `<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.code || '—')}</td><td>${esc(p.category || '—')}</td><td>${money(p.cost)}</td><td>${money(p.shipping_cost)}</td><td>${p.stock}</td><td>${p.available}</td><td>${pillStock(p.status)}</td><td>${money(p.price)}</td><td>${marg}</td><td>${esc(p.purchase_date || '—')}</td>
+      const marg = p.price > 0 ? (((Number(p.price) - Number(p.cost) - Number(p.shipping_cost)) / Number(p.price)) * 100).toFixed(1) + '%' : '--';
+      return `<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.code || '--')}</td><td>${esc(p.category || '--')}</td><td>${money(p.cost)}</td><td>${money(p.shipping_cost)}</td><td>${p.stock}</td><td>${p.available}</td><td>${pillStock(p.status)}</td><td>${money(p.price)}</td><td>${marg}</td><td>${esc(p.purchase_date || '--')}</td>
         <td class="acts"><button class="btn" onclick="openStock('${p.id}')">+ Stock</button><button class="btn" onclick="openProduct('${p.id}')">Editar</button><button class="btn danger" onclick="delProduct('${p.id}')">Eliminar</button></td></tr>`;
-    }).join('') : '<tr><td colspan="12" class="empty">Sin productos.</td></tr>') + '</tbody></table></div>';
+    }).join('') : '<tr><td colspan="12" class="empty">Sin productos.</td></tr>') + '</tbody></table></div>');
 }
 function openProduct(id) {
   const p = id ? PRODUCTS.find(x => x.id === id) : null;
@@ -553,13 +797,14 @@ async function delProduct(id) {
   try { await api('/api/admin/products/' + id, { method: 'DELETE' }); toast('Producto eliminado'); loadInventory(); }
   catch (e) { toast('⚠ ' + e.message); }
 }
+
 /* ---------- Kits ---------- */
 async function loadKits() { await fetchCaches(); renderKits(); }
 function renderKits() {
-  $('kitsTable').innerHTML = KITS.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Kit</th><th>Componentes</th><th>Precio</th><th>Disponibles</th><th>Acciones</th></tr></thead><tbody>' +
+  put('kitsTable', KITS.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Kit</th><th>Componentes</th><th>Precio</th><th>Disponibles</th><th>Acciones</th></tr></thead><tbody>' +
     KITS.map(k => `<tr><td><b>🎁 ${esc(k.name)}</b></td><td>${(k.components || []).map(c => c.quantity + '× ' + esc(c.product_name)).join(' · ')}</td><td>${money(k.price)}</td><td>${k.available}</td>
       <td class="acts"><button class="btn" onclick="openKit('${k.id}')">Editar</button><button class="btn danger" onclick="delKitDirect('${k.id}')">Eliminar</button></td></tr>`).join('') +
-    '</tbody></table></div>' : '<p class="note">Aún no hay kits.</p>';
+    '</tbody></table></div>' : '<p class="note">Aún no hay kits.</p>');
 }
 function openKit(id) {
   const k = id ? KITS.find(x => x.id === id) : null;
@@ -596,12 +841,13 @@ async function delKitDirect(id) {
   try { await api('/api/admin/kits/' + id, { method: 'DELETE' }); toast('Kit eliminado'); loadKits(); } catch (e) { toast('⚠ ' + e.message); }
 }
 async function delKit() { const id = $('kId').value; if (id) await delKitDirect(id); closeModal('kitModal'); }
+
 /* ---------- Categorías ---------- */
 async function loadCats() {
   CATS = await api('/api/admin/categories');
-  $('catsBox').innerHTML = CATS.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Categoría</th><th>Acciones</th></tr></thead><tbody>' +
+  put('catsBox', CATS.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Categoría</th><th>Acciones</th></tr></thead><tbody>' +
     CATS.map(c => `<tr><td><b>${esc(c.name)}</b></td><td class="acts"><button class="btn" onclick="renameCategory('${c.id}')">Renombrar</button><button class="btn danger" onclick="delCategory('${c.id}')">Eliminar</button></td></tr>`).join('') +
-    '</tbody></table></div>' : '<p class="note">Sin categorías.</p>';
+    '</tbody></table></div>' : '<p class="note">Sin categorías.</p>');
 }
 async function addCategory() {
   const name = $('catNew').value.trim();
@@ -622,14 +868,15 @@ async function delCategory(id) {
   try { await api('/api/admin/categories/' + id, { method: 'DELETE' }); toast('Categoría eliminada'); loadCats(); }
   catch (e) { toast('⚠ ' + e.message); }
 }
+
 /* ---------- Clientes ---------- */
 async function loadClients() { CLIENTS = await api('/api/admin/clients'); renderClients(); }
 function renderClients() {
-  const q = ($('cliSearch').value || '').toLowerCase();
+  const q = ($('cliSearch') ? $('cliSearch').value : '').toLowerCase();
   const list = CLIENTS.filter(c => !q || (c.name + ' ' + (c.whatsapp || '')).toLowerCase().includes(q));
-  $('clientsTable').innerHTML = '<div class="tablewrap"><table class="adm"><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Ciudad</th><th>Dirección</th><th>Estado</th><th>Pedidos</th><th>Total</th><th>Abonado</th><th>Saldo</th><th>Acciones</th></tr></thead><tbody>' +
-    (list.length ? list.map(c => `<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.whatsapp || '—')}</td><td>${esc(c.city || '—')}</td><td>${esc(c.address || '—')}</td><td>${c.status === 'Activo' ? '<span class="pill ok">Activo</span>' : '<span class="pill danger">Inactivo</span>'}</td><td>${c.orders}</td><td>${money(c.total)}</td><td>${money(c.paid)}</td><td>${money(c.balance)}</td>
-      <td class="acts"><button class="btn" onclick="openClient('${c.id}')">Editar</button></td></tr>`).join('') : '<tr><td colspan="10" class="empty">Sin clientes.</td></tr>') + '</tbody></table></div>';
+  put('clientsTable', '<div class="tablewrap"><table class="adm"><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Ciudad</th><th>Dirección</th><th>Estado</th><th>Pedidos</th><th>Total</th><th>Abonado</th><th>Saldo</th><th>Acciones</th></tr></thead><tbody>' +
+    (list.length ? list.map(c => `<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.whatsapp || '--')}</td><td>${esc(c.city || '--')}</td><td>${esc(c.address || '--')}</td><td>${c.status === 'Activo' ? '<span class="pill ok">Activo</span>' : '<span class="pill danger">Inactivo</span>'}</td><td>${c.orders}</td><td>${money(c.total)}</td><td>${money(c.paid)}</td><td>${money(c.balance)}</td>
+      <td class="acts"><button class="btn" onclick="openClient('${c.id}')">Editar</button></td></tr>`).join('') : '<tr><td colspan="10" class="empty">Sin clientes.</td></tr>') + '</tbody></table></div>');
 }
 function openClient(id) {
   const c = id ? CLIENTS.find(x => x.id === id) : null;
@@ -653,20 +900,20 @@ async function saveClient() {
     closeModal('clientModal'); toast('✔ Cliente guardado'); loadClients();
   } catch (e) { toast('⚠ ' + e.message); }
 }
+
 /* ---------- Pedidos ---------- */
 async function loadOrders() {
   const q = $('ordSearch').value.trim(), f = $('ordFilter').value;
   const rows = await api('/api/admin/orders?' + new URLSearchParams({ q, status: f }));
   ORDERS = rows;
-  $('ordersTable').innerHTML = rows.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>N.º</th><th>Cliente</th><th>Fecha</th><th>Estado</th><th>Ítems</th><th>Total</th><th>Abonado</th><th>Saldo</th><th>Acciones</th></tr></thead><tbody>' +
-    rows.map(o => `<tr><td><b>${esc(o.order_number)}</b></td><td>${esc(o.client_name || '—')}</td><td>${String(o.created_at || '').slice(0, 10)}</td><td>${pill(o.status)}</td><td>${o.items_count}</td><td>${money(o.total)}</td><td>${money(o.paid)}</td><td>${money(o.balance)}</td>
+  put('ordersTable', rows.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>N.º</th><th>Cliente</th><th>Fecha</th><th>Estado</th><th>Ítems</th><th>Total</th><th>Abonado</th><th>Saldo</th><th>Acciones</th></tr></thead><tbody>' +
+    rows.map(o => `<tr><td><b>${esc(o.order_number)}</b></td><td>${esc(o.client_name || '--')}</td><td>${String(o.created_at || '').slice(0, 10)}</td><td>${pill(o.status)}</td><td>${o.items_count}</td><td>${money(o.total)}</td><td>${money(o.paid)}</td><td>${money(o.balance)}</td>
       <td class="acts"><button class="btn primary" onclick="openOrder('${o.id}')">Abrir</button></td></tr>`).join('') +
-    '</tbody></table></div>' : '<p class="note">No hay pedidos con ese filtro.</p>';
+    '</tbody></table></div>' : '<p class="note">No hay pedidos con ese filtro.</p>');
 }
-/* Selector con agotados visibles (nota AGOTADO, no seleccionables) */
 function optGroups() {
-  return `<optgroup label="Productos">${PRODUCTS.map(p => `<option value="p:${p.id}" ${Number(p.available) <= 0 ? 'disabled' : ''}>${esc(p.name)} — ${money(p.price)}${Number(p.available) <= 0 ? ' — AGOTADO' : ' (disp ' + p.available + ')'}</option>`).join('')}</optgroup>` +
-    `<optgroup label="Kits">${KITS.map(k => `<option value="k:${k.id}" ${Number(k.available) <= 0 ? 'disabled' : ''}>${esc(k.name)} — ${money(k.price)}${Number(k.available) <= 0 ? ' — AGOTADO' : ' (disp ' + k.available + ')'}</option>`).join('')}</optgroup>`;
+  return `<optgroup label="Productos">${PRODUCTS.map(p => `<option value="p:${p.id}" ${Number(p.available) <= 0 ? 'disabled' : ''}>${esc(p.name)} -- ${money(p.price)}${Number(p.available) <= 0 ? ' -- AGOTADO' : ' (disp ' + p.available + ')'}</option>`).join('')}</optgroup>` +
+    `<optgroup label="Kits">${KITS.map(k => `<option value="k:${k.id}" ${Number(k.available) <= 0 ? 'disabled' : ''}>${esc(k.name)} -- ${money(k.price)}${Number(k.available) <= 0 ? ' -- AGOTADO' : ' (disp ' + k.available + ')'}</option>`).join('')}</optgroup>`;
 }
 async function openOrder(id) {
   try {
@@ -714,14 +961,14 @@ function orderModalHtml(o) {
     <div class="field"><label>&nbsp;</label><button class="btn primary" onclick="addOrderPayment('${o.id}')">Registrar abono</button></div>
   </div>`;
 }
-/* Filas de captura: Enter agrega y crea/enfoca la siguiente */
 function omAddRow(focus) {
+  const tb = $('omRows'); if (!tb) return;
   const tr = document.createElement('tr');
   tr.innerHTML = `<td><select class="omProd" onkeydown="omKey(event)"><option value="">Seleccionar…</option>${optGroups()}</select></td>
     <td style="width:90px"><input class="omQty" type="number" min="1" value="1" onkeydown="omKey(event)"></td>
     <td style="width:120px"><input class="omPrice" type="number" min="0" value="0" onkeydown="omKey(event)" title="Precio (se llena al elegir; editable)"></td>
     <td class="acts"><button class="btn primary" onclick="omCommit(this.closest('tr'))">Agregar</button> <button class="btn danger" onclick="this.closest('tr').remove()">✕</button></td>`;
-  $('omRows').appendChild(tr);
+  tb.appendChild(tr);
   tr.querySelector('.omProd').onchange = (ev) => omPriceAuto(ev.target);
   if (focus) tr.querySelector('.omProd').focus();
   return tr;
@@ -779,22 +1026,23 @@ async function delPayment(payId, orderId) {
   try { await api('/api/admin/payments/' + payId, { method: 'DELETE' }); toast('Abono eliminado'); openOrder(orderId); loadOrders(); }
   catch (e) { toast('⚠ ' + e.message); }
 }
+
 /* ---------- Logística ---------- */
 async function loadLogistics() {
   LOGIS = await api('/api/admin/logistics');
   const pend = LOGIS.filter(s => s.status !== 'enviado'), sent = LOGIS.filter(s => s.status === 'enviado');
-  $('logisPending').innerHTML = pend.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Pedido</th><th>Cliente</th><th>Ciudad</th><th>Estado</th><th>Pago</th><th>Transportadora</th><th>Monto</th><th>Acciones</th></tr></thead><tbody>' +
-    pend.map(s => `<tr><td><b>${esc(s.order_number)}</b></td><td>${esc(s.client_name || '')}</td><td>${esc(s.city || '—')}</td><td>${s.status === 'guardado' ? '<span class="pill warn">Guardado</span>' : '<span class="pill">Por enviar</span>'}</td><td>${s.pay_mode === 'adelantado' ? 'Adelantado' : 'Por cobrar'}</td><td>${esc(s.carrier)}${s.carrier_other ? ' (' + esc(s.carrier_other) + ')' : ''}</td><td>${money(s.amount)}</td>
+  put('logisPending', pend.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Pedido</th><th>Cliente</th><th>Ciudad</th><th>Estado</th><th>Pago</th><th>Transportadora</th><th>Monto</th><th>Acciones</th></tr></thead><tbody>' +
+    pend.map(s => `<tr><td><b>${esc(s.order_number)}</b></td><td>${esc(s.client_name || '')}</td><td>${esc(s.city || '--')}</td><td>${s.status === 'guardado' ? '<span class="pill warn">Guardado</span>' : '<span class="pill">Por enviar</span>'}</td><td>${s.pay_mode === 'adelantado' ? 'Adelantado' : 'Por cobrar'}</td><td>${esc(s.carrier)}${s.carrier_other ? ' (' + esc(s.carrier_other) + ')' : ''}</td><td>${money(s.amount)}</td>
       <td class="acts"><button class="btn primary" onclick="openShip('${s.id}')">Preparar envío</button><button class="btn" onclick="openOrder('${s.order_id}')">Ver pedido</button></td></tr>`).join('') + '</tbody></table></div>'
-    : '<p class="note">No hay pedidos por enviar. Los pedidos que pasan a Pagado entran aquí automáticamente.</p>';
-  $('logisSent').innerHTML = sent.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Pedido</th><th>Cliente</th><th>Enviado</th><th>Transportadora</th><th>Pago</th><th>Monto</th><th>Dirección de envío</th></tr></thead><tbody>' +
-    sent.map(s => `<tr><td><b>${esc(s.order_number)}</b></td><td>${esc(s.client_name || '')}</td><td>${String(s.shipped_at || '').slice(0, 10)}</td><td>${esc(s.carrier)}${s.carrier_other ? ' (' + esc(s.carrier_other) + ')' : ''}</td><td>${s.pay_mode === 'adelantado' ? 'Adelantado' : 'Por cobrar'}</td><td>${money(s.amount)}</td><td>${esc(s.city || '')} — ${esc(s.address || '')}</td></tr>`).join('') + '</tbody></table></div>'
-    : '<p class="note">Aún no hay envíos registrados.</p>';
+    : '<p class="note">No hay pedidos por enviar. Los pedidos que pasan a Pagado entran aquí automáticamente.</p>');
+  put('logisSent', sent.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Pedido</th><th>Cliente</th><th>Enviado</th><th>Transportadora</th><th>Pago</th><th>Monto</th><th>Dirección de envío</th></tr></thead><tbody>' +
+    sent.map(s => `<tr><td><b>${esc(s.order_number)}</b></td><td>${esc(s.client_name || '')}</td><td>${String(s.shipped_at || '').slice(0, 10)}</td><td>${esc(s.carrier)}${s.carrier_other ? ' (' + esc(s.carrier_other) + ')' : ''}</td><td>${s.pay_mode === 'adelantado' ? 'Adelantado' : 'Por cobrar'}</td><td>${money(s.amount)}</td><td>${esc(s.city || '')} -- ${esc(s.address || '')}</td></tr>`).join('') + '</tbody></table></div>'
+    : '<p class="note">Aún no hay envíos registrados.</p>');
 }
 function openShip(id) {
   const s = LOGIS.find(x => x.id === id); if (!s) return;
   $('shId').value = s.id;
-  $('shTitle').textContent = 'Preparar envío — ' + s.order_number;
+  $('shTitle').textContent = 'Preparar envío -- ' + s.order_number;
   $('shPay').value = s.pay_mode || 'adelantado';
   $('shAmount').value = s.amount || '';
   $('shCarrier').value = s.carrier || 'Interrapidísimo';
@@ -849,27 +1097,28 @@ async function saveShipment(action) {
     if (currentTab === 'dash') loadDash();
   } catch (e) { toast('⚠ ' + e.message); }
 }
+
 /* ---------- Configuración ---------- */
 async function loadConfig() {
   CFG = await api('/api/admin/settings');
   GOALS = await api('/api/admin/goals');
   DONATIONS = await api('/api/admin/donations');
   const ic = CFG.invoice_config || {};
-  $('iEmpresa').value = ic.empresa || ''; $('iNit').value = ic.nit || ''; $('iTel').value = ic.telefono || '';
-  $('iEmail').value = ic.email || ''; $('iDir').value = ic.direccion || ''; $('iMsg').value = ic.mensaje || '';
-  $('iFontTitulos').value = ic.fontTitulos || 'Arial';
-  $('iFontCuerpo').value = ic.fontCuerpo || 'Arial';
+  const set = (id, v) => { const el = $(id); if (el) el.value = v; };
+  set('iEmpresa', ic.empresa || ''); set('iNit', ic.nit || ''); set('iTel', ic.telefono || '');
+  set('iEmail', ic.email || ''); set('iDir', ic.direccion || ''); set('iMsg', ic.mensaje || '');
+  set('iFontTitulos', ic.fontTitulos || 'Arial'); set('iFontCuerpo', ic.fontCuerpo || 'Arial');
   logoData = ic.logo || null; wmData = ic.watermark || null; wmW = ic.watermarkW || 0; wmH = ic.watermarkH || 0;
-  $('iLogoPrev').src = logoData || ''; $('iLogoPrev').style.display = logoData ? 'inline-block' : 'none';
-  $('iWmPrev').src = wmData || ''; $('iWmPrev').style.display = wmData ? 'inline-block' : 'none';
-  $('gBreb').value = CFG.bre_b_key || ''; $('gWa').value = CFG.whatsapp_number || ''; $('gTpl').value = CFG.whatsapp_template || '';
-  $('gPrefix').value = CFG.order_prefix || ''; $('gStart').value = CFG.order_start || 1; $('gDigits').value = CFG.order_digits || 5;
-  $('gMin').value = CFG.min_payment_amount || 0;
+  const lp = $('iLogoPrev'); if (lp) { lp.src = logoData || ''; lp.style.display = logoData ? 'inline-block' : 'none'; }
+  const wp = $('iWmPrev'); if (wp) { wp.src = wmData || ''; wp.style.display = wmData ? 'inline-block' : 'none'; }
+  set('gBreb', CFG.bre_b_key || ''); set('gWa', CFG.whatsapp_number || ''); set('gTpl', CFG.whatsapp_template || '');
+  set('gPrefix', CFG.order_prefix || ''); set('gStart', CFG.order_start || 1); set('gDigits', CFG.order_digits || 5);
+  set('gMin', CFG.min_payment_amount || 0);
   const pc = profitConfig();
-  $('gDiezmo').value = pc.diezmoPct; $('gOfrenda').value = pc.ofrendaPct;
-  $('gReinv').value = pc.reinvEnabled ? '1' : '0'; $('gReinvPct').value = pc.reinvPct;
-  $('uiThemeSel').value = localStorage.getItem('uiTheme') || 'light';
-  $('uiLayoutSel').value = localStorage.getItem('uiLayout') || 'top';
+  set('gDiezmo', pc.diezmoPct); set('gOfrenda', pc.ofrendaPct);
+  set('gReinv', pc.reinvEnabled ? '1' : '0'); set('gReinvPct', pc.reinvPct);
+  set('uiThemeSel', localStorage.getItem('uiTheme') || 'light');
+  set('uiLayoutSel', localStorage.getItem('uiLayout') || 'top');
   renderGoalsCfg(); renderDonations();
 }
 async function saveProfitCfg() {
@@ -879,14 +1128,14 @@ async function saveProfitCfg() {
     reinvEnabled: $('gReinv').value === '1',
     reinvPct: Math.max(0, Math.min(100, Number($('gReinvPct').value) || 0)),
   };
-  try { await api('/api/admin/settings', { method: 'PUT', body: { profit_config: pc } }); CFG.profit_config = pc; toast('✔ Utilidad configurada'); }
+  try { await api('/api/admin/settings', { method: 'PUT', body: { profit_config: pc } }); CFG.profit_config = pc; toast('✔ Utilidad configurada'); renderSummary(); }
   catch (e) { toast('⚠ ' + e.message); }
 }
 function renderGoalsCfg() {
-  $('goalsCfg').innerHTML = GOALS.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Objetivo</th><th>Meta</th><th>Aportado</th><th>Activo</th><th>Acciones</th></tr></thead><tbody>' +
+  put('goalsCfg', GOALS.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Objetivo</th><th>Meta</th><th>Aportado</th><th>Activo</th><th>Acciones</th></tr></thead><tbody>' +
     GOALS.map(g => `<tr><td><b>${esc(g.name)}</b></td><td>${money(g.target)}</td><td>${money(g.contributed)}</td><td>${g.active ? '<span class="pill ok">Sí</span>' : '<span class="pill">No</span>'}</td>
       <td class="acts"><button class="btn" onclick="toggleGoal('${g.id}',${!g.active})">${g.active ? 'Inactivar' : 'Activar'}</button><button class="btn" onclick="editGoal('${g.id}')">Editar</button><button class="btn danger" onclick="delGoal('${g.id}')">Eliminar</button></td></tr>`).join('') + '</tbody></table></div>'
-    : '<p class="note">Sin objetivos aún (máximo 3).</p>';
+    : '<p class="note">Sin objetivos aún (máximo 3).</p>');
 }
 async function saveGoal() {
   try {
@@ -912,9 +1161,9 @@ async function delGoal(id) {
   catch (e) { toast('⚠ ' + e.message); }
 }
 function renderDonations() {
-  $('donList').innerHTML = DONATIONS.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Fecha</th><th>Entidad</th><th>Valor</th><th>Certificado</th><th>Nota</th><th></th></tr></thead><tbody>' +
-    DONATIONS.map(d => `<tr><td>${esc(d.donation_date)}</td><td><b>${esc(d.entity)}</b></td><td>${money(d.amount)}</td><td>${esc(d.certificate || '—')}</td><td>${esc(d.note || '')}</td><td class="acts"><button class="btn danger" onclick="delDonation('${d.id}')">Eliminar</button></td></tr>`).join('') + '</tbody></table></div>'
-    : '<p class="note">Sin donaciones certificadas registradas.</p>';
+  put('donList', DONATIONS.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Fecha</th><th>Entidad</th><th>Valor</th><th>Certificado</th><th>Nota</th><th></th></tr></thead><tbody>' +
+    DONATIONS.map(d => `<tr><td>${esc(d.donation_date)}</td><td><b>${esc(d.entity)}</b></td><td>${money(d.amount)}</td><td>${esc(d.certificate || '--')}</td><td>${esc(d.note || '')}</td><td class="acts"><button class="btn danger" onclick="delDonation('${d.id}')">Eliminar</button></td></tr>`).join('') + '</tbody></table></div>'
+    : '<p class="note">Sin donaciones certificadas registradas.</p>');
 }
 async function saveDonation() {
   try {
@@ -966,6 +1215,7 @@ async function saveGeneral() {
     toast('✔ Configuración guardada'); loadConfig();
   } catch (e) { toast('⚠ ' + e.message); }
 }
+
 /* ---------- Importar JSON ---------- */
 function onImportFile(ev) {
   const f = ev.target.files && ev.target.files[0]; ev.target.value = ''; if (!f) return;
@@ -981,6 +1231,7 @@ function onImportFile(ev) {
   };
   r.readAsText(f);
 }
+
 /* ---------- Factura PDF ---------- */
 const FONT_MAP = {
   'Arial': 'Inter', 'Nunito': 'NunitoSans', 'Montserrat': 'Montserrat',
@@ -1008,11 +1259,10 @@ async function generateInvoice(orderId) {
     const bt = hasFonts ? (t) => applyNTildeFallback(t, bSup) : (t) => t;
     if (cfg.watermark && cfg.watermarkW && cfg.watermarkH) {
       try {
-        const availW = 170, availH = 257, ratio = cfg.watermarkW / cfg.watermarkH;
-        let w = availW, h = w / ratio; if (h > availH) { h = availH; w = h * ratio; }
-        const fmt = /jpe?g/.test(cfg.watermark) ? 'JPEG' : 'PNG';
+        const ratio = cfg.watermarkW / cfg.watermarkH;
+        let w = 170, h = w / ratio; if (h > 257) { h = 257; w = h * ratio; }
         doc.setGState(new doc.GState({ opacity: 0.12 }));
-        doc.addImage(cfg.watermark, fmt, (210 - w) / 2, (297 - h) / 2, w, h, undefined, 'FAST');
+        doc.addImage(cfg.watermark, /jpe?g/.test(cfg.watermark) ? 'JPEG' : 'PNG', (210 - w) / 2, (297 - h) / 2, w, h, undefined, 'FAST');
         doc.setGState(new doc.GState({ opacity: 1 }));
       } catch (e) { }
     }
@@ -1070,7 +1320,7 @@ async function generateInvoice(orderId) {
       doc.autoTable({
         startY: py + 3,
         head: [['Fecha', 'Medio', 'Referencia', 'Nota', 'Valor']],
-        body: o.payments.map(p => [String(p.payment_date || ''), bt(String(p.method || '')), bt(String(p.reference || '—')), bt(String(p.note || '')), pdfMoney(p.amount)]),
+        body: o.payments.map(p => [String(p.payment_date || ''), bt(String(p.method || '')), bt(String(p.reference || '--')), bt(String(p.note || '')), pdfMoney(p.amount)]),
         theme: 'plain',
         styles: { font: BF, fontSize: 8.5, textColor: dark, cellPadding: 2 },
         headStyles: { font: TF, fontStyle: 'bold', fillColor: [247, 250, 247], textColor: muted },
@@ -1095,4 +1345,4 @@ async function generateInvoice(orderId) {
   } catch (e) { console.error(e); toast('⚠ ' + e.message); }
 }
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', init);</script>

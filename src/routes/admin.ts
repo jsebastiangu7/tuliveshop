@@ -15,6 +15,29 @@ const pfOf = (req: AuthRequest) => req.user!.portfolio_id as string;
 const stockStatus = (available: number, minStock: number) =>
   available <= 0 ? 'AGOTADO' : available <= Math.max(2, Number(minStock) || 0) ? 'REPOSICIÓN' : 'EN STOCK';
 
+// Disponible de TODOS los productos del portafolio en 3 consultas (sin N+1).
+// Misma fórmula que /analytics: stock - reservas directas - reservas por kits.
+async function availabilityMap(pf: string): Promise<Map<string, number>> {
+  const { rows: prods } = await pool.query(
+    `SELECT id, stock::int AS stock FROM products WHERE portfolio_id=$1`, [pf]);
+  const { rows: resD } = await pool.query(
+    `SELECT oi.product_id AS pid, SUM(oi.quantity)::int AS q
+     FROM order_items oi JOIN orders o ON o.id = oi.order_id
+     WHERE o.portfolio_id=$1 AND o.status NOT IN ('canceled','expired') AND oi.product_id IS NOT NULL
+     GROUP BY 1`, [pf]);
+  const { rows: resK } = await pool.query(
+    `SELECT kc.product_id AS pid, SUM(oi.quantity * kc.quantity)::int AS q
+     FROM order_items oi JOIN orders o ON o.id = oi.order_id
+     JOIN kit_components kc ON kc.kit_id = oi.kit_id
+     WHERE o.portfolio_id=$1 AND o.status NOT IN ('canceled','expired')
+     GROUP BY 1`, [pf]);
+  const rd = new Map(resD.map(r => [r.pid, Number(r.q)]));
+  const rk = new Map(resK.map(r => [r.pid, Number(r.q)]));
+  const m = new Map<string, number>();
+  for (const p of prods) m.set(p.id, Math.max(0, p.stock - (rd.get(p.id) || 0) - (rk.get(p.id) || 0)));
+  return m;
+}
+
 /* ─────────────── Dashboard básico ─────────────── */
 router.get('/dashboard', async (req: AuthRequest, res) => {
   try {
@@ -33,9 +56,13 @@ router.get('/dashboard', async (req: AuthRequest, res) => {
       `SELECT COUNT(*)::int AS n FROM orders WHERE portfolio_id=$1 AND status IN ('draft','pending_confirm','apartada','shipped')`, [pf]);
     const { rows: [rep] } = await pool.query(
       `SELECT COUNT(*)::int AS n FROM payment_reports WHERE portfolio_id=$1 AND status='pending'`, [pf]);
+
+    // Stock bajo SIN N+1: un solo mapa de disponibles
+    const avail = await availabilityMap(pf);
     const { rows: prods } = await pool.query(`SELECT id, min_stock FROM products WHERE portfolio_id=$1`, [pf]);
     let low = 0;
-    for (const pr of prods) if (await productAvailable(pr.id) <= Math.max(2, Number(pr.min_stock) || 0)) low++;
+    for (const pr of prods) if ((avail.get(pr.id) ?? 0) <= Math.max(2, Number(pr.min_stock) || 0)) low++;
+
     const { rows: [lg] } = await pool.query(
       `SELECT COUNT(*) FILTER (WHERE status IN ('por_enviar','guardado'))::int AS por_enviar,
               COUNT(*) FILTER (WHERE status = 'enviado')::int AS enviados
@@ -146,12 +173,11 @@ router.get('/products', async (req: AuthRequest, res) => {
       `SELECT p.*, c.name AS category FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
        WHERE p.portfolio_id=$1 ORDER BY p.name`, [pf]);
-    const out = [];
-    for (const p of rows) {
-      const available = await productAvailable(p.id);
-      out.push({ ...p, available, status: stockStatus(available, p.min_stock) });
-    }
-    res.json(out);
+    const avail = await availabilityMap(pf);
+    res.json(rows.map(p => {
+      const available = avail.get(p.id) ?? 0;
+      return { ...p, available, status: stockStatus(available, p.min_stock) };
+    }));
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 
@@ -383,19 +409,20 @@ router.get('/orders', async (req: AuthRequest, res) => {
     const status = req.query.status ? String(req.query.status) : '';
     const q = req.query.q ? String(req.query.q).toLowerCase() : '';
     const { rows } = await pool.query(
-      `SELECT o.id, o.order_number, o.status, o.notes, o.expires_at, o.created_at,
-         u.name AS client_name, u.whatsapp AS client_whatsapp
-       FROM orders o LEFT JOIN users u ON u.id = o.client_id
+      `SELECT o.id, o.client_id, o.order_number, o.status, o.notes, o.expires_at, o.created_at,
+              u.name AS client_name, u.whatsapp AS client_whatsapp,
+              COALESCE(t.total,0)::float AS total,
+              COALESCE(t.items_count,0)::int AS items_count,
+              COALESCE(pa.paid,0)::float AS paid
+       FROM orders o
+       LEFT JOIN users u ON u.id = o.client_id
+       LEFT JOIN (SELECT order_id, SUM(price*quantity) AS total, SUM(quantity) AS items_count
+                  FROM order_items GROUP BY order_id) t ON t.order_id = o.id
+       LEFT JOIN (SELECT order_id, SUM(amount) AS paid FROM payments GROUP BY order_id) pa ON pa.order_id = o.id
        WHERE o.portfolio_id=$1 AND ($2 = '' OR o.status=$2)
          AND ($3 = '' OR LOWER(o.order_number) LIKE '%'||$3||'%' OR LOWER(COALESCE(u.name,'')) LIKE '%'||$3||'%')
        ORDER BY o.created_at DESC LIMIT 500`, [pf, status, q]);
-    const out = [];
-    for (const o of rows) {
-      const totals = await getOrderTotals(o.id);
-      const { rows: [cnt] } = await pool.query(`SELECT COALESCE(SUM(quantity),0)::int AS n FROM order_items WHERE order_id=$1`, [o.id]);
-      out.push({ ...o, items_count: cnt.n, ...totals });
-    }
-    res.json(out);
+    res.json(rows.map(o => ({ ...o, balance: Math.max(0, Number(o.total) - Number(o.paid)) })));
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 

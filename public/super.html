@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pandala Kawaii · Super Administrador</title>
+<link rel="stylesheet" href="/styles.css">
+<script src="/super.js" defer></script>
+<style>
+table.adm{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);color:var(--ink)}
+table.adm th,table.adm td{padding:8px 9px;border-bottom:1px solid #f1eadc;text-align:left;white-space:nowrap}
+table.adm th{background:#f7f1e6;font-size:11px;text-transform:uppercase;color:var(--muted);position:sticky;top:0}
+.tablewrap{overflow:auto;max-height:70vh;border:1px solid var(--border);border-radius:12px}
+.acts{white-space:nowrap}.acts .btn{margin-right:4px;padding:6px 10px;font-size:12px}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.field{display:flex;flex-direction:column;gap:5px}
+.modal{width:min(760px,100%);max-height:calc(100vh - 32px);overflow:auto}
+main .panel{max-width:none;margin:0 0 14px;display:block}
+</style>
+</head>
+<body>
+<header id="hdr" class="hidden">
+  <div class="brand">Pandala <span>Kawaii</span> · Super Admin</div>
+  <span class="pill ok">Multi-tienda</span>
+  <span id="who" class="pill"></span>
+  <button class="btn" onclick="logout()">Salir</button>
+</header>
+<main>
+  <!-- LOGIN -->
+  <section id="view-login" class="view active">
+    <h1>Super administrador</h1>
+    <p class="subtitle">Crea tiendas (portafolios) y sus administradores. Cada tienda vive en su propio enlace y sus datos nunca se mezclan.</p>
+    <form class="panel" onsubmit="login(event)" style="max-width:420px;margin:0 auto;display:grid;gap:10px">
+      <label>Correo</label><input id="aEmail" type="email" required autocomplete="username">
+      <label>Contraseña</label><input id="aPass" type="password" required autocomplete="current-password">
+      <button class="btn primary" type="submit">Ingresar</button>
+      <div id="aErr" class="error"></div>
+    </form>
+  </section>
+
+  <!-- TIENDAS -->
+  <section id="view-main" class="view">
+    <h1>Tiendas (portafolios)</h1>
+    <p class="subtitle">Cada tienda tiene su enlace público, su inventario, clientes, pedidos y configuración propios.</p>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn primary" onclick="openPortfolio()">+ Nueva tienda</button>
+      <button class="btn" onclick="loadPortfolios()">🔄</button>
+    </div>
+    <div id="pfTable"></div>
+  </section>
+</main>
+
+<!-- MODAL TIENDA -->
+<div id="pfModal" class="modal-backdrop"><div class="modal">
+  <h2 id="pfTitle">Nueva tienda</h2>
+  <input type="hidden" id="pfId">
+  <div class="fgrid">
+    <div class="field"><label>Nombre de la tienda</label><input id="pfName" placeholder="Ej: Pandala Kawaii"></div>
+    <div class="field"><label>Enlace (slug)</label><input id="pfSlug" placeholder="ej: ttshop"></div>
+    <div class="field"><label>Llave Bre-b</label><input id="pfBreb" placeholder="3058173611"></div>
+    <div class="field"><label>WhatsApp (con código de país)</label><input id="pfWa" placeholder="+573058173611"></div>
+    <div class="field"><label>Iniciales de numeración</label><input id="pfPrefix" maxlength="6" placeholder="BOL" style="text-transform:uppercase"></div>
+  </div>
+  <p class="note" id="pfLink" style="margin-top:10px"></p>
+  <div class="modal-actions"><button class="btn" onclick="closeModal('pfModal')">Cancelar</button><button class="btn primary" onclick="savePortfolio()">Guardar tienda</button></div>
+</div></div>
+
+<!-- MODAL ADMINISTRADORES -->
+<div id="adModal" class="modal-backdrop"><div class="modal">
+  <h2 id="adTitle">Administradores</h2>
+  <div id="adList"></div>
+  <h3 style="margin:14px 0 6px">Crear administrador para esta tienda</h3>
+  <div class="fgrid">
+    <div class="field"><label>Nombre</label><input id="adName"></div>
+    <div class="field"><label>Correo</label><input id="adEmail" type="email"></div>
+    <div class="field"><label>Contraseña (mín. 8)</label><input id="adPass" type="password"></div>
+    <div class="field"><label>&nbsp;</label><button class="btn primary" onclick="createAdmin()">Crear</button></div>
+  </div>
+  <div class="modal-actions"><button class="btn" onclick="closeModal('adModal')">Cerrar</button></div>
+</div></div>
+
+<div id="toast" class="toast hidden"></div>
+</body>
+</html>

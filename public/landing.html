@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tu Live Shop | El sistema de gestión #1 para Ventas en En Vivo y Live Commerce</title>
+<style>
+:root{--bg:#f6f3ea;--card:#fff;--ink:#171c2b;--muted:#5c6280;--primary:#2C44B8;--primary2:#2338a0;--primary-light:#e8ecfb;--accent:#B8952C;--accent2:#2CB848;--deep:#394063;--border:#e4ddcb;--ok:#1f8a37;--ok-bg:#e3f6e7;--ring:#2C44B840}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;background:radial-gradient(900px 480px at 8% -8%,#2C44B81f,transparent 60%),radial-gradient(800px 420px at 100% 0,#B8952C1a,transparent 55%),var(--bg);background-attachment:fixed;color:var(--ink)}
+a{color:var(--primary)}a:hover{color:var(--primary2)}
+header{position:sticky;top:0;z-index:20;display:flex;gap:14px;align-items:center;padding:12px 22px;background:color-mix(in srgb,var(--card) 82%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.brand{font-weight:850;font-size:19px;margin-right:auto;color:var(--ink)}
+.brand span{color:var(--primary)}
+nav{display:flex;gap:4px;flex-wrap:wrap}nav a{border:0;background:transparent;padding:8px 12px;border-radius:999px;cursor:pointer;color:var(--muted);font-weight:700;font-size:13.5px;text-decoration:none;transition:background .18s,color .18s}
+nav a:hover{background:var(--primary-light);color:var(--primary2)}
+.btn{display:inline-block;border:1px solid var(--border);background:var(--card);border-radius:999px;padding:11px 20px;font-weight:800;cursor:pointer;font:inherit;font-size:14px;color:var(--ink);text-decoration:none;transition:transform .12s,box-shadow .18s,filter .18s,background .18s,color .18s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 22px #39406322;border-color:var(--primary);color:var(--primary2)}
+.btn.primary{background:var(--primary);color:#fff;border-color:transparent;box-shadow:0 4px 14px #2C44B855}
+.btn.primary:hover{background:var(--primary2);color:#fff;box-shadow:0 6px 20px #2C44B877}
+.btn.gold{background:var(--accent);color:#241a05;border-color:transparent;box-shadow:0 4px 14px #B8952C66;font-weight:900}
+.btn.gold:hover{filter:brightness(1.07);color:#241a05;box-shadow:0 6px 20px #B8952C88}
+main{max-width:1100px;margin:0 auto;padding:26px 20px 60px}
+.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;align-items:center;padding:34px 0 10px}
+.kicker{display:inline-block;background:var(--ok-bg);color:var(--ok);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:800;margin-bottom:12px}
+h1{font-size:38px;line-height:1.12;margin:0 0 12px;letter-spacing:-.02em;color:var(--ink)}
+.sub{color:var(--muted);font-size:16px;line-height:1.6;margin:0 0 20px}
+.cta{display:flex;gap:10px;flex-wrap:wrap}
+.stats{display:flex;gap:22px;flex-wrap:wrap;margin-top:26px}
+.stat b{display:block;font-size:22px;font-weight:900;color:var(--deep)}.stat span{color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.mock{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:18px;box-shadow:0 24px 70px #171c2b22;transition:transform .2s,box-shadow .2s}
+.mock:hover{transform:translateY(-3px);box-shadow:0 28px 80px #171c2b33}
+.mock .bar{display:flex;gap:6px;margin-bottom:12px}.mock .bar i{width:10px;height:10px;border-radius:50%;background:#e6ddcf}.mock .bar i:first-child{background:#e8a6ae}.mock .bar i:nth-child(2){background:#ecd48f}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.kpi{background:var(--primary-light);border-radius:14px;padding:12px}.kpi span{font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}.kpi b{display:block;font-size:19px;margin-top:4px;color:var(--primary2)}
+.bars{display:flex;align-items:flex-end;gap:8px;height:110px;margin-top:14px}
+.bars i{flex:1;border-radius:8px 8px 4px 4px;background:var(--primary)}
+.bars i:nth-child(2n){background:var(--accent)}
+section{margin-top:56px}h2{font-size:27px;margin:0 0 6px;letter-spacing:-.02em;color:var(--ink)}.sec-sub{color:var(--muted);margin:0 0 20px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:0 1px 2px #00000008;transition:transform .15s,box-shadow .2s,border-color .2s}
+.card:hover{transform:translateY(-3px);box-shadow:0 12px 32px #39406322;border-color:var(--primary)}
+.card h3{margin:0 0 6px;font-size:15.5px;color:var(--ink)}.card p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.55}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.before{background:#f8e3e6;border-color:transparent}.after{background:var(--ok-bg);border-color:transparent}
+.price{background:var(--primary);color:#fff;border-radius:22px;padding:26px;text-align:center;box-shadow:0 18px 50px #2C44B844}
+.price .amt{font-size:44px;font-weight:900;margin:6px 0}.price ul{list-style:none;padding:0;margin:16px auto 0;max-width:420px;text-align:left;display:grid;gap:8px;font-size:14px}
+.price li::before{content:"✔ ";font-weight:900;color:#8fd6a0}
+.faq details{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;transition:border-color .2s,box-shadow .2s}
+.faq details:hover{border-color:var(--primary);box-shadow:0 6px 18px #39406318}
+.faq summary{font-weight:800;cursor:pointer}.faq p{color:var(--muted);font-size:14px;line-height:1.6;margin:10px 0 0}
+footer{border-top:1px solid var(--border);padding:22px;color:var(--muted);font-size:13px;display:flex;gap:16px;flex-wrap:wrap;max-width:1100px;margin:0 auto}
+footer a{text-decoration:none}footer a:hover{text-decoration:underline}
+@media(max-width:900px){.hero{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr}.duo{grid-template-columns:1fr}h1{font-size:30px}}
+@media(max-width:620px){.grid{grid-template-columns:1fr}nav{display:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Tu <span>Live Shop</span></div>
+  <nav>
+    <a href="#caracteristicas">Características</a>
+    <a href="#demostracion">Vista previa</a>
+    <a href="#beneficios">Beneficios</a>
+    <a href="#precios">Precio</a>
+    <a href="#faq">FAQ</a>
+  </nav>
+  <a class="btn gold" href="/?t=tuliveshop">Ingresar</a>
+</header>
+<main>
+  <div class="hero">
+    <div>
+      <span class="kicker">Diseñado especialmente para Emprendedores de Live Commerce</span>
+      <h1>Vende en tus En Vivo con Control Total de Inventario y Ganancias</h1>
+      <p class="sub">La herramienta todo-en-uno que simplifica la gestión de tus transacciones durante y después de tus transmisiones. Administra clientes, pedidos, ventas en tiempo real y calcula tu utilidad libre sin planillas complicadas.</p>
+      <div class="cta">
+        <a class="btn gold" href="/?t=tuliveshop">Ingresar</a>
+        <a class="btn" href="#demostracion">Ver cómo funciona</a>
+        <a class="btn primary" href="/admin.html">Panel de administración</a>
+      </div>
+      <div class="stats">
+        <div class="stat"><b>+100.000</b><span>Productos registrados</span></div>
+        <div class="stat"><b>99,9%</b><span>Disponibilidad en nube</span></div>
+        <div class="stat"><b>3x</b><span>Más rápido agendando envíos</span></div>
+        <div class="stat"><b>$7 USD</b><span>Precio fijo sin comisiones</span></div>
+      </div>
+    </div>
+    <div class="mock">
+      <div class="bar"><i></i><i></i><i></i></div>
+      <div class="kpis">
+        <div class="kpi"><span>Utilidad neta del mes</span><b>$ 1.090.778</b></div>
+        <div class="kpi"><span>Libre del mes</span><b>$ 654.467</b></div>
+        <div class="kpi"><span>Reinversión sugerida</span><b>$ 436.311</b></div>
+      </div>
+      <div class="bars"><i style="height:45%"></i><i style="height:62%"></i><i style="height:38%"></i><i style="height:74%"></i><i style="height:58%"></i><i style="height:88%"></i></div>
+    </div>
+  </div>
+
+  <section id="caracteristicas">
+    <h2>Todo lo que tu Live requiere</h2>
+    <p class="sec-sub">Diseñado específicamente para la dinámica del Live Commerce.</p>
+    <div class="grid">
+      <div class="card"><h3>📊 Dashboard de seguimiento</h3><p>Visualiza de un vistazo la utilidad neta del mes, ventas cerradas, gastos operacionales y el saldo real libre para tu bolsillo.</p></div>
+      <div class="card"><h3>🛒 Registro y control de ventas</h3><p>Anota ventas durante la transmisión en segundos. Separa pedidos confirmados, pendientes de pago y ventas agrupadas por producto estrella.</p></div>
+      <div class="card"><h3>📦 Inventario inteligente</h3><p>Actualización automática de stock en tiempo real. Evita sobre-vender piezas únicas o quedarte sin stock en un momento pico.</p></div>
+      <div class="card"><h3>💙 CRM de clientes fieles</h3><p>Historial completo de compradores habituales. Identifica a tus mejores clientes del live y ten sus datos de despacho listos en 1 clic.</p></div>
+      <div class="card"><h3>🔁 Asistente de reinversión</h3><p>Compara la reinversión sugerida vs. la real invertida en mercadería para mantener tu negocio rentable y en crecimiento constante.</p></div>
+      <div class="card"><h3>🚚 Gestión de envíos y abonos</h3><p>Lleva el estado claro de abonos parciales, pagos contra entrega y despachos enviados para evitar extravíos o confusiones logísticas.</p></div>
+    </div>
+  </section>
+
+  <section id="demostracion">
+    <h2>Experiencia visual integrada</h2>
+    <p class="sec-sub">Modos claro, cálido (descanso visual) y oscuro; vista de menú superior o lateral.</p>
+    <div class="duo">
+      <div class="card"><h3>Modo Emprendedor</h3><p>Dashboard, ventas, pedidos, inventario, clientes, logística y facturación PDF con tus fuentes y logo.</p></div>
+      <div class="card"><h3>Tienda para tus clientas</h3><p>Catálogo tipo e-commerce con bolsita de compra, llave Bre-b y reporte de pago por WhatsApp en segundos.</p></div>
+    </div>
+  </section>
+
+  <section id="beneficios">
+    <h2>Solución a tus dolores de cabeza</h2>
+    <p class="sec-sub">¿Cansado de perder dinero en tus En Vivo por falta de organización?</p>
+    <div class="duo">
+      <div class="card before"><h3>Antes: cuadernos y chats saturados</h3><p>Ventas duplicadas, entregas erróneas y no saber exactamente cuánto ganaste realmente.</p></div>
+      <div class="card after"><h3>Ahora con Tu Live Shop: fluidez total</h3><p>Registras rápido, separas stock al instante y ves la ganancia neta en tu bolsillo en vivo.</p></div>
+    </div>
+  </section>
+
+  <section id="precios">
+    <h2>Precio transparente</h2>
+    <p class="sec-sub">Sin comisiones por venta. Un solo plan, todo incluido.</p>
+    <div class="price">
+      <div>Plan Todo Incluido Emprendedor</div>
+      <div class="amt">$7 USD / mes</div>
+      <div>Cancela en cualquier momento con un solo clic desde tu panel.</div>
+      <ul>
+        <li>Acceso ilimitado a todas las funciones del sistema</li>
+        <li>Dashboard completo de ventas y utilidades netas</li>
+        <li>Registro ilimitado de ventas, productos e inventarios</li>
+        <li>CRM de clientes con historial de compras</li>
+        <li>Asistente de cálculo para reinversión sugerida</li>
+        <li>Control de envíos, abonos y pagos pendientes</li>
+        <li>Modos visuales claro, cálido y oscuro adaptables</li>
+        <li>Respaldo de datos seguro y sincronización automática</li>
+      </ul>
+      <p style="margin-top:18px"><a class="btn gold" href="/?t=tuliveshop">Empezar mi suscripción ($7 USD/mes)</a></p>
+    </div>
+  </section>
+
+  <section id="faq" class="faq">
+    <h2>Resuelve tus dudas</h2>
+    <p class="sec-sub">Preguntas frecuentes.</p>
+    <details><summary>¿Necesito instalar algún programa en mi computadora?</summary><p>No. Tu Live Shop funciona directamente desde tu navegador web en computadoras, tablets o teléfonos móviles. Solo necesitas conexión a internet.</p></details>
+    <details><summary>¿Hay cobros adicionales por cantidad de ventas realizadas?</summary><p>Absolutamente ninguno. Tu suscripción única es de $7 USD al mes fijos. No cobramos comisiones por tus ventas ni límites por número de productos registrados.</p></details>
+    <details><summary>¿Cómo funciona el respaldo de datos?</summary><p>Tu información vive en una base de datos segura en la nube con copias periódicas, además de exportaciones a Excel y JSON cuando las necesites.</p></details>
+    <details><summary>¿Puedo cancelar la suscripción cuando yo quiera?</summary><p>Sí. Puedes cancelar la renovación automática en cualquier momento desde la configuración de tu cuenta sin penalizaciones ni trámites molestos.</p></details>
+  </section>
+</main>
+<footer>
+  <span>© 2026 Tu Live Shop · JSGU</span>
+  <a href="/?t=tuliveshop">Ingresar a mi tienda</a>
+  <a href="/admin.html">Administración</a>
+  <a href="/super.html">Super administrador</a>
+</footer>
+</body>
+</html>

@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pandala Kawaii · Panel Administrador</title>
+<link rel="stylesheet" href="/styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="/invoice-fonts.js" defer></script>
+<script src="/legal-docs.js" defer></script>
+<script src="/admin.js" defer></script>
+<script src="/admin-realtime.js" defer></script>
+<style>
+table.adm{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);color:var(--ink)}
+table.adm th,table.adm td{padding:8px 9px;border-bottom:1px solid var(--row-border);text-align:left;white-space:nowrap}
+table.adm th{background:var(--thead-bg);font-size:11px;text-transform:uppercase;color:var(--muted);position:sticky;top:0;z-index:1}
+.tablewrap{overflow:auto;max-height:70vh;border:1px solid var(--border);border-radius:12px}
+.acts{white-space:nowrap}.acts .btn{margin-right:4px;padding:6px 10px;font-size:12px}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.field{display:flex;flex-direction:column;gap:5px}
+.modal{width:min(980px,100%)}
+main .panel{max-width:none;margin:0 0 14px;display:block}
+h3{margin:14px 0 6px;font-size:15px}
+/* ===== Cabecera en dos filas (como tu Administrador Emprendedor) ===== */
+header{flex-direction:column;align-items:stretch;gap:6px;padding:8px 18px}
+.hdr-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.hdr-top .brand{margin-right:auto}
+.hdr-bottom{display:flex;align-items:center;gap:14px;border-top:1px solid var(--border);padding-top:6px;flex-wrap:wrap}
+.hdr-bottom nav#tabs{flex:1;min-width:0;margin-right:0}
+.hdr-icons{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+body.layout-side header{flex-direction:column}
+body.layout-side .hdr-top{flex-direction:column;align-items:stretch}
+body.layout-side .hdr-top .brand{margin:0 0 6px}
+body.layout-side .hdr-bottom{flex-direction:column;align-items:stretch;border-top:0;padding-top:0;gap:8px}
+body.layout-side nav#tabs{flex-direction:column;flex-wrap:nowrap}
+body.layout-side .hdr-icons{margin-left:0}
+/* ===== Menú del administrador (nombre → Configuración / Legal / Salir) ===== */
+.who-wrap{position:relative}
+.who-btn{display:flex;align-items:center;gap:7px;font-weight:800}
+.user-menu{position:absolute;right:0;top:calc(100% + 8px);background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-lg);min-width:210px;padding:6px;z-index:80;display:grid;gap:2px}
+.user-menu button{border:0;background:transparent;text-align:left;padding:11px 13px;border-radius:10px;cursor:pointer;font:inherit;font-weight:700;color:var(--ink);transition:background .15s,color .15s}
+.user-menu button:hover{background:var(--primary-light);color:var(--primary-text)}
+/* ===== Documento legal ===== */
+.legal-doc{max-width:860px;line-height:1.6}
+.legal-doc h2{margin:6px 0 2px;font-size:22px}
+.legal-doc h3{margin:18px 0 2px;font-size:16px;color:var(--primary-text)}
+.legal-doc p,.legal-doc li{margin:5px 0}
+.legal-doc ul{padding-left:22px}
+.legal-doc .meta{color:var(--muted);font-size:13px}
+.legal-doc code{background:var(--thead-bg);padding:1px 6px;border-radius:5px;font-size:12.5px;word-break:break-all}
+.legal-doc a{color:var(--primary-text)}
+</style>
+</head>
+<body>
+<header id="hdr" class="hidden">
+  <div class="hdr-top">
+    <div class="brand" style="cursor:pointer" onclick="location.href='/'" title="Ir a la tienda">Pandala <span>Kawaii</span> · Admin</div>
+    <span id="who" class="pill hidden"></span>
+    <div class="who-wrap">
+      <button id="whoBtn" class="btn who-btn" onclick="toggleUserMenu()" title="Menú del administrador">👑 <span id="whoName">—</span> ▾</button>
+      <div id="userMenu" class="user-menu hidden">
+        <button type="button" onclick="menuGo('config')">⚙️ Configuración</button>
+        <button type="button" onclick="menuGo('legal')">📜 Legal</button>
+        <button type="button" onclick="logout()">🚪 Salir</button>
+      </div>
+    </div>
+  </div>
+  <div class="hdr-bottom">
+    <nav id="tabs" class="chips"></nav>
+    <div class="hdr-icons">
+      <div class="icon-group" id="themeGroup">
+        <button class="theme-btn" data-theme="light" onclick="setTheme('light')" title="Modo claro">☀️</button>
+        <button class="theme-btn" data-theme="warm" onclick="setTheme('warm')" title="Modo cálido (protección ocular)">🌤️</button>
+        <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')" title="Modo oscuro">🌙</button>
+      </div>
+      <div class="icon-group" id="layoutGroup">
+        <button class="layout-btn" data-layout="top" onclick="setLayout('top')" title="Menú superior">▤</button>
+        <button class="layout-btn" data-layout="side" onclick="setLayout('side')" title="Menú lateral">▥</button>
+      </div>
+    </div>
+  </div>
+</header>
+<main>
+  <!-- LOGIN -->
+  <section id="view-login" class="view active">
+    <h1>Acceso administrador</h1>
+    <p class="subtitle">Gestiona tu tienda: inventario, pedidos, logística, utilidad y facturación.</p>
+    <form class="panel" onsubmit="adminLogin(event)" style="max-width:420px;margin:0 auto;display:grid;gap:10px">
+      <label>Correo</label><input id="aEmail" type="email" required autocomplete="username">
+      <label>Contraseña</label><input id="aPass" type="password" required autocomplete="current-password">
+      <button class="btn primary" type="submit">Ingresar al panel</button>
+      <div id="aErr" class="error"></div>
+    </form>
+  </section>
+
+  <!-- DASHBOARD -->
+  <section id="view-dash" class="view">
+    <h1>Dashboard</h1><p class="subtitle">Control rápido de ventas, pedidos, pagos, logística e inventario.</p>
+    <div id="dashSummary"></div>
+    <div class="grid cards" style="margin-top:14px">
+      <div class="card"><div class="label">Ventas</div><div class="metric" id="mVentas">$0</div></div>
+      <div class="card"><div class="label">Abonos recibidos</div><div class="metric" id="mAbonos">$0</div></div>
+      <div class="card"><div class="label">Saldo pendiente</div><div class="metric" id="mSaldo">$0</div></div>
+      <div class="card"><div class="label">Pedidos abiertos</div><div class="metric" id="mAbiertos">0</div></div>
+      <div class="card"><div class="label">Stock bajo</div><div class="metric" id="mStock">0</div></div>
+    </div>
+    <div class="grid dashboard-grid" style="margin-top:14px">
+      <div class="panel"><h2>Ventas vs abonos (últimos 6 meses)</h2><div class="chart" id="chResumen"></div></div>
+      <div class="panel"><h2>Cobrado vs pendiente</h2><div class="chart" id="chCobro"></div></div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h2>Utilidad bruta</h2>
+      <div class="toolbar" style="margin-bottom:10px">
+        <select id="utilView" onchange="renderUtilidad()"><option value="dia">Diaria (fechas específicas)</option><option value="semana">Semanal</option><option value="mes">Mensual</option><option value="semestre">Semestral</option><option value="anio">Anual</option><option value="total" selected>Total</option></select>
+        <span class="utilCtl" data-v="dia"><input id="utilFrom" type="date" onchange="renderUtilidad()"> <span class="note">hasta</span> <input id="utilTo" type="date" onchange="renderUtilidad()"></span>
+        <span class="utilCtl" data-v="semana"><input id="utilWeek" type="date" onchange="renderUtilidad()"> <span class="note">(semana lunes–domingo)</span></span>
+        <span class="utilCtl" data-v="mes"><select id="utilMonth" onchange="renderUtilidad()"></select></span>
+        <span class="utilCtl" data-v="semestre"><select id="utilSem" onchange="renderUtilidad()"><option value="1">Semestre 1 (ene–jun)</option><option value="2">Semestre 2 (jul–dic)</option></select></span>
+        <span class="utilCtl" data-v="mes semestre anio"><select id="utilYear" onchange="renderUtilidad()"></select></span>
+        <label class="note" style="display:flex;gap:5px;align-items:center"><input type="checkbox" id="utilShip" checked onchange="renderUtilidad()"> Incluir envío en el costo</label>
+      </div>
+      <div id="utilRange" class="note" style="margin-bottom:10px"></div>
+      <div class="grid cards3">
+        <div class="card"><div class="label">Ventas del periodo</div><div class="metric" id="uVentas">$0</div></div>
+        <div class="card"><div class="label">Costo de lo vendido</div><div class="metric" id="uCosto">$0</div></div>
+        <div class="card"><div class="label">Utilidad bruta</div><div class="metric" id="uUtil">$0</div></div>
+        <div class="card"><div class="label">Margen bruto</div><div class="metric" id="uMargen">0%</div></div>
+      </div>
+      <div class="chart" id="chUtil" style="margin-top:12px"></div>
+      <div id="utilTop" style="margin-top:12px"></div>
+      <h3>Inversión del mes</h3>
+      <div class="toolbar" style="margin-bottom:10px"><select id="invMonth" onchange="renderInversion()"></select><select id="invYear" onchange="renderInversion()"></select></div>
+      <div class="grid cards3">
+        <div class="card"><div class="label">Inversión del mes</div><div class="metric" id="invMes">$0</div></div>
+        <div class="card"><div class="label">Unidades ingresadas</div><div class="metric" id="invUnid">0</div></div>
+        <div class="card"><div class="label">Compras registradas</div><div class="metric" id="invCompras">0</div></div>
+        <div class="card"><div class="label">Ventas del mes</div><div class="metric" id="invVentas">$0</div></div>
+      </div>
+      <div class="chart" id="chInv" style="margin-top:12px"></div>
+      <div class="note" style="margin-top:8px">Utilidad bruta = ventas − costo de lo vendido (costo del producto y, si está marcado, su envío). Pedidos no cancelados, en la fecha de cada línea.</div>
+    </div>
+    <div class="grid dashboard-grid" style="margin-top:14px">
+      <div class="panel"><h2>Diezmo, ofrenda y reinversión</h2><div id="profitBox" class="note">Se activa con el admin.js de la Parte B.</div></div>
+      <div class="panel"><h2>Objetivos</h2><div id="goalsBox" class="note">Se activa con el admin.js de la Parte B.</div>
+        <div class="actions"><button class="btn primary" onclick="openGoalPay()">+ Registrar aporte</button></div></div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h2>Impuesto de renta estimado — persona natural, Colombia</h2>
+      <div class="toolbar" style="margin-bottom:10px">
+        <label class="note">Año a estimar <select id="taxYear" onchange="renderTax()"></select></label>
+        <label class="note">UVT 2027 (estimada) <input id="taxUvt" type="number" min="1" style="width:110px" oninput="taxCfgChanged()"></label>
+        <label class="note">Gastos deducibles del año <input id="taxExp" type="number" min="0" style="width:130px" oninput="taxCfgChanged()"></label>
+      </div>
+      <div class="grid cards3">
+        <div class="card"><div class="label">Ingresos brutos (ventas del año)</div><div class="metric" id="tIngresos">$0</div></div>
+        <div class="card"><div class="label">Utilidad bruta del año</div><div class="metric" id="tUtil">$0</div></div>
+        <div class="card"><div class="label">Renta líquida estimada</div><div class="metric" id="tBase">$0</div></div>
+        <div class="card"><div class="label">Base en UVT</div><div class="metric" id="tUvt">0</div></div>
+        <div class="card"><div class="label">Impuesto de renta estimado</div><div class="metric" id="tImpuesto">$0</div></div>
+        <div class="card"><div class="label">Tarifa efectiva</div><div class="metric" id="tEfectiva">0%</div></div>
+      </div>
+      <div class="chart" id="chTax" style="margin-top:12px"></div>
+      <div id="taxObligation" style="margin-top:10px;font-weight:650;font-size:13px"></div>
+      <div class="note" style="margin-top:8px">Estimación orientativa con la tarifa del art. 241 del Estatuto Tributario. La UVT 2027 aún no es oficial ($55.668 estimada; 2026: $52.374). Confirma con tu contador.</div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h2>Valor de inventario</h2>
+      <div class="grid cards3">
+        <div class="card"><div class="label">Monto total del inventario (costo)</div><div class="metric" id="mInvTotal">$0</div></div>
+        <div class="card"><div class="label">Costo de envío total</div><div class="metric" id="mInvEnvio">$0</div></div>
+        <div class="card"><div class="label">Inventario &gt; 90 días</div><div class="metric" id="mInv90">$0</div></div>
+        <div class="card"><div class="label">% inventario &gt; 90 días</div><div class="metric" id="mInv90Pct">0%</div></div>
+      </div>
+      <div class="grid dashboard-grid" style="margin-top:12px">
+        <div><h3 style="margin:0 0 8px">Inventario por categoría</h3><div class="chart" id="chInvCat"></div></div>
+        <div><h3 style="margin:0 0 8px">Antigüedad del inventario</h3><div class="chart" id="chInvAge"></div></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h2>Categorías: inventario y ventas</h2>
+      <div class="note" id="catPeriod" style="margin-bottom:8px"></div>
+      <div class="tablewrap"><table><thead id="catHead"></thead><tbody id="catBody"></tbody></table></div>
+      <div class="grid dashboard-grid" style="margin-top:12px">
+        <div><h3 style="margin:0 0 8px">Participación en inventario</h3><div class="chart" id="chCatInv"></div></div>
+        <div><h3 style="margin:0 0 8px">Participación en ventas</h3><div class="chart" id="chCatVen"></div></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h2>Logística (vista rápida)</h2>
+      <div id="dashLogis" class="note">Se activa con el admin.js de la Parte B.</div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h2>Pedidos por cliente</h2>
+      <div class="toolbar" style="margin-bottom:0"><select id="dashboardClient" onchange="renderClientOrders()" style="width:auto"><option value="">Seleccionar cliente…</option></select></div>
+      <div class="chart" id="chClients" style="margin-top:12px"></div>
+      <div id="clientOrders" style="margin-top:14px"><div class="empty">Selecciona un cliente para ver sus pedidos.</div></div>
+    </div>
+    <div class="grid dashboard-grid" style="margin-top:14px">
+      <div class="panel"><h2>Pedidos recientes</h2><div class="chart" id="chRecent" style="margin-bottom:10px"></div><div id="recentOrders"></div></div>
+      <div class="panel"><h2>Productos con stock bajo</h2><div class="chart" id="chLow" style="margin-bottom:10px"></div><div id="lowStock"></div></div>
+    </div>
+  </section>
+
+  <!-- ABONOS -->
+  <section id="view-abonos" class="view">
+    <h1>Abonos por confirmar</h1><p class="subtitle">Reportes de pago Bre-b enviados por los clientes (llegan en tiempo real).</p>
+    <div id="reports"></div>
+  </section>
+
+  <!-- INVENTARIO -->
+  <section id="view-inv" class="view">
+    <h1>Inventario</h1><p class="subtitle">El stock disponible descuenta bolsitas activas y ventas.</p>
+    <div class="toolbar">
+      <button class="btn primary" onclick="openProduct()">+ Agregar producto</button>
+      <input id="invSearch" placeholder="Buscar producto o código" oninput="renderInventory()">
+      <select id="invFilter" onchange="renderInventory()"><option value="">Todos</option><option>EN STOCK</option><option>REPOSICIÓN</option><option>AGOTADO</option></select>
+      <button class="btn" onclick="loadTab('inv')">🔄</button>
+    </div>
+    <div id="invTable"></div>
+  </section>
+
+  <!-- KITS -->
+  <section id="view-kits" class="view">
+    <h1>Kits</h1><p class="subtitle">Combos armados con productos del inventario.</p>
+    <div class="toolbar"><button class="btn primary" onclick="openKit()">+ Nuevo kit</button><button class="btn" onclick="loadTab('kits')">🔄</button></div>
+    <div id="kitsTable"></div>
+  </section>
+
+  <!-- CATEGORÍAS -->
+  <section id="view-cats" class="view">
+    <h1>Categorías</h1><p class="subtitle">Renombrar o eliminar categorías del inventario.</p>
+    <div class="toolbar"><input id="catNew" placeholder="Nueva categoría" style="max-width:260px"><button class="btn primary" onclick="addCategory()">Agregar</button></div>
+    <div id="catsBox"></div>
+  </section>
+
+  <!-- CLIENTES -->
+  <section id="view-clients" class="view">
+    <h1>Clientes</h1><p class="subtitle">Base de clientes con su historial de compras y saldos.</p>
+    <div class="toolbar"><button class="btn primary" onclick="openClient()">+ Nuevo cliente</button><input id="cliSearch" placeholder="Buscar cliente" oninput="renderClients()"><button class="btn" onclick="loadTab('clients')">🔄</button></div>
+    <div id="clientsTable"></div>
+  </section>
+
+  <!-- PEDIDOS -->
+  <section id="view-orders" class="view">
+    <h1>Pedidos y bolsitas</h1><p class="subtitle">Gestiona estados, productos y abonos de cada bolsita.</p>
+    <div class="toolbar">
+      <input id="ordSearch" placeholder="Buscar número o cliente" oninput="loadOrders()">
+      <select id="ordFilter" onchange="loadOrders()">
+        <option value="">Todos</option><option value="draft">Borrador</option><option value="pending_confirm">Por confirmar</option>
+        <option value="apartada">Apartada</option><option value="paid">Pagada</option><option value="shipped">Enviada</option>
+        <option value="delivered">Entregada</option><option value="canceled">Cancelada</option><option value="expired">Vencida</option>
+      </select>
+      <button class="btn" onclick="loadTab('orders')">🔄</button>
+    </div>
+    <div id="ordersTable"></div>
+  </section>
+
+  <!-- LOGÍSTICA -->
+  <section id="view-logis" class="view">
+    <h1>Logística</h1><p class="subtitle">Pedidos pagados por despachar y envíos registrados.</p>
+    <h2 style="margin:0 0 8px">📦 Por enviar</h2>
+    <div id="logisPending" class="note">Se activa con el admin.js de la Parte B.</div>
+    <h2 style="margin:18px 0 8px">🚚 Enviados</h2>
+    <div id="logisSent" class="note">Se activa con el admin.js de la Parte B.</div>
+  </section>
+
+  <!-- CONFIGURACIÓN (se abre desde el menú del administrador) -->
+  <section id="view-config" class="view">
+    <h1>Configuración</h1><p class="subtitle">Apariencia, utilidad, objetivos, donaciones, factura, pagos y numeración.</p>
+    <div class="panel">
+      <h2 style="margin-top:0">Apariencia</h2>
+      <div class="fgrid">
+        <div class="field"><label>Tema de color</label><select id="uiThemeSel" onchange="setTheme(this.value)"><option value="light">Claro</option><option value="warm">Cálido (protección ocular)</option><option value="dark">Oscuro</option></select></div>
+        <div class="field"><label>Ubicación del menú (PC)</label><select id="uiLayoutSel" onchange="setLayout(this.value)"><option value="top">Barra de menú superior</option><option value="side">Barra de menú lateral</option></select></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2 style="margin-top:0">Utilidad: diezmo, ofrenda y reinversión</h2>
+      <div class="fgrid">
+        <div class="field"><label>Diezmo (% de la utilidad)</label><input id="gDiezmo" type="number" min="0" max="100" value="10"></div>
+        <div class="field"><label>Ofrenda (% de la utilidad)</label><input id="gOfrenda" type="number" min="0" max="100" value="10"></div>
+        <div class="field"><label>Sugerido de reinversión</label><select id="gReinv"><option value="1">Habilitado (visible en dashboard)</option><option value="0">Deshabilitado</option></select></div>
+        <div class="field"><label>% sugerido de reinversión</label><input id="gReinvPct" type="number" min="0" max="100" value="40"></div>
+      </div>
+      <div class="actions" style="margin-top:12px"><button class="btn primary" onclick="saveProfitCfg()">Guardar utilidad</button></div>
+    </div>
+    <div class="panel">
+      <h2 style="margin-top:0">Objetivos (máximo 3)</h2>
+      <div id="goalsCfg" class="note">Se activa con el admin.js de la Parte B.</div>
+      <div class="fgrid" style="margin-top:10px">
+        <div class="field"><label>Nombre del objetivo</label><input id="gcName"></div>
+        <div class="field"><label>Monto meta</label><input id="gcTarget" type="number" min="0"></div>
+        <div class="field"><label>&nbsp;</label><button class="btn primary" onclick="saveGoal()">Agregar objetivo</button></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2 style="margin-top:0">Donaciones certificadas</h2>
+      <div id="donList" class="note">Se activa con el admin.js de la Parte B.</div>
+      <div class="fgrid" style="margin-top:10px">
+        <div class="field"><label>Entidad / destinatario</label><input id="dnEntity"></div>
+        <div class="field"><label>Valor</label><input id="dnAmount" type="number" min="0"></div>
+        <div class="field"><label>Certificado / comprobante</label><input id="dnCert"></div>
+        <div class="field"><label>Fecha</label><input id="dnDate" type="date"></div>
+        <div class="field"><label>Nota</label><input id="dnNote"></div>
+        <div class="field"><label>&nbsp;</label><button class="btn primary" onclick="saveDonation()">Registrar donación</button></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2 style="margin-top:0">Datos de la factura</h2>
+      <div class="fgrid">
+        <div class="field"><label>Nombre de la empresa</label><input id="iEmpresa"></div>
+        <div class="field"><label>NIT / Documento</label><input id="iNit"></div>
+        <div class="field"><label>Teléfono</label><input id="iTel"></div>
+        <div class="field"><label>Email</label><input id="iEmail"></div>
+        <div class="field" style="grid-column:1/-1"><label>Dirección</label><input id="iDir"></div>
+        <div class="field" style="grid-column:1/-1"><label>Mensaje al pie de la factura</label><input id="iMsg"></div>
+        <div class="field"><label>Fuente Títulos</label><select id="iFontTitulos"><option>Arial</option><option>Nunito</option><option>Montserrat</option><option>Perfect Lemonade</option><option>Sweetbliss Personal Use</option><option>Shortcake Strawberry</option><option>Mochibop</option></select></div>
+        <div class="field"><label>Fuente Cuerpo</label><select id="iFontCuerpo"><option>Arial</option><option>Nunito</option><option>Montserrat</option><option>Perfect Lemonade</option><option>Sweetbliss Personal Use</option><option>Shortcake Strawberry</option><option>Mochibop</option></select></div>
+        <div class="field"><label>Logo (PNG/JPG)</label><input id="iLogo" type="file" accept="image/*" onchange="readImg(this,'logo')"></div>
+        <div class="field"><label>Vista previa logo</label><div style="border:1px solid var(--field);border-radius:10px;padding:6px;min-height:56px;display:flex;align-items:center;justify-content:center"><img id="iLogoPrev" style="max-height:52px;display:none"></div></div>
+        <div class="field"><label>Marca de agua</label><input id="iWm" type="file" accept="image/*" onchange="readImg(this,'wm')"></div>
+        <div class="field"><label>Vista previa marca de agua</label><div style="border:1px solid var(--field);border-radius:10px;padding:6px;min-height:56px;display:flex;align-items:center;justify-content:center"><img id="iWmPrev" style="max-height:52px;display:none"></div></div>
+      </div>
+      <div class="actions" style="margin-top:12px">
+        <button class="btn primary" onclick="saveInvoiceCfg()">Guardar datos de factura</button>
+        <button class="btn danger" onclick="clearLogo()">Quitar logo</button>
+        <button class="btn danger" onclick="clearWm()">Quitar marca de agua</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h2 style="margin-top:0">Pagos, WhatsApp y numeración</h2>
+      <div class="fgrid">
+        <div class="field"><label>Llave Bre-b</label><input id="gBreb"></div>
+        <div class="field"><label>WhatsApp (con código de país)</label><input id="gWa"></div>
+        <div class="field"><label>Abono mínimo (COP)</label><input id="gMin" type="number" min="0"></div>
+        <div class="field"><label>Iniciales numeración</label><input id="gPrefix" maxlength="6" style="text-transform:uppercase"></div>
+        <div class="field"><label>Número de inicio</label><input id="gStart" type="number" min="1"></div>
+        <div class="field"><label>Dígitos</label><input id="gDigits" type="number" min="3" max="8"></div>
+        <div class="field" style="grid-column:1/-1"><label>Plantilla mensaje WhatsApp ({ORDER_NUMBER}, {TOTAL}, {AMOUNT})</label><input id="gTpl"></div>
+      </div>
+      <div class="actions" style="margin-top:12px"><button class="btn primary" onclick="saveGeneral()">Guardar configuración</button></div>
+    </div>
+  </section>
+
+  <!-- LEGAL (se abre desde el menú del administrador) -->
+  <section id="view-legal" class="view">
+    <h1>Legal</h1><p class="subtitle">Política de privacidad y términos de servicio de la Aplicación.</p>
+    <div class="panel">
+      <div class="toolbar"><button class="btn primary" id="legalBtnPrivacy" onclick="setLegalDoc('privacy')">Política de privacidad</button><button class="btn" id="legalBtnTerms" onclick="setLegalDoc('terms')">Términos de servicio</button><select id="legalLang" onchange="renderLegal()" style="width:auto"><option value="es">Español</option><option value="en">English</option></select></div>
+      <div id="legalContent" class="legal-doc"></div>
+    </div>
+  </section>
+
+  <!-- IMPORTAR -->
+  <section id="view-import" class="view">
+    <h1>Importar datos actuales (JSON)</h1>
+    <p class="subtitle">Sube el respaldo JSON de tu Administrador Emprendedor. No duplica registros existentes.</p>
+    <div class="panel">
+      <input type="file" id="importFile" accept=".json,application/json" onchange="onImportFile(event)">
+      <div id="importResult" class="note" style="margin-top:12px"></div>
+    </div>
+  </section>
+</main>
+
+<!-- MODAL PRODUCTO -->
+<div id="productModal" class="modal-backdrop"><div class="modal">
+  <h2 id="prodTitle">Producto</h2>
+  <input type="hidden" id="pId">
+  <div class="fgrid">
+    <div class="field"><label>Nombre</label><input id="pName"></div>
+    <div class="field"><label>Código de barras</label><input id="pCode"></div>
+    <div class="field"><label>Categoría</label><select id="pCat"></select></div>
+    <div class="field"><label>Fecha de compra</label><input id="pDate" type="date"></div>
+    <div class="field"><label>Costo</label><input id="pCost" type="number" min="0"></div>
+    <div class="field"><label>Envío / costo adicional</label><input id="pShip" type="number" min="0"></div>
+    <div class="field"><label>Precio de venta</label><input id="pPrice" type="number" min="0"></div>
+    <div class="field"><label>Stock</label><input id="pStock" type="number" min="0"></div>
+    <div class="field"><label>Mínimo de reposición</label><input id="pMin" type="number" min="0"></div>
+  </div>
+  <div class="modal-actions"><button class="btn" onclick="closeModal('productModal')">Cancelar</button><button class="btn primary" onclick="saveProduct()">Guardar</button></div>
+</div></div>
+
+<!-- MODAL KIT -->
+<div id="kitModal" class="modal-backdrop"><div class="modal">
+  <h2 id="kitTitle">Kit</h2>
+  <input type="hidden" id="kId">
+  <div class="fgrid">
+    <div class="field"><label>Nombre del kit</label><input id="kName"></div>
+    <div class="field"><label>Precio de venta del kit</label><input id="kPrice" type="number" min="0"></div>
+  </div>
+  <h3>Componentes</h3>
+  <div class="tablewrap" style="max-height:240px"><table class="adm"><thead><tr><th>Producto</th><th>Cantidad</th><th></th></tr></thead><tbody id="kComps"></tbody></table></div>
+  <div class="actions" style="margin-top:10px"><button class="btn" onclick="addKitRow()">+ Agregar producto al kit</button></div>
+  <div class="modal-actions"><button class="btn danger" id="kDel" onclick="delKit()" style="display:none">Eliminar kit</button><button class="btn" onclick="closeModal('kitModal')">Cancelar</button><button class="btn primary" onclick="saveKit()">Guardar kit</button></div>
+</div></div>
+
+<!-- MODAL CLIENTE -->
+<div id="clientModal" class="modal-backdrop"><div class="modal">
+  <h2 id="cliTitle">Cliente</h2>
+  <input type="hidden" id="cId">
+  <div class="fgrid">
+    <div class="field"><label>Nombre</label><input id="cName"></div>
+    <div class="field"><label>WhatsApp</label><input id="cWa" inputmode="numeric"></div>
+    <div class="field"><label>Ciudad</label><input id="cCity"></div>
+    <div class="field"><label>Dirección</label><input id="cAddr"></div>
+    <div class="field"><label>Estado</label><select id="cStatus"><option>Activo</option><option>Inactivo</option></select></div>
+    <div class="field" id="cPinField"><label>PIN inicial (opcional)</label><input id="cPin" inputmode="numeric"></div>
+  </div>
+  <div class="modal-actions"><button class="btn" onclick="closeModal('clientModal')">Cancelar</button><button class="btn primary" onclick="saveClient()">Guardar</button></div>
+</div></div>
+
+<!-- MODAL PEDIDO -->
+<div id="orderModal" class="modal-backdrop"><div class="modal">
+  <div id="orderBody"></div>
+  <div class="modal-actions"><button class="btn" onclick="closeModal('orderModal')">Cerrar</button></div>
+</div></div>
+
+<!-- MODAL ENVÍO (LOGÍSTICA) -->
+<div id="shipModal" class="modal-backdrop"><div class="modal">
+  <h2 id="shTitle">Preparar envío</h2>
+  <input type="hidden" id="shId">
+  <div class="fgrid">
+    <div class="field"><label>Pago del envío</label><select id="shPay"><option value="adelantado">Adelantado</option><option value="por_cobrar">Por cobrar</option></select></div>
+    <div class="field"><label>Monto</label><input id="shAmount" type="number" min="0"></div>
+    <div class="field"><label>Transportadora</label><select id="shCarrier" onchange="carrierChanged()"><option>Interrapidísimo</option><option>Envía</option><option>Coordinadora</option><option>Servientrega</option><option>envío local</option><option>otra</option></select></div>
+    <div class="field" id="shCarrierOtherField" style="display:none"><label>Nombre de la transportadora</label><input id="shCarrierOther"></div>
+    <div class="field"><label>Medidas del paquete (opcional)</label><input id="shDims" placeholder="Ej: 30×20×10 cm, 1 kg"></div>
+    <div class="field"><label>Ciudad</label><input id="shCity"></div>
+    <div class="field" style="grid-column:1/-1"><label>Dirección</label><input id="shAddress"></div>
+    <div class="field"><label>Dirección de este envío</label><select id="shAddrKind"><option value="temporal">Temporal (no modifica la ficha del cliente)</option><option value="principal">Principal (actualiza la ficha del cliente)</option></select></div>
+  </div>
+  <p class="note" id="shHint" style="margin-top:8px"></p>
+  <div class="modal-actions">
+    <button class="btn" onclick="closeModal('shipModal')">Cancelar</button>
+    <button class="btn" onclick="saveShipment('save')">Guardar</button>
+    <button class="btn primary" id="shSendBtn" onclick="saveShipment('send')" disabled>Enviar</button>
+  </div>
+</div></div>
+
+<!-- MODAL APORTE A OBJETIVO -->
+<div id="goalPayModal" class="modal-backdrop"><div class="modal">
+  <h2>Registrar aporte a objetivo</h2>
+  <div class="fgrid">
+    <div class="field"><label>Objetivo</label><select id="gpGoal"></select></div>
+    <div class="field"><label>Monto del aporte</label><input id="gpAmount" type="number" min="0"></div>
+    <div class="field"><label>Fecha del ingreso</label><input id="gpDate" type="date"></div>
+  </div>
+  <div class="modal-actions"><button class="btn" onclick="closeModal('goalPayModal')">Cancelar</button><button class="btn primary" onclick="saveGoalPayment()">Registrar aporte</button></div>
+</div></div>
+
+<div id="toast" class="toast hidden"></div>
+</body>
+</html>

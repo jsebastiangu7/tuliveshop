@@ -983,4 +983,3 @@ router.post('/wipe', async (req: AuthRequest, res) => {
 });
 
 export default router;
-export default router;

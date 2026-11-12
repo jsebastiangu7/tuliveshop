@@ -372,6 +372,12 @@ body.layout-side .hdr-icons{margin-left:0}
       </div>
       <div id="legalContent" class="legal-doc"></div>
     </div>
+      <!-- BORRADO TOTAL -->
+  <div class="panel" style="margin-top:24px; border: 2px solid var(--danger); background: rgba(220,38,38,0.04);">
+    <h2 style="margin-top:0; color:var(--danger)">⚠️ Zona de peligro: Borrar toda la tienda</h2>
+    <p class="note" style="color:var(--danger)">Esta acción eliminará <b>permanentemente</b> todo el inventario, categorías, kits, clientes, pedidos, abonos, logística, objetivos, donaciones y la configuración personalizada. <b>No se puede deshacer.</b></p>
+    <button class="btn danger" onclick="openWipeModal()">Borrar toda la información de la tienda</button>
+  </div>
   </section>
 
   <!-- IMPORTAR JSON -->
@@ -485,5 +491,22 @@ body.layout-side .hdr-icons{margin-left:0}
 </div></div>
 
 <div id="toast" class="toast hidden"></div>
+<!-- MODAL BORRADO TOTAL -->
+<div id="wipeModal" class="modal-backdrop">
+  <div class="modal" style="border: 2px solid var(--danger); max-width: 480px;">
+    <h3 style="color:var(--danger); margin-top:0">⚠️ Confirmar borrado total</h3>
+    <p class="note">Para confirmar, escribe <b>exactamente</b> la siguiente frase:</p>
+    <p style="font-weight:800; color:var(--danger); background:var(--surface2); padding:12px; border-radius:10px; text-align:center; font-size:14px;">Estoy seguro de hacer el borrado</p>
+    <div class="field">
+      <label>Escribe la frase exacta para confirmar</label>
+      <input id="wipeConfirmText" type="text" placeholder="Estoy seguro de hacer el borrado" autocomplete="off">
+    </div>
+    <div class="err" id="wipeErr" style="min-height:18px"></div>
+    <div class="modal-actions" style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end;">
+      <button class="btn" onclick="closeModal('wipeModal')">Cancelar</button>
+      <button class="btn danger" id="wipeExecuteBtn" onclick="executeWipe()" disabled>Borrar todo permanentemente</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

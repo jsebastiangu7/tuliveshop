@@ -1392,3 +1392,91 @@ async function generateInvoice(orderId) {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+/* =====================================================================
+   PANDALA KAWAI · NAVEGACIÓN RESPONSIVE (celular / tablet)
+   Bloque autónomo: pegar AL FINAL de admin.js. No requiere editar nada más.
+   ===================================================================== */
+(function () {
+  'use strict';
+  var MQ = window.matchMedia('(max-width: 1024px)'); // celular + tablet
+  function isMobile() { return MQ.matches; }
+
+  var ICONS = { dash:'📊', abonos:'💰', inv:'📦', kits:'🎁', cats:'🏷️', clients:'👥', orders:'🧾', logis:'🚚', import:'📥', config:'⚙️', legal:'📜' };
+
+  /* ---------- Estilos propios (toman la paleta del panel) ---------- */
+  function injectCss() {
+    if (document.getElementById('pkMobileNavCss')) return;
+    var s = document.createElement('style');
+    s.id = 'pkMobileNavCss';
+    s.textContent = [
+      '#pkMobileNav{display:none}',
+      'body.pk-mobile #hdr{flex-wrap:wrap}',
+      'body.pk-mobile #pkMobileNav{display:block;width:100%;flex:1 1 100%;order:99;margin-top:10px}',
+      'body.pk-mobile nav#tabs{display:none!important}',
+      'body.pk-mobile .layout-btn{display:none!important}',
+      'body.pk-mobile .pk-pc-only{display:none!important}',
+      '.pk-mnav-shell{position:relative;display:flex;align-items:center;background:var(--card,#fffdf8);border:1.5px solid var(--border,#e8e1d2);border-radius:14px;box-shadow:0 2px 10px rgba(60,40,90,.08);transition:border-color .18s,box-shadow .18s}',
+      '.pk-mnav-shell:focus-within{border-color:var(--c1,#7c5cff);box-shadow:0 0 0 3px rgba(124,92,255,.16)}',
+      '.pk-mnav-ico{position:absolute;left:14px;font-size:18px;line-height:1;pointer-events:none}',
+      '#pkMobileNavSel{-webkit-appearance:none;appearance:none;width:100%;border:0;background:transparent;color:var(--ink,#241f31);font:inherit;font-weight:700;font-size:15px;padding:14px 44px;cursor:pointer;outline:none;text-overflow:ellipsis}',
+      '#pkMobileNavSel option{color:#241f31;background:#fffdf8;font-weight:600}',
+      '.pk-mnav-chev{position:absolute;right:14px;font-size:13px;color:var(--muted,#8a8398);pointer-events:none;transition:transform .2s}',
+      '.pk-mnav-shell:focus-within .pk-mnav-chev{transform:rotate(180deg)}',
+      '@media (max-width:430px){#pkMobileNavSel{font-size:14px;padding:13px 40px}.pk-mnav-ico{left:12px}.pk-mnav-chev{right:12px}}'
+    ].join('\n');
+    document.head.appendChild(s);
+  }
+
+  /* ---------- Crea el desplegable debajo de las opciones de tema ---------- */
+  function ensureNav() {
+    injectCss();
+    // Oculta "Ubicación del menú (PC)" en Configuración cuando es móvil
+    var ls = document.getElementById('uiLayoutSel');
+    if (ls) { var f = ls.closest('.field') || ls.parentElement; if (f) f.classList.add('pk-pc-only'); }
+    if (document.getElementById('pkMobileNav')) return;
+    var hdr = document.getElementById('hdr'); if (!hdr) return;
+    var wrap = document.createElement('div');
+    wrap.id = 'pkMobileNav';
+    var opts = TABS.map(function (t) { return '<option value="' + t[0] + '">' + (ICONS[t[0]] || '•') + '  ' + t[1] + '</option>'; }).join('');
+    opts += '<option value="config">⚙️  Configuración</option><option value="legal">📜  Legal</option>';
+    wrap.innerHTML = '<div class="pk-mnav-shell"><span class="pk-mnav-ico" id="pkMnavIco">📊</span>' +
+      '<select id="pkMobileNavSel" aria-label="Menú del panel">' + opts + '</select>' +
+      '<span class="pk-mnav-chev">▾</span></div>';
+    hdr.appendChild(wrap);
+    document.getElementById('pkMobileNavSel').addEventListener('change', function () { showTab(this.value); });
+    sync();
+  }
+
+  function sync() {
+    var sel = document.getElementById('pkMobileNavSel'); if (!sel) return;
+    if (sel.value !== currentTab) sel.value = currentTab;
+    var ico = document.getElementById('pkMnavIco'); if (ico) ico.textContent = ICONS[currentTab] || '🧭';
+  }
+
+  function apply() {
+    document.body.classList.toggle('pk-mobile', isMobile());
+    // En móvil/tablet siempre menú superior (desplegable); nunca barra lateral
+    var side = !isMobile() && (localStorage.getItem('uiLayout') || 'top') === 'side';
+    document.body.classList.toggle('layout-side', side);
+    sync();
+  }
+
+  /* ---------- Se engancha sin modificar el resto del archivo ---------- */
+  var _setLayout = setLayout;
+  setLayout = function (mode) { _setLayout(mode); apply(); };
+
+  var _renderTabs = renderTabs;
+  renderTabs = function () { _renderTabs(); sync(); };
+
+  var _enterPanel = enterPanel;
+  enterPanel = function () { _enterPanel(); ensureNav(); apply(); };
+
+  if (MQ.addEventListener) MQ.addEventListener('change', function () { ensureNav(); apply(); });
+  else if (MQ.addListener) MQ.addListener(function () { ensureNav(); apply(); });
+  window.addEventListener('orientationchange', function () { setTimeout(function () { ensureNav(); apply(); }, 150); });
+  window.addEventListener('resize', (function () { var t; return function () { clearTimeout(t); t = setTimeout(apply, 120); }; })());
+
+  // Estado inicial (por si ya hay sesión activa o se carga directamente en móvil)
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply);
+  else apply();
+})();

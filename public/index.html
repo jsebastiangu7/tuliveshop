@@ -1,217 +1,518 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-theme="light">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Pandala Kawaii · Tienda</title>
-<link rel="stylesheet" href="/styles.css">
+<meta name="description" content="Aparta tus productos favoritos en bolsitas y paga a tu ritmo con Bre-b.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="/socket.io/socket.io.js" defer></script>
 <style>
-/* Categorías: menú lateral en PC ancho; desplegable de selección múltiple en tablet/celular o ventana angosta */
-.cats-drop{display:none;margin-bottom:12px;position:relative}
-.cats-drop-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--field);background:var(--card);border-radius:12px;padding:11px 14px;font:inherit;font-weight:700;color:var(--ink);cursor:pointer;transition:border-color .15s,color .15s,box-shadow .15s}
-.cats-drop-btn:hover{border-color:var(--primary);color:var(--primary-text)}
-.cats-drop-panel{display:none;margin-top:8px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px;max-height:46vh;overflow:auto;box-shadow:var(--shadow-md)}
-.cats-drop-panel.open{display:block}
-.cats-drop-panel .cats-list{flex-direction:column;flex-wrap:nowrap}
-.cats-drop-panel .cat-row{border:0}
-@media(max-width:860px){
-  .shop-side{display:none}
-  .cats-drop{display:block}
+:root{
+  --bg:#fff4ec; --bg2:#ffe9f1; --surface:#ffffff; --surface2:#fff0f5; --overlay:#fff8fb;
+  --ink:#33203a; --muted:#8a6f8f; --border:#f3d7e2; --field:#f6e3ec;
+  --primary:#7c5cff; --primary-ink:#ffffff; --pink:#ff5c8a; --mint:#1fc993; --amber:#ffab1a; --blue:#38bdf8;
+  --ok:#1fc993; --warn:#ffab1a; --danger:#ff4d6d; --info:#38bdf8;
+  --scrim:rgba(51,32,58,.45); --shadow:0 14px 40px rgba(124,92,255,.16);
+  --grad:linear-gradient(120deg,#ff5c8a,#7c5cff 55%,#38bdf8);
+}
+[data-theme="warm"]{ --bg:#f6ecd9; --bg2:#f1e2c8; --surface:#fdf6e8; --surface2:#f7ecd6; --overlay:#fbf3e2;
+  --ink:#4a3a2a; --muted:#93805f; --border:#e7d6b4; --field:#efe1c4; --scrim:rgba(74,58,42,.45); --shadow:0 14px 40px(146,110,60,.18); }
+[data-theme="dark"]{ --bg:#171021; --bg2:#1e1430; --surface:#241a38; --surface2:#2c2044; --overlay:#2a1e40;
+  --ink:#f6edff; --muted:#b39ccf; --border:#3a2b55; --field:#33254e; --primary:#9d85ff; --pink:#ff7aa2;
+  --scrim:rgba(8,4,16,.66); --shadow:0 16px 44px rgba(0,0,0,.5); }
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:'Nunito',system-ui,sans-serif;color:var(--ink);background:
+  radial-gradient(1100px 520px at 88% -8%,var(--bg2),transparent 60%),
+  radial-gradient(900px 500px at -6% 12%,color-mix(in srgb,var(--pink) 12%,transparent),transparent 55%),var(--bg);
+  min-height:100vh;-webkit-font-smoothing:antialiased}
+h1,h2,h3,.brand,.metric{font-family:'Baloo 2',cursive}
+::selection{background:var(--pink);color:#fff}
+*{scrollbar-width:thin;scrollbar-color:var(--primary) color-mix(in srgb,var(--primary) 14%,transparent)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:color-mix(in srgb,var(--primary) 12%,transparent)}
+::-webkit-scrollbar-thumb{background:var(--grad);border-radius:9px;border:2px solid var(--bg)}
+button{font:inherit;cursor:pointer}
+input,select{font:inherit;color:var(--ink);background:var(--surface);border:1.5px solid var(--field);border-radius:12px;padding:11px 13px;outline:none;transition:border-color .15s,box-shadow .15s;width:100%}
+input:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 22%,transparent)}
+.btn{border:1.5px solid var(--border);background:var(--surface);color:var(--ink);border-radius:12px;padding:10px 15px;font-weight:800;display:inline-flex;align-items:center;gap:7px;justify-content:center;transition:transform .12s,box-shadow .15s,background .15s}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn.primary{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 8px 22px color-mix(in srgb,var(--primary) 40%,transparent)}
+.btn.pink{background:var(--pink);color:#fff;border-color:transparent}
+.btn.ghost{background:transparent}
+.btn.danger{background:var(--danger);color:#fff;border-color:transparent}
+.btn.wa{background:#25d366;color:#06341c;border-color:transparent}
+.btn.sm{padding:7px 11px;font-size:13px;border-radius:10px}
+.btn.block{width:100%}
+.btn[disabled]{opacity:.5;cursor:not-allowed;transform:none}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:800;background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.pill.ok{background:color-mix(in srgb,var(--ok) 16%,var(--surface));color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent)}
+.pill.warn{background:color-mix(in srgb,var(--warn) 18%,var(--surface));color:#a06a00;border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
+[data-theme="dark"] .pill.warn{color:var(--warn)}
+.pill.danger{background:color-mix(in srgb,var(--danger) 15%,var(--surface));color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,transparent)}
+.pill.info{background:color-mix(in srgb,var(--info) 16%,var(--surface));color:var(--info);border-color:color-mix(in srgb,var(--info) 40%,transparent)}
+.hidden{display:none!important}
+
+/* NAV */
+header{position:sticky;top:0;z-index:60;background:color-mix(in srgb,var(--surface) 86%,transparent);backdrop-filter:blur(14px);border-bottom:1.5px solid var(--border)}
+.nav{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:11px 16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:9px;font-size:21px;font-weight:800;color:var(--ink);text-decoration:none}
+.brand .logo{width:38px;height:38px;flex:0 0 auto}
+.brand b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.nav .grow{flex:1}
+.iconbtn{position:relative;width:42px;height:42px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);display:inline-flex;align-items:center;justify-content:center;font-size:18px}
+.iconbtn .badge{position:absolute;top:-6px;right:-6px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:var(--pink);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--surface)}
+.searchwrap{position:relative;flex:1;min-width:180px;max-width:420px}
+.searchwrap input{padding-left:38px;border-radius:999px}
+.searchwrap .ic{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted)}
+
+/* HERO */
+.hero{max-width:1180px;margin:18px auto 6px;padding:0 16px}
+.hero-card{position:relative;overflow:hidden;border-radius:24px;padding:26px 26px;background:var(--grad);color:#fff;box-shadow:var(--shadow)}
+.hero-card h1{margin:0 0 6px;font-size:clamp(24px,4vw,34px);line-height:1.1}
+.hero-card p{margin:0;max-width:560px;font-weight:600;opacity:.95}
+.hero-card .spark{position:absolute;font-size:22px;opacity:.85;animation:float 5s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+.hero-mascot{position:absolute;right:18px;bottom:-8px;width:120px;opacity:.95;animation:float 6s ease-in-out infinite}
+
+/* CHIPS */
+.chips{max-width:1180px;margin:14px auto 4px;padding:0 16px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);border-radius:999px;padding:8px 15px;font-weight:800;font-size:13px;transition:.15s}
+.chip.active{background:var(--grad);color:#fff;border-color:transparent}
+
+/* GRID */
+.grid{max-width:1180px;margin:14px auto 60px;padding:0 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+.card{background:var(--surface);border:1.5px solid var(--border);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;transition:transform .15s,box-shadow .2s;animation:pop .35s ease both}
+.card:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+@keyframes pop{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.thumb{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;font-size:56px;background:
+  radial-gradient(120px 120px at 30% 25%,color-mix(in srgb,var(--pink) 22%,transparent),transparent 70%),
+  radial-gradient(140px 140px at 75% 80%,color-mix(in srgb,var(--blue) 20%,transparent),transparent 70%),var(--surface2);position:relative}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.thumb .tag{position:absolute;top:9px;left:9px}
+.thumb .kit{position:absolute;top:9px;right:9px;font-size:20px}
+.cbody{padding:12px 13px 14px;display:flex;flex-direction:column;gap:7px;flex:1}
+.cname{font-weight:800;font-size:14.5px;line-height:1.25}
+.cprice{font-family:'Baloo 2';font-size:20px;font-weight:800;color:var(--primary)}
+.cfoot{margin-top:auto;display:flex;align-items:center;gap:8px}
+.qty{display:flex;align-items:center;border:1.5px solid var(--field);border-radius:10px;overflow:hidden}
+.qty button{width:30px;height:34px;border:0;background:var(--surface2);color:var(--ink);font-weight:800}
+.qty input{width:38px;border:0;border-radius:0;text-align:center;padding:6px 2px}
+.empty{grid-column:1/-1;text-align:center;padding:50px 20px;color:var(--muted)}
+.empty .big{font-size:54px;margin-bottom:8px}
+
+/* DRAWER / MODAL */
+.scrim{position:fixed;inset:0;background:var(--scrim);backdrop-filter:blur(3px);z-index:80;opacity:0;pointer-events:none;transition:opacity .2s}
+.scrim.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;height:100dvh;width:min(440px,100%);background:var(--overlay);z-index:90;transform:translateX(102%);transition:transform .28s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;border-left:1.5px solid var(--border)}
+.drawer.open{transform:none}
+.drawer header{position:static;background:transparent;border-bottom:1.5px solid var(--border);backdrop-filter:none}
+.dhead{display:flex;align-items:center;gap:10px;padding:16px}
+.dhead h2{margin:0;font-size:20px;flex:1}
+.dbody{flex:1;overflow-y:auto;padding:14px 16px 24px}
+.modal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:16px}
+.modal.open{display:flex}
+.modal .box{background:var(--overlay);border:1.5px solid var(--border);border-radius:20px;width:min(430px,100%);max-height:92dvh;overflow-y:auto;padding:22px;box-shadow:var(--shadow);animation:pop .25s ease both}
+.modal h2{margin:0 0 4px;font-size:22px}
+.modal .sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;font-weight:600}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.field label{font-size:12.5px;font-weight:800;color:var(--muted)}
+.err{color:var(--danger);font-size:13px;font-weight:700;min-height:16px;margin:4px 0}
+.okmsg{color:var(--ok);font-size:13px;font-weight:700;min-height:16px;margin:4px 0}
+.tabs{display:flex;gap:6px;background:var(--surface2);padding:5px;border-radius:12px;margin-bottom:16px}
+.tabs button{flex:1;border:0;background:transparent;color:var(--muted);border-radius:9px;padding:9px;font-weight:800}
+.tabs button.active{background:var(--surface);color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.link{color:var(--primary);font-weight:800;font-size:13px;text-decoration:underline;cursor:pointer;background:none;border:0;padding:0}
+.divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;font-weight:700;margin:14px 0}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* BOLSITA */
+.bolsita{background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:14px;margin-bottom:13px}
+.bolsita .top{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.bolsita .num{font-family:'Baloo 2';font-weight:800;font-size:16px}
+.bitem{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px dashed var(--border);font-size:13.5px}
+.bitem .em{font-size:20px}
+.bitem .nm{flex:1;font-weight:700}
+.bitem .pr{font-weight:800;color:var(--primary)}
+.bitem .rm{border:0;background:transparent;color:var(--danger);font-size:15px}
+.progress{height:9px;border-radius:999px;background:var(--surface2);overflow:hidden;margin:9px 0 5px}
+.progress b{display:block;height:100%;background:var(--grad);border-radius:999px;transition:width .4s}
+.btotals{display:flex;justify-content:space-between;font-size:12.5px;font-weight:800;color:var(--muted)}
+.bactions{display:flex;gap:8px;margin-top:11px}
+.bactions .btn{flex:1}
+
+/* BRE-B */
+.breb-key{display:flex;align-items:center;gap:10px;background:var(--surface2);border:1.5px dashed var(--primary);border-radius:14px;padding:13px 15px;margin:6px 0 14px}
+.breb-key .k{flex:1;font-family:'Baloo 2';font-size:22px;font-weight:800;letter-spacing:1px;color:var(--primary)}
+.steps{font-size:13px;color:var(--muted);font-weight:600;line-height:1.6;margin:0 0 14px;padding-left:18px}
+
+/* TOAST + BUBBLE (alto contraste en todos los temas) */
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);z-index:120;background:#241f31;color:#fff;padding:12px 18px;border-radius:12px;font-weight:800;font-size:14px;box-shadow:0 12px 30px rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:.25s;max-width:92vw;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#bubble{position:fixed;left:16px;bottom:16px;z-index:110;max-width:320px;display:none;gap:11px;align-items:flex-start;background:#241f31;color:#ffffff;border:2px solid var(--amber);border-radius:16px;padding:13px 15px;box-shadow:0 14px 34px rgba(0,0,0,.45);font-size:13.5px;animation:pop .3s ease both}
+[data-theme="dark"] #bubble{background:#fff6e6;color:#241f31;border-color:var(--primary)}
+#bubble .bic{font-size:22px}
+#bubble b{color:var(--amber)}
+[data-theme="dark"] #bubble b{color:var(--primary)}
+#bubble .ba{display:flex;gap:8px;margin-top:9px}
+#bubble .ba button{border:0;border-radius:9px;padding:6px 11px;font-weight:800;font-size:12px}
+#bubble .see{background:var(--amber);color:#241f31}
+[data-theme="dark"] #bubble .see{background:var(--primary);color:#fff}
+#bubble .x{background:transparent;color:inherit;border:1.5px solid currentColor}
+
+@media(max-width:640px){
+  .nav{gap:8px}
+  .brand span.txt{display:none}
+  .searchwrap{order:5;flex-basis:100%;max-width:none}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px}
+  .hero-mascot{width:88px}
 }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="/invoice-fonts.js" defer></script>
-<script src="/socket.io/socket.io.js" defer></script>
-<script src="/app.js" defer></script>
 </head>
 <body>
-<header id="hdr" class="hidden">
-  <div class="brand" style="cursor:pointer" onclick="goHome()" title="Volver al inicio">Pandala <span>Kawaii</span></div>
-  <input id="search" class="search hidden" placeholder="Buscar producto…" oninput="renderCatalog()">
-  <div class="icon-group" id="themeGroup">
-    <button class="theme-btn" data-theme="light" onclick="setTheme('light')" title="Modo claro">☀️</button>
-    <button class="theme-btn" data-theme="warm" onclick="setTheme('warm')" title="Modo cálido (protección ocular)">🌤️</button>
-    <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')" title="Modo oscuro">🌙</button>
-  </div>
-  <button id="btnBolsita" class="btn primary hidden" onclick="showView('bolsita')">🛍 Mi Bolsita <b id="bolsitaCount"></b></button>
-  <div class="who-wrap hidden" id="clientWhoWrap">
-    <button class="btn who-btn" onclick="toggleClientMenu()">👤 <span id="clientWhoName">—</span> ▾</button>
-    <div id="clientMenu" class="user-menu hidden">
-      <button type="button" onclick="menuClient('profile')">👤 Mi perfil</button>
-      <button type="button" onclick="menuClient('address')">📍 Mi dirección</button>
-      <button type="button" onclick="menuClient('facturas')">🧾 Mis facturas</button>
-      <button type="button" onclick="logout()">🚪 Salir</button>
+
+<header>
+  <div class="nav">
+    <a class="brand" href="#">
+      <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5c8a"/><stop offset=".55" stop-color="#7c5cff"/><stop offset="1" stop-color="#38bdf8"/></linearGradient></defs><path d="M14 22h36l-4 32a6 6 0 0 1-6 5H24a6 6 0 0 1-6-5z" fill="url(#lg)"/><path d="M22 22a10 10 0 0 1 20 0" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/><circle cx="26" cy="36" r="3" fill="#fff"/><circle cx="38" cy="36" r="3" fill="#fff"/><path d="M27 44q5 4 10 0" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>
+      <span class="txt">Pandala <b>Kawaii</b></span>
+    </a>
+    <div class="searchwrap">
+      <span class="ic">🔎</span>
+      <input id="search" type="search" placeholder="Buscar productos o kits…" autocomplete="off">
     </div>
+    <div class="grow"></div>
+    <button class="iconbtn" id="themeBtn" title="Cambiar tema">🎨</button>
+    <button class="iconbtn" id="bolsitaBtn" title="Mi Bolsita">🛍️<span class="badge hidden" id="cartBadge">0</span></button>
+    <button class="btn primary sm" id="accountBtn">Ingresar</button>
   </div>
 </header>
-<main>
-  <!-- ACCESO -->
-  <section id="view-access" class="view active">
-    <div style="text-align:center;padding:36px 0 6px">
-      <div class="brand big">Pandala <span>Kawaii</span></div>
-      <p class="subtitle">Tu papelería kawaii favorita · tienda en línea</p>
-    </div>
-    <div class="access-grid">
-      <div class="access-card">
-        <div class="access-icon" style="background:color-mix(in srgb, var(--accent) 18%, var(--card))">🛍️</div>
-        <h2>Soy Cliente</h2>
-        <p>Explora los productos disponibles en el Live, agrégalos a tu <b>Bolsita de compra</b> y envía tu abono por Bre-B / WhatsApp.</p>
-        <button class="btn gold wide" onclick="showView('client-auth')">Ingresar a Comprar</button>
-      </div>
-      <div class="access-card">
-        <div class="access-icon" style="background:color-mix(in srgb, var(--primary) 14%, var(--card))">⚡</div>
-        <h2>Soy Administrador</h2>
-        <p>Panel de control en vivo, inventario en tiempo real, registro de pedidos, abonos, facturación y carga de respaldos JSON.</p>
-        <button class="btn primary wide" onclick="location.href='/admin.html'">Panel de Gestión</button>
-      </div>
-    </div>
-  </section>
 
-  <!-- AUTH CLIENTE -->
-  <section id="view-client-auth" class="view">
-    <h1>Acceso cliente</h1>
-    <div class="tabs">
-      <button id="tabLogin" class="tab active" type="button" onclick="setAuthTab('login')">Ingresar</button>
-      <button id="tabReg" class="tab" type="button" onclick="setAuthTab('reg')">Crear cuenta</button>
-    </div>
-    <form id="formLogin" class="panel" onsubmit="clientLogin(event)">
-      <label>WhatsApp</label><input id="loginWa" inputmode="numeric" required placeholder="3001234567">
-      <label>PIN</label><input id="loginPin" type="password" inputmode="numeric" required>
-      <button class="btn primary" type="submit">Entrar a la tienda</button>
-      <div id="loginErr" class="error"></div>
-    </form>
-    <form id="formReg" class="panel hidden" onsubmit="clientRegister(event)">
-      <label>Nombre</label><input id="regName" required>
-      <label>WhatsApp</label><input id="regWa" inputmode="numeric" required placeholder="3001234567">
-      <label>Ciudad</label><input id="regCity">
-      <label>Dirección</label><input id="regAddress">
-      <label>PIN (mínimo 4 dígitos)</label><input id="regPin" type="password" inputmode="numeric" minlength="4" required>
-      <button class="btn primary" type="submit">Crear cuenta y entrar</button>
-      <div id="regErr" class="error"></div>
-    </form>
-  </section>
+<section class="hero">
+  <div class="hero-card">
+    <span class="spark" style="top:14px;left:44%">✨</span>
+    <span class="spark" style="top:60px;left:70%;animation-delay:1.2s">🌸</span>
+    <span class="spark" style="top:26px;left:82%;animation-delay:.6s">⭐</span>
+    <h1>Aparta en <b>bolsitas</b> y paga a tu ritmo 💜</h1>
+    <p>Elige tus favoritos, sepáralos con un abono por Bre-b y completa el pago cuando quieras. Envío coordinado por WhatsApp.</p>
+    <svg class="hero-mascot" viewBox="0 0 64 64" aria-hidden="true"><path d="M14 22h36l-4 32a6 6 0 0 1-6 5H24a6 6 0 0 1-6-5z" fill="#fff" opacity=".95"/><path d="M22 22a10 10 0 0 1 20 0" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/><circle cx="26" cy="36" r="3" fill="#7c5cff"/><circle cx="38" cy="36" r="3" fill="#7c5cff"/><path d="M27 44q5 4 10 0" fill="none" stroke="#ff5c8a" stroke-width="3" stroke-linecap="round"/><circle cx="21" cy="41" r="2.4" fill="#ff9ebb"/><circle cx="43" cy="41" r="2.4" fill="#ff9ebb"/></svg>
+  </div>
+</section>
 
-  <!-- TIENDA -->
-  <section id="view-shop" class="view">
-    <h1>Catálogo</h1>
-    <p class="subtitle">Toca "Agregar" para llevarlo en tu bolsita. El stock se actualiza en tiempo real.</p>
-    <!-- Desplegable de categorías (tablet / celular / ventana angosta) -->
-    <div class="cats-drop">
-      <button type="button" class="cats-drop-btn" onclick="toggleCatsDrop()">
-        <span id="catsDropLabel">🗂 Categorías: todas</span><span>▾</span>
-      </button>
-      <div id="catsDropPanel" class="cats-drop-panel">
-        <div id="catsDropList" class="cats-list"></div>
-        <div class="actions"><button class="btn" type="button" onclick="clearCats()">Limpiar selección</button></div>
+<div class="chips" id="chips"></div>
+<main class="grid" id="grid"><div class="empty"><div class="big">🎀</div>Cargando productos…</div></main>
+
+<!-- DRAWER MI BOLSITA -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Mi Bolsita">
+  <header><div class="dhead"><h2>🛍️ Mi Bolsita</h2><button class="iconbtn" id="closeDrawer">✕</button></div></header>
+  <div class="dbody" id="bolsitaBody"></div>
+</aside>
+
+<!-- AUTH -->
+<div class="modal" id="authModal"><div class="box">
+  <h2 id="authTitle">Bienvenida a Pandala 🌸</h2>
+  <p class="sub">Ingresa o crea tu cuenta para apartar en bolsitas.</p>
+  <div class="tabs"><button id="tabLogin" class="active">Ingresar</button><button id="tabRegister">Crear cuenta</button></div>
+
+  <form id="loginForm">
+    <div class="field"><label>WhatsApp</label><input id="lWa" inputmode="numeric" placeholder="3001234567" autocomplete="tel" required></div>
+    <div class="field"><label>PIN</label><input id="lPin" type="password" inputmode="numeric" placeholder="••••" autocomplete="current-password" required></div>
+    <div class="err" id="loginErr"></div>
+    <button class="btn primary block" type="submit">Ingresar</button>
+    <div style="text-align:center;margin-top:12px"><button type="button" class="link" id="forgotPinLink">¿Olvidaste tu PIN?</button></div>
+    <p class="sub" style="text-align:center;margin:12px 0 0">¿Primera vez? Tu PIN inicial es <b>1234</b>.</p>
+  </form>
+
+  <form id="registerForm" class="hidden">
+    <div class="field"><label>Nombre</label><input id="rName" placeholder="Tu nombre" required></div>
+    <div class="field"><label>WhatsApp</label><input id="rWa" inputmode="numeric" placeholder="3001234567" required></div>
+    <div class="field"><label>Correo (para recuperar tu PIN)</label><input id="rEmail" type="email" placeholder="tucorreo@ejemplo.com" required></div>
+    <div class="field"><label>Ciudad</label><input id="rCity" placeholder="Tu ciudad"></div>
+    <div class="field"><label>Dirección</label><input id="rAddr" placeholder="Dirección de envío"></div>
+    <div class="field"><label>Crea tu PIN (mín. 4 dígitos)</label><input id="rPin" type="password" inputmode="numeric" placeholder="••••" required></div>
+    <div class="err" id="registerErr"></div>
+    <button class="btn primary block" type="submit">Crear cuenta</button>
+  </form>
+</div></div>
+
+<!-- FORGOT PIN -->
+<div class="modal" id="forgotModal"><div class="box">
+  <h2>Recuperar PIN 🔑</h2>
+  <p class="sub">Te enviaremos un PIN temporal a tu correo registrado.</p>
+  <div class="field"><label>WhatsApp</label><input id="fWa" inputmode="numeric" placeholder="3001234567"></div>
+  <div class="field"><label>Correo registrado</label><input id="fEmail" type="email" placeholder="tucorreo@ejemplo.com"></div>
+  <div class="err" id="forgotErr"></div><div class="okmsg" id="forgotOk"></div>
+  <button class="btn primary block" id="forgotGo">Enviar PIN temporal</button>
+  <div style="text-align:center;margin-top:12px"><button class="link" data-close="forgotModal">Volver</button></div>
+</div></div>
+
+<!-- CHANGE PIN (obligatorio) -->
+<div class="modal" id="changeModal"><div class="box">
+  <h2>Crea tu nuevo PIN ✨</h2>
+  <p class="sub">Por seguridad debes cambiar tu PIN temporal antes de continuar.</p>
+  <div class="field"><label>Nuevo PIN (mín. 4 dígitos)</label><input id="cNew" type="password" inputmode="numeric" placeholder="••••"></div>
+  <div class="field"><label>Confirma tu nuevo PIN</label><input id="cNew2" type="password" inputmode="numeric" placeholder="••••"></div>
+  <div class="err" id="changeErr"></div>
+  <button class="btn primary block" id="changeGo">Guardar PIN</button>
+</div></div>
+
+<!-- BRE-B PAY -->
+<div class="modal" id="payModal"><div class="box">
+  <h2 id="payTitle">Separar bolsita 💜</h2>
+  <p class="sub" id="paySub"></p>
+  <div class="breb-key"><span style="font-size:22px">🔑</span><span class="k" id="brebKey">—</span><button class="btn sm" id="copyKey">Copiar</button></div>
+  <ol class="steps"><li>Transfiere por <b>Bre-b</b> a la llave de arriba.</li><li>Escribe abajo el monto que abonaste.</li><li>Envía el comprobante por WhatsApp y reporta el pago.</li></ol>
+  <div class="field"><label>Monto que aboné (COP)</label><input id="payAmount" type="number" min="0" inputmode="numeric" placeholder="0"></div>
+  <div class="err" id="payErr"></div>
+  <a class="btn wa block" id="payWa" target="_blank" rel="noopener" style="margin-bottom:9px">📲 Enviar comprobante por WhatsApp</a>
+  <button class="btn primary block" id="payReport">Ya pagué, reportar abono</button>
+  <div style="text-align:center;margin-top:12px"><button class="link" data-close="payModal">Cancelar</button></div>
+</div></div>
+
+<div id="toast"></div>
+<div id="bubble"><span class="bic">💌</span><div style="flex:1"><b id="bubbleTitle">Novedad en tu bolsita</b><div id="bubbleTxt" style="margin-top:3px"></div><div class="ba"><button class="see" id="bubbleSee">Ver Mi Bolsita</button><button class="x" id="bubbleX">✕</button></div></div></div>
+
+<script>
+/* ═══════════ Config & helpers ═══════════ */
+const SLUG = (()=>{ const m=location.pathname.match(/\/t\/([^\/]+)/); const q=new URLSearchParams(location.search);
+  return (m&&m[1])||q.get('tienda')||q.get('t')||q.get('slug')||(JSON.parse(localStorage.getItem('portfolio')||'{}').slug)||'ttshop'; })();
+const $=id=>document.getElementById(id);
+const money=n=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(Number(n)||0);
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const digits=s=>String(s||'').replace(/\D/g,'');
+let token=localStorage.getItem('token')||'', user=JSON.parse(localStorage.getItem('user')||'null');
+let PORTFOLIO=JSON.parse(localStorage.getItem('portfolio')||'null');
+let CATALOG={products:[],kits:[],categories:[]}, CFGP={bre_b_key:'3058173611',whatsapp_number:'+573058173611',whatsapp_template:'Hola, Mar. Te envío el abono a mi bolsita {ORDER_NUMBER}. Total: {TOTAL}. Abono: {AMOUNT}.',min_payment_amount:10000};
+let MYORDERS=[], currentDraft=null, activeCat='', payCtx=null;
+const EMO={'papeleria':'✏️','escritura':'🖊️','stickers':'🌟','accesorios':'🎀','peluches':'🧸','decoracion':'🌸','joyeria':'💍','belleza':'💄','hogar':'🏠','tecnologia':'🎧','juguetes':'🧩','kawaii':'🐰'};
+function emojiFor(p){ const c=String(p.category||'').toLowerCase(); for(const k in EMO){ if(c.includes(k)) return EMO[k]; } return p.kit?'🎁':'🎀'; }
+
+async function req(path,opts={}){
+  const res=await fetch(path,{...opts,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),...(opts.headers||{})},body:opts.body!==undefined?JSON.stringify(opts.body):undefined});
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error||'Error '+res.status);
+  return data;
+}
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),3200); }
+function openModal(id){ $(id).classList.add('open'); }
+function closeModal(id){ $(id).classList.remove('open'); }
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closeModal(b.dataset.close));
+
+/* ═══════════ Tema ═══════════ */
+const THEMES=['light','warm','dark'], THEME_ICON={light:'☀️',warm:'🌤️',dark:'🌙'};
+function setTheme(t){ document.documentElement.setAttribute('data-theme',t); localStorage.setItem('uiTheme',t); $('themeBtn').textContent=THEME_ICON[t]||'🎨'; }
+$('themeBtn').onclick=()=>{ const cur=localStorage.getItem('uiTheme')||'light'; setTheme(THEMES[(THEMES.indexOf(cur)+1)%THEMES.length]); };
+setTheme(localStorage.getItem('uiTheme')||'light');
+
+/* ═══════════ Catálogo ═══════════ */
+async function loadCatalog(){
+  try{
+    const d=await req('/api/products?slug='+encodeURIComponent(SLUG));
+    CATALOG.products=(d.products||d.inventory||[]).map(p=>({...p,kit:false}));
+    CATALOG.kits=(d.kits||[]).map(k=>({...k,kit:true}));
+    CATALOG.categories=d.categories||[...new Set(CATALOG.products.map(p=>p.category).filter(Boolean))];
+    if(d.portfolio) CFGP={...CFGP,...d.portfolio};
+    if(d.config) CFGP={...CFGP,...d.config};
+  }catch(e){
+    try{ const arr=await req('/api/products'); CATALOG.products=(Array.isArray(arr)?arr:[]).map(p=>({...p,kit:false})); }
+    catch(e2){ $('grid').innerHTML='<div class="empty"><div class="big">🥺</div>No pudimos cargar el catálogo.<br><button class="btn primary sm" style="margin-top:12px" onclick="loadCatalog()">Reintentar</button></div>'; return; }
+  }
+  renderChips(); renderGrid();
+}
+function renderChips(){
+  const cats=['',...CATALOG.categories];
+  $('chips').innerHTML=cats.map(c=>`<button class="chip ${c===activeCat?'active':''}" data-cat="${esc(c)}">${c?esc(c):'✨ Todo'}</button>`).join('')+`<button class="chip ${activeCat==='__kits'?'active':''}" data-cat="__kits">🎁 Kits</button>`;
+  $('chips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{ activeCat=b.dataset.cat; renderChips(); renderGrid(); });
+}
+function allItems(){ return [...CATALOG.products,...CATALOG.kits]; }
+function renderGrid(){
+  const q=$('search').value.trim().toLowerCase();
+  let list=allItems().filter(p=>{
+    if(activeCat==='__kits'&&!p.kit) return false;
+    if(activeCat&&activeCat!=='__kits'&&String(p.category||'')!==activeCat) return false;
+    if(q&&!String(p.name||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  if(!list.length){ $('grid').innerHTML='<div class="empty"><div class="big">🔍</div>No encontramos productos con ese filtro.</div>'; return; }
+  $('grid').innerHTML=list.map((p,i)=>{
+    const avail=Number(p.available??p.stock??0), out=avail<=0;
+    const img=p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}" loading="lazy">`:emojiFor(p);
+    return `<article class="card" style="animation-delay:${Math.min(i*30,300)}ms">
+      <div class="thumb">${img}
+        ${out?'<span class="tag pill danger">Agotado</span>':avail<=3?'<span class="tag pill warn">¡Últimos!</span>':''}
+        ${p.kit?'<span class="kit">🎁</span>':''}
       </div>
-    </div>
-    <div class="shop-layout">
-      <aside class="shop-side">
-        <div class="side-head"><span>Categorías</span><button class="btn" type="button" onclick="clearCats()">Limpiar</button></div>
-        <div id="catsList" class="cats-list"></div>
-      </aside>
-      <div class="shop-main">
-        <div class="toolbar">
-          <select id="sortSel" onchange="renderCatalog()">
-            <option value="alpha">Orden: alfabético (A–Z)</option>
-            <option value="new">Orden: recién ingresado</option>
-            <option value="priceDesc">Orden: monto mayor a menor</option>
-            <option value="priceAsc">Orden: monto menor a mayor</option>
-            <option value="avail">Orden: disponibilidad</option>
-          </select>
-          <span id="catCount" class="note"></span>
+      <div class="cbody">
+        <div class="cname">${esc(p.name)}</div>
+        <div class="cprice">${money(p.price)}</div>
+        <div class="cfoot">
+          <div class="qty"><button data-step="-1" data-id="${p.id}">−</button><input id="q_${p.id}" value="1" inputmode="numeric" ${out?'disabled':''}><button data-step="1" data-id="${p.id}">+</button></div>
+          <button class="btn primary sm" style="flex:1" data-add="${p.id}" ${out?'disabled':''}>${out?'Agotado':'Agregar'}</button>
         </div>
-        <div id="catalog" class="grid-cards"></div>
-        <h2 style="margin-top:24px">🎁 Kits</h2>
-        <div id="kits" class="grid-cards"></div>
-      </div>
-    </div>
-  </section>
+      </div></article>`;
+  }).join('');
+  $('grid').querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>{ const inp=$('q_'+b.dataset.id); let v=Math.max(1,(parseInt(inp.value)||1)+Number(b.dataset.step)); inp.value=v; });
+  $('grid').querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>addToBolsita(b.dataset.add));
+}
+$('search').addEventListener('input',()=>renderGrid());
 
-  <!-- MI BOLSITA -->
-  <section id="view-bolsita" class="view">
-    <h1>Mi Bolsita</h1>
-    <p class="subtitle">Bolsitas activas: separa con abono mínimo de $10.000 o paga el total.</p>
-    <div id="bolsitas"></div>
-    <h2 style="margin-top:24px">Historial</h2>
-    <div id="historial"></div>
-  </section>
+/* ═══════════ Auth ═══════════ */
+function isAuthed(){ return !!(token&&user&&user.role==='client'); }
+function refreshAccountBtn(){ $('accountBtn').textContent=isAuthed()?('👋 '+String(user.name||'').split(' ')[0]):'Ingresar'; }
+$('accountBtn').onclick=()=>{ if(isAuthed()){ if(confirm('¿Cerrar sesión?')) logout(); } else openAuth(); };
+function openAuth(){ openModal('authModal'); }
+$('tabLogin').onclick=()=>{ $('tabLogin').classList.add('active'); $('tabRegister').classList.remove('active'); $('loginForm').classList.remove('hidden'); $('registerForm').classList.add('hidden'); };
+$('tabRegister').onclick=()=>{ $('tabRegister').classList.add('active'); $('tabLogin').classList.remove('active'); $('registerForm').classList.remove('hidden'); $('loginForm').classList.add('hidden'); };
+function saveSession(d){ token=d.token; user=d.user; PORTFOLIO=d.portfolio||PORTFOLIO;
+  localStorage.setItem('token',token); localStorage.setItem('user',JSON.stringify(user)); if(PORTFOLIO) localStorage.setItem('portfolio',JSON.stringify(PORTFOLIO));
+  refreshAccountBtn(); }
+function logout(){ token=''; user=null; localStorage.removeItem('token'); localStorage.removeItem('user'); refreshAccountBtn(); MYORDERS=[]; currentDraft=null; updateBadge(); toast('Sesión cerrada'); }
 
-  <!-- MIS FACTURAS -->
-  <section id="view-facturas" class="view">
-    <h1>Mis facturas</h1>
-    <p class="subtitle">Todas tus bolsitas con sus valores. Descarga la factura en PDF en su estado actual.</p>
-    <div id="facturasList"></div>
-  </section>
-</main>
+$('loginForm').onsubmit=async e=>{ e.preventDefault(); $('loginErr').textContent='';
+  try{ const d=await req('/api/auth/client/login',{method:'POST',body:{whatsapp:digits($('lWa').value),pin:$('lPin').value,portfolio_slug:SLUG}});
+    saveSession(d); closeModal('authModal'); toast('¡Hola, '+user.name+'! 🌸');
+    if(d.must_change_pin){ openModal('changeModal'); } else { loadMyOrders(); }
+  }catch(err){ $('loginErr').textContent=err.message; } };
+$('registerForm').onsubmit=async e=>{ e.preventDefault(); $('registerErr').textContent='';
+  try{ const d=await req('/api/auth/client/register',{method:'POST',body:{name:$('rName').value.trim(),whatsapp:digits($('rWa').value),email:$('rEmail').value.trim(),city:$('rCity').value.trim(),address:$('rAddr').value.trim(),pin:$('rPin').value,portfolio_slug:SLUG}});
+    saveSession(d); closeModal('authModal'); toast('¡Cuenta creada! 🎉'); loadMyOrders();
+  }catch(err){ $('registerErr').textContent=err.message; } };
+$('forgotPinLink').onclick=()=>{ closeModal('authModal'); $('forgotErr').textContent=''; $('forgotOk').textContent=''; openModal('forgotModal'); };
+$('forgotGo').onclick=async()=>{ $('forgotErr').textContent=''; $('forgotOk').textContent='';
+  try{ const d=await req('/api/auth/client/forgot-pin',{method:'POST',body:{whatsapp:digits($('fWa').value),email:$('fEmail').value.trim(),portfolio_slug:SLUG}});
+    $('forgotOk').textContent=d.message||'Si los datos coinciden, enviaremos un PIN temporal a tu correo.';
+  }catch(err){ $('forgotErr').textContent=err.message; } };
+$('changeGo').onclick=async()=>{ $('changeErr').textContent='';
+  const a=$('cNew').value,b=$('cNew2').value;
+  if(a.length<4) return $('changeErr').textContent='El PIN debe tener al menos 4 dígitos.';
+  if(a!==b) return $('changeErr').textContent='Los PIN no coinciden.';
+  try{ await req('/api/auth/client/change-pin',{method:'POST',body:{new_pin:a}});
+    closeModal('changeModal'); $('cNew').value=''; $('cNew2').value=''; toast('✔ PIN actualizado'); loadMyOrders();
+  }catch(err){ $('changeErr').textContent=err.message; } };
 
-<!-- MODAL DE PAGO -->
-<div id="payModal" class="modal-backdrop">
-  <div class="modal">
-    <h2 id="payTitle"></h2>
-    <div id="payForm">
-      <div id="paySummary" class="note"></div>
-      <div class="breb">Llave Bre-b: <b id="brebKey"></b><button class="btn" type="button" onclick="copyBreb()">Copiar</button></div>
-      <div><label>Monto con el que hice mi abono (COP)</label><input id="payAmount" type="number" min="0" step="500"></div>
-      <div id="payError" class="error"></div>
-      <div class="modal-actions">
-        <button class="btn" type="button" onclick="closePay()">Cancelar</button>
-        <button class="btn primary" type="button" onclick="reportPayment()">Reportar abono</button>
-      </div>
-    </div>
-    <div id="payWhatsapp" class="hidden">
-      <p class="note">✔ Abono reportado: quedó <b>por confirmación</b> de la administradora. Ahora envía tu comprobante:</p>
-      <div class="modal-actions" style="justify-content:flex-start">
-        <a id="waLink" class="btn wa" target="_blank" rel="noopener">📲 Enviar por WhatsApp</a>
-        <button class="btn" type="button" onclick="closePay()">Cerrar</button>
-      </div>
-    </div>
-  </div>
-</div>
+/* ═══════════ Bolsita ═══════════ */
+function updateBadge(){ const n=MYORDERS.filter(o=>['draft','pending_confirm','apartada'].includes(o.status)).length;
+  const b=$('cartBadge'); b.textContent=n; b.classList.toggle('hidden',n===0); }
+$('bolsitaBtn').onclick=()=>{ if(!isAuthed()){ openAuth(); return; } openDrawer(); };
+$('closeDrawer').onclick=closeDrawer; $('scrim').onclick=closeDrawer;
+function openDrawer(){ $('scrim').classList.add('open'); $('drawer').classList.add('open'); loadMyOrders(); }
+function closeDrawer(){ $('scrim').classList.remove('open'); $('drawer').classList.remove('open'); }
 
-<!-- MODAL MI PERFIL -->
-<div id="profileModal" class="modal-backdrop">
-  <div class="modal">
-    <h2>Mi perfil</h2>
-    <div class="avatar-row">
-      <img id="pfAvatarPrev" class="avatar-prev" alt="Foto de perfil" style="display:none">
-      <div style="display:grid;gap:8px">
-        <input id="pfAvatar" type="file" accept="image/*" onchange="readAvatar(this)">
-        <button class="btn danger" type="button" onclick="clearAvatar()">Quitar foto</button>
-      </div>
-    </div>
-    <div class="fgrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:12px">
-      <div class="field" style="display:flex;flex-direction:column;gap:5px"><label>Nombre</label><input id="pfNameC"></div>
-      <div class="field" style="display:flex;flex-direction:column;gap:5px"><label>WhatsApp</label><input id="pfWaC" disabled></div>
-      <div class="field" style="display:flex;flex-direction:column;gap:5px"><label>Ciudad</label><input id="pfCityC"></div>
-      <div class="field" style="display:flex;flex-direction:column;gap:5px"><label>Dirección</label><input id="pfAddrC"></div>
-      <div class="field" style="display:flex;flex-direction:column;gap:5px"><label>Usuario de TikTok</label><input id="pfTiktok" placeholder="@tu_usuario"></div>
-      <div class="field" style="display:flex;flex-direction:column;gap:5px"><label>Usuario de Instagram</label><input id="pfInsta" placeholder="@tu_usuario"></div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn" type="button" onclick="closeModal('profileModal')">Cancelar</button>
-      <button class="btn primary" type="button" onclick="saveProfile()">Guardar cambios</button>
-    </div>
-  </div>
-</div>
+async function loadMyOrders(){ if(!isAuthed()) return;
+  try{ MYORDERS=await req('/api/orders/mine'); currentDraft=MYORDERS.find(o=>o.status==='draft')||null; }
+  catch(e){ MYORDERS=[]; }
+  updateBadge(); renderBolsita(); detectNews(); }
+function statusPill(s){ const m={draft:['Borrador',''],pending_confirm:['Por confirmar','warn'],apartada:['Apartada','warn'],paid:['Pagada','ok'],shipped:['Enviada','info'],delivered:['Entregada','ok'],canceled:['Cancelada','danger'],expired:['Vencida','danger']};
+  const [t,c]=m[s]||[s,'']; return `<span class="pill ${c}">${t}</span>`; }
+function renderBolsita(){
+  const body=$('bolsitaBody');
+  if(!MYORDERS.length){ body.innerHTML='<div class="empty"><div class="big">🛍️</div>Aún no tienes bolsitas.<br>Agrega productos del catálogo para empezar.</div>'; return; }
+  const order=MYORDERS.slice().sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
+  body.innerHTML=order.map(o=>{
+    const total=Number(o.total)||0, paid=Number(o.paid)||0, bal=Math.max(0,total-paid), pct=total>0?Math.min(100,paid/total*100):0;
+    const items=(o.items||[]).map(it=>`<div class="bitem"><span class="em">${it.kit_name?'🎁':emojiFor(it)}</span><span class="nm">${esc(it.kit_name||it.product_name)} ×${it.quantity}</span><span class="pr">${money(it.price*it.quantity)}</span>${o.status==='draft'?`<button class="rm" data-rm="${it.id}" data-oid="${o.id}">🗑</button>`:''}</div>`).join('');
+    let actions='';
+    if(o.status==='draft') actions=`<button class="btn pink" data-pay="sep" data-oid="${o.id}">Separar</button><button class="btn primary" data-pay="full" data-oid="${o.id}">Pagar total</button>`;
+    else if(o.status==='apartada'||o.status==='pending_confirm') actions=`<button class="btn pink" data-pay="sep" data-oid="${o.id}">Abonar</button><button class="btn primary" data-pay="full" data-oid="${o.id}">Pagar saldo</button>`;
+    else if(['paid','shipped','delivered'].includes(o.status)) actions=`<button class="btn" data-inv="${o.id}">📄 Recibo</button>`;
+    return `<div class="bolsita"><div class="top"><span class="num">${esc(o.order_number)}</span>${statusPill(o.status)}</div>
+      ${items||'<div class="bitem" style="border:0;color:var(--muted)">Sin productos aún</div>'}
+      <div class="progress"><b style="width:${pct}%"></b></div>
+      <div class="btotals"><span>Abonado ${money(paid)}</span><span>Saldo ${money(bal)}</span></div>
+      <div class="btotals" style="margin-top:3px"><span>Total</span><span style="color:var(--primary)">${money(total)}</span></div>
+      ${actions?`<div class="bactions">${actions}</div>`:''}</div>`;
+  }).join('');
+  body.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>removeItem(b.dataset.oid,b.dataset.rm));
+  body.querySelectorAll('[data-pay]').forEach(b=>b.onclick=()=>openPay(b.dataset.oid,b.dataset.pay));
+  body.querySelectorAll('[data-inv]').forEach(b=>b.onclick=()=>downloadReceipt(b.dataset.inv));
+}
+async function ensureDraft(){ if(currentDraft) return currentDraft;
+  const o=await req('/api/orders',{method:'POST',body:{portfolio_slug:SLUG}}); currentDraft=o; return o; }
+async function addToBolsita(id){
+  if(!isAuthed()){ openAuth(); toast('Ingresa para agregar a tu bolsita'); return; }
+  const p=allItems().find(x=>String(x.id)===String(id)); if(!p) return;
+  const qty=Math.max(1,parseInt($('q_'+id).value)||1);
+  try{ const o=await ensureDraft();
+    await req('/api/orders/'+o.id+'/items',{method:'POST',body:p.kit?{kit_id:p.id,quantity:qty}:{product_id:p.id,quantity:qty}});
+    toast('✔ Agregado a tu bolsita'); $('q_'+id).value=1; await loadMyOrders(); loadCatalog();
+  }catch(e){ toast('⚠ '+e.message); } }
+async function removeItem(oid,iid){ try{ await req('/api/orders/'+oid+'/items/'+iid,{method:'DELETE'}); await loadMyOrders(); loadCatalog(); }catch(e){ toast('⚠ '+e.message); } }
 
-<!-- MODAL MI DIRECCIÓN -->
-<div id="addressModal" class="modal-backdrop">
-  <div class="modal">
-    <h2>Mi dirección</h2>
-    <div class="fgrid" style="display:grid;grid-template-columns:1fr;gap:10px">
-      <div class="field" style="display:flex;flex-direction:column;gap:5px"><label>Ciudad</label><input id="adCity"></div>
-      <div class="field" style="display:flex;flex-direction:column;gap:5px"><label>Dirección</label><input id="adAddr"></div>
-    </div>
-    <p class="note" style="margin-top:8px">Estos datos se usan para prellenar tus envíos. Puedes cambiarlos por pedido al momento de despachar.</p>
-    <div class="modal-actions">
-      <button class="btn" type="button" onclick="closeModal('addressModal')">Cancelar</button>
-      <button class="btn primary" type="button" onclick="saveAddress()">Guardar dirección</button>
-    </div>
-  </div>
-</div>
+/* ═══════════ Pago Bre-b ═══════════ */
+function openPay(oid,mode){
+  const o=MYORDERS.find(x=>String(x.id)===String(oid)); if(!o) return;
+  const total=Number(o.total)||0, paid=Number(o.paid)||0, bal=Math.max(0,total-paid);
+  const min=Number(CFGP.min_payment_amount)||10000;
+  payCtx={o,mode,bal,min};
+  $('payTitle').textContent=mode==='full'?'Pagar saldo 💜':'Separar / Abonar 💜';
+  $('paySub').textContent=`Bolsita ${o.order_number} · Total ${money(total)} · Saldo ${money(bal)}`;
+  $('brebKey').textContent=CFGP.bre_b_key||'—';
+  $('payAmount').value=mode==='full'?bal:Math.min(bal,Math.max(min,0));
+  $('payAmount').max=bal; $('payErr').textContent='';
+  updatePayWa(); openModal('payModal');
+}
+function updatePayWa(){ if(!payCtx) return; const amt=Number($('payAmount').value)||0;
+  const msg=(CFGP.whatsapp_template||'Hola, Mar. Te envío el abono a mi bolsita {ORDER_NUMBER}. Total: {TOTAL}. Abono: {AMOUNT}.')
+    .replace('{ORDER_NUMBER}',payCtx.o.order_number).replace('{TOTAL}',money(payCtx.o.total)).replace('{AMOUNT}',money(amt));
+  $('payWa').href='https://wa.me/'+digits(CFGP.whatsapp_number)+'?text='+encodeURIComponent(msg); }
+$('payAmount').addEventListener('input',updatePayWa);
+$('copyKey').onclick=()=>{ navigator.clipboard.writeText(CFGP.bre_b_key||'').then(()=>toast('Llave copiada ✔')); };
+$('payReport').onclick=async()=>{ if(!payCtx) return; $('payErr').textContent='';
+  const amt=Number($('payAmount').value)||0;
+  if(amt<=0) return $('payErr').textContent='Indica el monto que abonaste.';
+  if(payCtx.mode!=='full'&&amt<payCtx.min&&amt<payCtx.bal) return $('payErr').textContent='El abono mínimo es '+money(payCtx.min)+'.';
+  if(amt>payCtx.bal) return $('payErr').textContent='El abono no puede superar el saldo ('+money(payCtx.bal)+').';
+  try{ await req('/api/orders/'+payCtx.o.id+'/report-payment',{method:'POST',body:{amount:amt}});
+    closeModal('payModal'); toast('✔ Abono reportado. Queda por confirmar.'); await loadMyOrders();
+  }catch(e){ $('payErr').textContent=e.message; } };
 
-<div id="toast" class="toast hidden"></div>
+/* ═══════════ Recibo PDF ═══════════ */
+function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
+async function downloadReceipt(oid){
+  const o=MYORDERS.find(x=>String(x.id)===String(oid)); if(!o) return;
+  try{ if(!window.jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    const {jsPDF}=window.jspdf, doc=new jsPDF({unit:'mm',format:'a4'});
+    doc.setFillColor(124,92,255); doc.rect(0,0,210,26,'F');
+    doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.text('Pandala Kawaii',14,16);
+    doc.setFontSize(11); doc.text('Recibo '+o.order_number,196,16,{align:'right'});
+    doc.setTextColor(40); doc.setFont('helvetica','normal'); doc.setFontSize(11);
+    let y=40; doc.text('Cliente: '+(user.name||''),14,y); y+=7; doc.text('Fecha: '+String(o.created_at||'').slice(0,10),14,y); y+=12;
+    doc.setFont('helvetica','bold'); doc.text('Producto',14,y); doc.text('Cant.',120,y); doc.text('Total',196,y,{align:'right'}); y+=4;
+    doc.setDrawColor(200); doc.line(14,y,196,y); y+=7; doc.setFont('helvetica','normal');
+    (o.items||[]).forEach(it=>{ doc.text(String(it.kit_name||it.product_name||'').slice(0,48),14,y); doc.text(String(it.quantity),120,y); doc.text(money(it.price*it.quantity),196,y,{align:'right'}); y+=7; });
+    y+=6; doc.setFont('helvetica','bold'); doc.text('Total: '+money(o.total),196,y,{align:'right'}); y+=7;
+    doc.text('Abonado: '+money(o.paid),196,y,{align:'right'}); y+=7; doc.setTextColor(124,92,255); doc.text('Saldo: '+money(Math.max(0,o.total-o.paid)),196,y,{align:'right'});
+    doc.setTextColor(150); doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.text('Gracias por comprar en Pandala Kawaii 💜',105,285,{align:'center'});
+    doc.save('Recibo_'+o.order_number+'.pdf');
+  }catch(e){ toast('⚠ No se pudo generar el recibo'); } }
+
+/* ═══════════ Novedades (burbuja alto contraste) ═══════════ */
+let seenStatus={}; try{ seenStatus=JSON.parse(localStorage.getItem('pkSeenStatus')||'{}'); }catch(e){}
+function detectNews(){
+  let news=null;
+  MYORDERS.forEach(o=>{ const prev=seenStatus[o.id];
+    if(prev&&prev!==o.status){ if(o.status==='apartada') news={t:'¡Abono aprobado! ✅',x:'Tu bolsita '+o.order_number+' quedó apartada.'};
+      if(o.status==='paid') news={t:'¡Bolsita pagada! 🎉',x:'Tu bolsita '+o.order_number+' está lista para envío.'};
+      if(o.status==='draft'&&prev==='pending_confirm') news={t:'Abono rechazado',x:'Revisa tu bolsita '+o.order_number+'.'}; }
+    seenStatus[o.id]=o.status; });
+  localStorage.setItem('pkSeenStatus',JSON.stringify(seenStatus));
+  if(news){ $('bubbleTitle').textContent=news.t; $('bubbleTxt').textContent=news.x; $('bubble').style.display='flex'; } }
+$('bubbleSee').onclick=()=>{ $('bubble').style.display='none'; openDrawer(); };
+$('bubbleX').onclick=()=>{ $('bubble').style.display='none'; };
+
+/* ═══════════ Tiempo real + polling ═══════════ */
+function connectRealtime(){ try{ if(!window.io) return; const s=io(); s.emit('join-portfolio',PORTFOLIO&&PORTFOLIO.id);
+  s.on('stock-updated',()=>{ loadCatalog(); if(isAuthed()) loadMyOrders(); }); }catch(e){} }
+setInterval(()=>{ if(isAuthed()&&!document.hidden) loadMyOrders(); },25000);
+window.addEventListener('load',connectRealtime);
+
+/* ═══════════ Init ═══════════ */
+refreshAccountBtn(); loadCatalog(); if(isAuthed()) loadMyOrders();
+</script>
 </body>
 </html>

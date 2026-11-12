@@ -17,6 +17,7 @@
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.1",
     "socket.io": "^4.8.4"
+    "nodemailer": "^6.9.14"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -28,10 +29,12 @@
     "@types/pg": "^8.11.6",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3"
+    "@types/nodemailer": "^6.4.15"
   },
   "description": "",
   "main": "index.js",
   "keywords": [],
   "author": "",
   "license": "ISC"
+
 }

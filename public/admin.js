@@ -1393,6 +1393,52 @@ async function generateInvoice(orderId) {
 
 document.addEventListener('DOMContentLoaded', init);
 /* =====================================================================
+   PANDALA · BORRADO TOTAL DE LA TIENDA (ZONA DE PELIGRO)
+   ===================================================================== */
+function openWipeModal() {
+  const txt = $('wipeConfirmText');
+  if (txt) txt.value = '';
+  const err = $('wipeErr');
+  if (err) err.textContent = '';
+  const btn = $('wipeExecuteBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Borrar todo permanentemente'; }
+  openModal('wipeModal');
+}
+
+// Habilitar botón solo si el texto coincide exactamente
+const wipeInput = $('wipeConfirmText');
+if (wipeInput) {
+  wipeInput.addEventListener('input', function() {
+    const btn = $('wipeExecuteBtn');
+    if (btn) btn.disabled = this.value.trim() !== 'Estoy seguro de hacer el borrado';
+  });
+}
+
+async function executeWipe() {
+  const txt = $('wipeConfirmText');
+  const btn = $('wipeExecuteBtn');
+  const err = $('wipeErr');
+  
+  if (!txt || txt.value.trim() !== 'Estoy seguro de hacer el borrado') return;
+  
+  btn.disabled = true;
+  btn.textContent = 'Borrando... (no cierres esta pestaña)';
+  err.textContent = '';
+  
+  try {
+    await api('/api/admin/wipe', { method: 'POST', body: { confirmText: txt.value.trim() } });
+    closeModal('wipeModal');
+    toast('✔ Tienda borrada exitosamente. Recargando...');
+    // Limpiar caché local y recargar
+    localStorage.removeItem('pk_seen');
+    setTimeout(() => location.reload(), 1500);
+  } catch (e) {
+    err.textContent = e.message || 'Error al borrar';
+    btn.disabled = false;
+    btn.textContent = 'Borrar todo permanentemente';
+  }
+}
+/* =====================================================================
    PANDALA KAWAI · NAVEGACIÓN RESPONSIVE (celular / tablet)
    Bloque autónomo: pegar AL FINAL de admin.js. No requiere editar nada más.
    ===================================================================== */

@@ -1,4 +1,4 @@
-<meta name='viewport' content='width=device-width, initial-scale=1'/><script>/* ===== Pandala Kawaii · Panel Administrador (paridad total + Excel + importación) ===== */
+<meta name='viewport' content='width=device-width, initial-scale=1'/><script>/* ===== Pandala Kawaii · Panel Administrador (paridad total + Excel + importación + responsive) ===== */
 let token = localStorage.getItem('token') || '';
 let user = JSON.parse(localStorage.getItem('user') || 'null');
 let CFG = null, PRODUCTS = [], KITS = [], CATS = [], CLIENTS = [], ORDERS = [];
@@ -65,6 +65,7 @@ function showLogin() {
 function enterPanel() {
   $('hdr').classList.remove('hidden');
   if ($('whoName')) $('whoName').textContent = user.name;
+  ensureExtraUI();
   showTab('dash');
 }
 async function adminLogin(ev) {
@@ -121,7 +122,255 @@ function renderLegal() {
   $('legalBtnTerms').className = 'btn' + (legalDoc === 'terms' ? ' primary' : '');
 }
 
-/* ---------- Gráficas SVG (mismos tipos que tu app original) ---------- */
+/* ---------- UI extra inyectada: base del resumen, Excel, plantilla, importación, responsive ---------- */
+function injectStyleOnce() {
+  if ($('admExtraCss')) return;
+  const s = document.createElement('style'); s.id = 'admExtraCss';
+  s.textContent = `
+@media(max-width:900px){header{padding:8px 10px}.hdr-bottom{gap:8px}nav#tabs{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:thin}.hdr-icons{margin-left:0}}
+@media(max-width:650px){.toolbar{gap:6px}.toolbar input,.toolbar select{flex:1 1 46%;min-width:0}.modal{padding:16px}.fgrid{grid-template-columns:1fr 1fr}.who-btn span{max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.metric{font-size:23px}}
+@media(max-width:430px){.fgrid{grid-template-columns:1fr}.cards{grid-template-columns:1fr 1fr}.metric{font-size:21px;white-space:nowrap}}
+.imp-table input,.imp-table select{padding:6px 8px;font-size:12.5px;min-width:70px}
+`;
+  document.head.appendChild(s);
+}
+function ensureXLSX() {
+  if (window.XLSX) return;
+  const s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  document.head.appendChild(s);
+}
+function ensureExtraUI() {
+  injectStyleOnce(); ensureXLSX();
+  if ($('dashSummary') && !$('sumBaseWrap')) {
+    const wrap = document.createElement('div');
+    wrap.id = 'sumBaseWrap'; wrap.className = 'toolbar'; wrap.style.marginBottom = '10px';
+    wrap.innerHTML = `<label class="note" style="display:flex;gap:6px;align-items:center">Base del resumen <select id="sumBase" onchange="renderSummary()"><option value="cobrado" selected>Lo cobrado (como tu app original)</option><option value="vendido">Lo vendido</option></select></label>`;
+    $('dashSummary').parentNode.insertBefore(wrap, $('dashSummary'));
+  }
+  const invTb = document.querySelector('#view-inv .toolbar');
+  if (invTb && !$('btnInvTpl')) {
+    invTb.insertAdjacentHTML('beforeend', `<button class="btn" id="btnInvTpl" onclick="downloadInventoryTemplate()">Plantilla Excel</button><button class="btn" id="btnInvLoad" onclick="$('invImportFile').click()">📥 Cargar inventario</button><input type="file" id="invImportFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleInventoryFile(event)"><button class="btn" onclick="exportInventoryExcel()">⬇ Excel</button>`);
+  }
+  const ordTb = document.querySelector('#view-orders .toolbar');
+  if (ordTb && !$('btnOrdXlsx')) ordTb.insertAdjacentHTML('beforeend', `<button class="btn" id="btnOrdXlsx" onclick="exportOrdersExcel()">⬇ Excel</button>`);
+  const cliTb = document.querySelector('#view-clients .toolbar');
+  if (cliTb && !$('btnCliXlsx')) cliTb.insertAdjacentHTML('beforeend', `<button class="btn" id="btnCliXlsx" onclick="exportClientsExcel()">⬇ Excel</button>`);
+  const logisView = $('view-logis');
+  if (logisView && !$('btnLogXlsx')) logisView.querySelector('h1').insertAdjacentHTML('afterend', `<div class="toolbar"><button class="btn" id="btnLogXlsx" onclick="exportShipmentsExcel()">⬇ Excel envíos</button></div>`);
+  if (!$('invImportModal')) {
+    document.body.insertAdjacentHTML('beforeend', `
+<div id="invImportModal" class="modal-backdrop"><div class="modal" style="width:min(1080px,100%)">
+<h2>Revisar archivo de inventario</h2>
+<p class="note">Nada se guarda hasta confirmar. En <b>existentes</b> la cantidad se suma al stock y se actualizan costo/envío/categoría/fecha; en <b>nuevos</b> define el stock inicial.</p>
+<div id="impSummary" class="note" style="margin:8px 0"></div>
+<div class="tablewrap" style="max-height:52vh"><table class="adm imp-table"><thead><tr><th>Estado</th><th>Producto</th><th>Código</th><th>Categoría</th><th>Costo</th><th>Envío</th><th>Cant.</th><th>Precio</th><th>Fecha compra</th><th>Avisos</th></tr></thead><tbody id="impBody"></tbody></table></div>
+<div class="modal-actions"><button class="btn" onclick="closeInvImport()">Cerrar</button><button class="btn" onclick="closeInvImport()">Cancelar</button><button class="btn primary" id="impSaveBtn" onclick="confirmInventoryImport()">Guardar</button></div>
+</div></div>`);
+  }
+}
+
+/* ---------- Excel ---------- */
+function downloadExcel(filename, sheetName, rows) {
+  if (!window.XLSX) { toast('⚠ La librería de Excel aún carga; intenta en unos segundos'); return; }
+  if (!rows || !rows.length) { toast('⚠ No hay datos para exportar'); return; }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, filename);
+}
+function exportOrdersExcel() {
+  downloadExcel('Pedidos_' + today() + '.xlsx', 'Pedidos', ORDERS.map(o => ({
+    Pedido: o.order_number, Fecha: String(o.created_at || '').slice(0, 10), Cliente: o.client_name || '',
+    Estado: STATUS_LABEL[o.status] || o.status, Ítems: o.items_count, Total: o.total, Abonado: o.paid, Saldo: o.balance,
+  })));
+}
+function exportClientsExcel() {
+  downloadExcel('Clientes_' + today() + '.xlsx', 'Clientes', CLIENTS.map(c => ({
+    Cliente: c.name, WhatsApp: c.whatsapp || '', Ciudad: c.city || '', Dirección: c.address || '',
+    Estado: c.status, Pedidos: c.orders, Total: c.total, Abonado: c.paid, Saldo: c.balance,
+  })));
+}
+function exportShipmentsExcel() {
+  downloadExcel('Envios_' + today() + '.xlsx', 'Envíos', LOGIS.map(s => ({
+    Pedido: s.order_number, Cliente: s.client_name || '',
+    Estado: s.status === 'enviado' ? 'Enviado' : (s.status === 'guardado' ? 'Guardado' : 'Por enviar'),
+    Pago: s.pay_mode === 'adelantado' ? 'Adelantado' : 'Por cobrar', Monto: Number(s.amount) || 0,
+    Transportadora: s.carrier + (s.carrier_other ? ' (' + s.carrier_other + ')' : ''), Medidas: s.dimensions || '',
+    Ciudad: s.city || '', Dirección: s.address || '', 'Dirección principal': s.address_kind === 'principal' ? 'Sí' : 'No',
+    Enviado: s.shipped_at ? String(s.shipped_at).slice(0, 10) : '',
+  })));
+}
+function exportInventoryExcel() {
+  downloadExcel('Inventario_' + today() + '.xlsx', 'Inventario', PRODUCTS.map(p => ({
+    Producto: p.name, 'Código de barras': p.code || '', Categoría: p.category || '', Costo: Number(p.cost) || 0,
+    Envío: Number(p.shipping_cost) || 0, Stock: p.stock, Disponible: p.available, Estado: p.status,
+    'Precio venta': Number(p.price) || 0,
+    'Margen %': p.price > 0 ? Number((((Number(p.price) - Number(p.cost) - Number(p.shipping_cost)) / Number(p.price)) * 100).toFixed(1)) : 0,
+    'Fecha compra': p.purchase_date || '',
+  })));
+}
+const IMPORT_COLS = ['Producto', 'Código de barras', 'Categoría', 'Costo', 'Envío', 'Cantidad', 'Precio venta', 'Fecha compra'];
+function downloadInventoryTemplate() {
+  if (!window.XLSX) { toast('⚠ La librería de Excel aún carga; intenta en unos segundos'); return; }
+  const ws = XLSX.utils.aoa_to_sheet([IMPORT_COLS, ['Lapicero gel azul', '7701234567890', 'ESCRITURA', 1200, 100, 24, 3500, today()]]);
+  ws['!cols'] = IMPORT_COLS.map(() => ({ wch: 18 }));
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
+  XLSX.writeFile(wb, 'Plantilla_Inventario.xlsx');
+}
+
+/* ---------- Cargar inventario con plantilla (vista previa editable) ---------- */
+const impNorm = t => String(t == null ? '' : t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const IMP_ALIAS = { producto: 'nombre', nombre: 'nombre', codigodebarras: 'codigo', codigo: 'codigo', codbarras: 'codigo', barras: 'codigo', categoria: 'categoria', costo: 'costo', envio: 'envio', cantidad: 'cantidad', cant: 'cantidad', precioventa: 'precio', precio: 'precio', fechacompra: 'fecha', fecha: 'fecha' };
+function impNum(v) {
+  if (v == null || v === '') return { empty: true, n: 0 };
+  if (typeof v === 'number') return isFinite(v) ? { n: v } : { bad: true };
+  let t = String(v).replace(/[$\s]/g, '');
+  if (!t) return { empty: true, n: 0 };
+  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) t = t.replace(/\./g, '').replace(',', '.');
+  else if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(t)) t = t.replace(/,/g, '');
+  else if (/^-?\d+,\d{1,2}$/.test(t)) t = t.replace(',', '.');
+  const n = Number(t); return isFinite(n) ? { n } : { bad: true };
+}
+function impDate(v) {
+  if (v == null || v === '') return '';
+  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v)) return new Date(v.getTime() + 12 * 3600000).toISOString().slice(0, 10);
+  if (typeof v === 'number' && v > 20000 && v < 80000) return new Date(Math.round((v - 25569) * 86400000) + 12 * 3600000).toISOString().slice(0, 10);
+  const t = String(v).trim(); let m;
+  if ((m = t.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/))) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  if ((m = t.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/))) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  return '';
+}
+function handleInventoryFile(event) {
+  const input = event.target, file = input.files && input.files[0]; input.value = '';
+  if (!file) return;
+  if (!window.XLSX) { toast('⚠ La librería de Excel aún carga; intenta de nuevo'); return; }
+  const isCsv = /\.(csv|txt)$/i.test(file.name);
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const wb = isCsv ? XLSX.read(r.result, { type: 'string', raw: true }) : XLSX.read(r.result, { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const grid = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: false });
+      buildImportRows(grid, file.name);
+    } catch (e) { console.error(e); toast('⚠ No se pudo interpretar el archivo. Usa la plantilla .xlsx o un .csv con: ' + IMPORT_COLS.join(', ')); }
+  };
+  if (isCsv) r.readAsText(file, 'utf-8'); else r.readAsArrayBuffer(file);
+}
+function buildImportRows(grid, fileName) {
+  if (!grid || !grid.length) { toast('⚠ El archivo está vacío'); return; }
+  const hi = grid.findIndex(row => row.some(c => impNorm(c) === 'producto' || impNorm(c) === 'nombre'));
+  if (hi < 0) { toast('⚠ No encontré la columna "Producto". Usa la plantilla.'); return; }
+  const idx = {}; grid[hi].forEach((c, i) => { const k = IMP_ALIAS[impNorm(c)]; if (k && !(k in idx)) idx[k] = i; });
+  if (!('nombre' in idx) || !('cantidad' in idx)) { toast('⚠ Faltan columnas obligatorias: Producto y Cantidad'); return; }
+  const get = (row, k) => (k in idx ? row[idx[k]] : null);
+  impRows = [];
+  grid.slice(hi + 1).forEach((row, n) => {
+    const nombre = String(get(row, 'nombre') == null ? '' : get(row, 'nombre')).trim();
+    const codigo = String(get(row, 'codigo') == null ? '' : get(row, 'codigo')).trim();
+    if (!nombre && !codigo) return;
+    const byName = PRODUCTS.find(p => p.name.trim().toLowerCase() === nombre.toLowerCase());
+    const byCode = codigo ? PRODUCTS.find(p => p.code && String(p.code).trim() === codigo) : null;
+    const match = byCode || byName;
+    impRows.push({
+      line: hi + 2 + n,
+      estado: match ? 'existente' : 'nuevo',
+      nombre: match ? match.name : nombre,
+      codigo: match && match.code ? match.code : codigo,
+      categoria: String(get(row, 'categoria') == null ? '' : get(row, 'categoria')).trim(),
+      costo: impNum(get(row, 'costo')).n || 0,
+      envio: impNum(get(row, 'envio')).n || 0,
+      cantidad: Math.max(0, Math.floor(impNum(get(row, 'cantidad')).n || 0)),
+      precio: impNum(get(row, 'precio')).n || (match ? Number(match.price) || 0 : 0),
+      fecha: impDate(get(row, 'fecha')) || today(),
+      errs: [],
+    });
+  });
+  if (!impRows.length) { toast('⚠ No encontré filas con datos debajo de los encabezados'); return; }
+  impFileName = fileName;
+  impRows.forEach(impValidateRow);
+  impRender();
+  openModal('invImportModal');
+}
+function impValidateRow(r) {
+  const errs = [];
+  if (r.estado === 'existente') {
+    if (!PRODUCTS.some(p => p.name === r.nombre)) errs.push('El producto elegido no existe');
+  } else {
+    if (!r.nombre) errs.push('Falta el nombre');
+    else if (PRODUCTS.some(p => p.name.trim().toLowerCase() === r.nombre.trim().toLowerCase())) errs.push('Ya existe: márcalo Existente');
+  }
+  if (!(r.cantidad > 0)) errs.push('Cantidad debe ser mayor a 0');
+  if (r.costo < 0 || r.envio < 0 || r.precio < 0) errs.push('Costos/precio no pueden ser negativos');
+  if (r.codigo && PRODUCTS.some(p => p.code && String(p.code).trim() === String(r.codigo).trim() && p.name !== r.nombre)) errs.push('Ese código pertenece a otro producto');
+  r.errs = errs;
+}
+function impSetState(i, v) {
+  const r = impRows[i]; if (!r) return;
+  r.estado = v;
+  if (v === 'existente' && !PRODUCTS.some(p => p.name === r.nombre)) r.nombre = '';
+  impValidateRow(r); impRender();
+}
+function impSetField(i, k, v) {
+  const r = impRows[i]; if (!r) return;
+  if (k === 'cantidad') r.cantidad = Math.max(0, Math.floor(Number(v) || 0));
+  else if (k === 'costo' || k === 'envio' || k === 'precio') r[k] = Number(v) || 0;
+  else r[k] = String(v == null ? '' : v);
+  impValidateRow(r); impRender();
+}
+function impRender() {
+  const names = [...PRODUCTS].sort((a, b) => a.name.localeCompare(b.name, 'es')).map(p => p.name);
+  put('impBody', impRows.map((r, i) => `<tr${r.errs.length ? ' style="opacity:.8"' : ''}>
+    <td><select onchange="impSetState(${i},this.value)"><option value="nuevo" ${r.estado === 'nuevo' ? 'selected' : ''}>Nuevo</option><option value="existente" ${r.estado === 'existente' ? 'selected' : ''}>Existente</option></select></td>
+    <td>${r.estado === 'existente'
+      ? `<select onchange="impSetField(${i},'nombre',this.value)"><option value="">Seleccionar…</option>${names.map(n => `<option ${n === r.nombre ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`
+      : `<input value="${esc(r.nombre)}" onchange="impSetField(${i},'nombre',this.value)">`}</td>
+    <td><input value="${esc(r.codigo)}" onchange="impSetField(${i},'codigo',this.value)"></td>
+    <td><input value="${esc(r.categoria)}" onchange="impSetField(${i},'categoria',this.value)"></td>
+    <td><input type="number" min="0" value="${r.costo}" onchange="impSetField(${i},'costo',this.value)"></td>
+    <td><input type="number" min="0" value="${r.envio}" onchange="impSetField(${i},'envio',this.value)"></td>
+    <td><input type="number" min="0" value="${r.cantidad}" onchange="impSetField(${i},'cantidad',this.value)"></td>
+    <td><input type="number" min="0" value="${r.precio}" onchange="impSetField(${i},'precio',this.value)"></td>
+    <td><input type="date" value="${esc(r.fecha)}" onchange="impSetField(${i},'fecha',this.value)"></td>
+    <td>${r.errs.length ? r.errs.map(e => `<span class="pill danger">${esc(e)}</span>`).join(' ') : '<span class="pill ok">Listo</span>'}</td>
+  </tr>`).join(''));
+  const ok = impRows.filter(r => !r.errs.length);
+  const nuevos = ok.filter(r => r.estado === 'nuevo').length;
+  put('impSummary', `<b>${esc(impFileName)}</b> -- ${impRows.length} fila(s): <b>${nuevos}</b> nueva(s), <b>${ok.length - nuevos}</b> existente(s)${impRows.length - ok.length ? `, <span class="pill danger">${impRows.length - ok.length} con error (se omiten)</span>` : ''}.`);
+  const b = $('impSaveBtn'); if (b) b.disabled = !ok.length;
+}
+function closeInvImport() { closeModal('invImportModal'); impRows = []; }
+async function confirmInventoryImport() {
+  const ok = impRows.filter(r => !r.errs.length);
+  if (!ok.length) return toast('⚠ No hay filas válidas para guardar');
+  let nuevos = 0, existentes = 0, unidades = 0;
+  try {
+    for (const r of ok) {
+      let catId = null;
+      const catName = String(r.categoria || '').trim().toUpperCase();
+      if (catName) {
+        let c = CATS.find(x => x.name === catName);
+        if (!c) { c = await api('/api/admin/categories', { method: 'POST', body: { name: catName } }); CATS.push(c); }
+        catId = c.id;
+      }
+      if (r.estado === 'nuevo') {
+        await api('/api/admin/products', { method: 'POST', body: { name: r.nombre.trim(), code: r.codigo || null, category_id: catId, cost: r.costo, shipping_cost: r.envio, price: r.precio, stock: r.cantidad, min_stock: 1, purchase_date: r.fecha || today() } });
+        nuevos++; unidades += r.cantidad;
+      } else {
+        const p = PRODUCTS.find(x => x.name === r.nombre);
+        if (!p) continue;
+        await api('/api/admin/products/' + p.id, { method: 'PUT', body: { name: p.name, code: p.code, category_id: catId || p.category_id, cost: r.costo, shipping_cost: r.envio, price: Number(p.price), stock: p.stock, min_stock: p.min_stock, purchase_date: r.fecha || p.purchase_date } });
+        await api('/api/admin/products/' + p.id + '/stock', { method: 'POST', body: { qty: r.cantidad, fecha: r.fecha || today() } });
+        existentes++; unidades += r.cantidad;
+      }
+    }
+    closeInvImport();
+    toast(`✔ Inventario actualizado: ${nuevos} nuevo(s), ${existentes} existente(s), ${unidades} unidades`);
+    await fetchCaches(); renderInventory();
+  } catch (e) { toast('⚠ ' + e.message); }
+}
+
+/* ---------- Gráficas SVG ---------- */
 const CH_COLORS = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)', 'var(--c6)', 'var(--c7)', 'var(--c8)'];
 const compactMoney = n => { const a = Math.abs(n), sg = n < 0 ? '-' : ''; if (a >= 1e9) return sg + '$' + (a / 1e9).toFixed(1).replace(/\.0$/, '') + ' MM'; if (a >= 1e6) return sg + '$' + (a / 1e6).toFixed(1).replace(/\.0$/, '') + ' M'; if (a >= 1e3) return sg + '$' + Math.round(a / 1e3) + ' k'; return sg + '$' + Math.round(a); };
 function niceMax(v) { if (!(v > 0)) return 1; const pw = Math.pow(10, Math.floor(Math.log10(v))), f = v / pw; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * pw; }
@@ -209,7 +458,6 @@ function monthSold(key) { const rows = salesLines().filter(r => String(r.fecha).
 function monthProfit(key) { const s = monthSold(key); return s.ventas - s.costo; }
 function monthMargin(key) { const s = monthSold(key); return s.ventas > 0 ? (s.ventas - s.costo) / s.ventas : 0; }
 function monthCollected(key) { const p = (ANALYTICS && ANALYTICS.paysMonth || []).find(x => x.month === key); return p ? Number(p.amount) : 0; }
-/* Base "lo cobrado" (como tu app original): abonos del mes × margen bruto del mes */
 function monthUtilBase(key, base) { return base === 'cobrado' ? monthCollected(key) * monthMargin(key) : monthProfit(key); }
 
 /* ---------- Impuesto de renta ---------- */
@@ -273,9 +521,9 @@ function renderSummary() {
   const base = $('sumBase') ? $('sumBase').value : 'cobrado';
   const nowK = today().slice(0, 7), prevK = monthKeysBack(2, nowK)[0];
   const utilOf = k => monthUtilBase(k, base);
-  const utilM = utilOf(nowK), utilP = utilOf(prevK);
   const rate = y => computeTax(y).efectiva;
   const libreOf = k => { const u = utilOf(k); return u - u * pc.diezmoPct / 100 - u * pc.ofrendaPct / 100 - (pc.reinvEnabled ? u * pc.reinvPct / 100 : 0) - u * rate(k.slice(0, 4)); };
+  const utilM = utilOf(nowK), utilP = utilOf(prevK);
   const diez = utilM * pc.diezmoPct / 100, ofr = utilM * pc.ofrendaPct / 100;
   const reinvS = pc.reinvEnabled ? utilM * pc.reinvPct / 100 : 0;
   const impM = utilM * rate(nowK.slice(0, 4));
@@ -538,208 +786,6 @@ async function resolveReport(id, decision) {
     const r = await api('/api/orders/reports/' + id + '/resolve', { method: 'POST', body: { decision } });
     toast(decision === 'approve' ? '✔ Abono aprobado → bolsita ' + (r.new_status === 'paid' ? 'PAGADA' : 'APARTADA') : 'Abono rechazado → vuelve a borrador');
     loadReports();
-  } catch (e) { toast('⚠ ' + e.message); }
-}
-
-/* ---------- Excel (SheetJS) ---------- */
-function downloadExcel(filename, sheetName, rows) {
-  if (!window.XLSX) { toast('⚠ La librería de Excel aún carga; intenta en unos segundos'); return; }
-  if (!rows.length) { toast('⚠ No hay datos para exportar'); return; }
-  const ws = XLSX.utils.json_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, sheetName);
-  XLSX.writeFile(wb, filename);
-}
-async function exportOrdersExcel() {
-  try {
-    let rows = ORDERS;
-    if (!rows.length) rows = await api('/api/admin/orders');
-    downloadExcel('Pedidos_' + today() + '.xlsx', 'Pedidos', rows.map(o => ({
-      Pedido: o.order_number, Fecha: String(o.created_at || '').slice(0, 10), Cliente: o.client_name || '',
-      Estado: STATUS_LABEL[o.status] || o.status, Ítems: o.items_count, Total: o.total, Abonado: o.paid, Saldo: o.balance,
-    })));
-  } catch (e) { toast('⚠ ' + e.message); }
-}
-function exportClientsExcel() {
-  downloadExcel('Clientes_' + today() + '.xlsx', 'Clientes', CLIENTS.map(c => ({
-    Cliente: c.name, WhatsApp: c.whatsapp || '', Ciudad: c.city || '', Dirección: c.address || '',
-    Estado: c.status, Pedidos: c.orders, Total: c.total, Abonado: c.paid, Saldo: c.balance,
-  })));
-}
-function exportShipmentsExcel() {
-  downloadExcel('Envios_' + today() + '.xlsx', 'Envíos', LOGIS.map(s => ({
-    Pedido: s.order_number, Cliente: s.client_name || '', Estado: s.status === 'enviado' ? 'Enviado' : (s.status === 'guardado' ? 'Guardado' : 'Por enviar'),
-    Pago: s.pay_mode === 'adelantado' ? 'Adelantado' : 'Por cobrar', Monto: Number(s.amount) || 0,
-    Transportadora: s.carrier + (s.carrier_other ? ' (' + s.carrier_other + ')' : ''), Medidas: s.dimensions || '',
-    Ciudad: s.city || '', Dirección: s.address || '', 'Dirección principal': s.address_kind === 'principal' ? 'Sí' : 'No',
-    Enviado: s.shipped_at ? String(s.shipped_at).slice(0, 10) : '',
-  })));
-}
-function exportInventoryExcel() {
-  downloadExcel('Inventario_' + today() + '.xlsx', 'Inventario', PRODUCTS.map(p => ({
-    Producto: p.name, 'Código de barras': p.code || '', Categoría: p.category || '', Costo: Number(p.cost) || 0,
-    Envío: Number(p.shipping_cost) || 0, Stock: p.stock, Disponible: p.available, Estado: p.status,
-    'Precio venta': Number(p.price) || 0, 'Margen %': p.price > 0 ? Number((((Number(p.price) - Number(p.cost) - Number(p.shipping_cost)) / Number(p.price)) * 100).toFixed(1)) : 0,
-    'Fecha compra': p.purchase_date || '',
-  })));
-}
-const IMPORT_COLS = ['Producto', 'Código de barras', 'Categoría', 'Costo', 'Envío', 'Cantidad', 'Precio venta', 'Fecha compra'];
-function downloadInventoryTemplate() {
-  if (!window.XLSX) { toast('⚠ La librería de Excel aún carga; intenta en unos segundos'); return; }
-  const ws = XLSX.utils.aoa_to_sheet([IMPORT_COLS, ['Lapicero gel azul', '7701234567890', 'ESCRITURA', 1200, 100, 24, 3500, today()]]);
-  ws['!cols'] = IMPORT_COLS.map(() => ({ wch: 18 }));
-  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
-  XLSX.writeFile(wb, 'Plantilla_Inventario.xlsx');
-}
-
-/* ---------- Cargar inventario con plantilla (vista previa editable) ---------- */
-const impNorm = t => String(t == null ? '' : t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-const IMP_ALIAS = { producto: 'nombre', nombre: 'nombre', codigodebarras: 'codigo', codigo: 'codigo', codbarras: 'codigo', barras: 'codigo', categoria: 'categoria', costo: 'costo', envio: 'envio', cantidad: 'cantidad', cant: 'cantidad', precioventa: 'precio', precio: 'precio', fechacompra: 'fecha', fecha: 'fecha' };
-function impNum(v) {
-  if (v == null || v === '') return { empty: true, n: 0 };
-  if (typeof v === 'number') return isFinite(v) ? { n: v } : { bad: true };
-  let t = String(v).replace(/[$\s]/g, '');
-  if (!t) return { empty: true, n: 0 };
-  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) t = t.replace(/\./g, '').replace(',', '.');
-  else if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(t)) t = t.replace(/,/g, '');
-  else if (/^-?\d+,\d{1,2}$/.test(t)) t = t.replace(',', '.');
-  const n = Number(t); return isFinite(n) ? { n } : { bad: true };
-}
-function impDate(v) {
-  if (v == null || v === '') return '';
-  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v)) return new Date(v.getTime() + 12 * 3600000).toISOString().slice(0, 10);
-  if (typeof v === 'number' && v > 20000 && v < 80000) return new Date(Math.round((v - 25569) * 86400000) + 12 * 3600000).toISOString().slice(0, 10);
-  const t = String(v).trim(); let m;
-  if ((m = t.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/))) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
-  if ((m = t.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/))) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
-  return '';
-}
-function handleInventoryFile(event) {
-  const input = event.target, file = input.files && input.files[0]; input.value = '';
-  if (!file) return;
-  if (!window.XLSX) { toast('⚠ La librería de Excel aún carga; intenta de nuevo'); return; }
-  const isCsv = /\.(csv|txt)$/i.test(file.name);
-  const r = new FileReader();
-  r.onload = () => {
-    try {
-      const wb = isCsv ? XLSX.read(r.result, { type: 'string', raw: true }) : XLSX.read(r.result, { type: 'array', cellDates: true });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const grid = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: false });
-      buildImportRows(grid, file.name);
-    } catch (e) { console.error(e); toast('⚠ No se pudo interpretar el archivo. Usa la plantilla .xlsx o un .csv con las columnas: ' + IMPORT_COLS.join(', ')); }
-  };
-  if (isCsv) r.readAsText(file, 'utf-8'); else r.readAsArrayBuffer(file);
-}
-function buildImportRows(grid, fileName) {
-  if (!grid || !grid.length) { toast('⚠ El archivo está vacío'); return; }
-  const hi = grid.findIndex(row => row.some(c => impNorm(c) === 'producto' || impNorm(c) === 'nombre'));
-  if (hi < 0) { toast('⚠ No encontré la columna "Producto". Usa la plantilla.'); return; }
-  const idx = {}; grid[hi].forEach((c, i) => { const k = IMP_ALIAS[impNorm(c)]; if (k && !(k in idx)) idx[k] = i; });
-  if (!('nombre' in idx) || !('cantidad' in idx)) { toast('⚠ Faltan columnas obligatorias: Producto y Cantidad'); return; }
-  const get = (row, k) => (k in idx ? row[idx[k]] : null);
-  impRows = [];
-  grid.slice(hi + 1).forEach((row, n) => {
-    const nombre = String(get(row, 'nombre') == null ? '' : get(row, 'nombre')).trim();
-    const codigo = String(get(row, 'codigo') == null ? '' : get(row, 'codigo')).trim();
-    if (!nombre && !codigo) return;
-    const byName = PRODUCTS.find(p => p.name.trim().toLowerCase() === nombre.toLowerCase());
-    const byCode = codigo ? PRODUCTS.find(p => p.code && String(p.code).trim() === codigo) : null;
-    const match = byCode || byName;
-    impRows.push({
-      line: hi + 2 + n,
-      estado: match ? 'existente' : 'nuevo',
-      nombre: match ? match.name : nombre,
-      codigo: match && match.code ? match.code : codigo,
-      categoria: String(get(row, 'categoria') == null ? '' : get(row, 'categoria')).trim(),
-      costo: impNum(get(row, 'costo')).n || 0,
-      envio: impNum(get(row, 'envio')).n || 0,
-      cantidad: Math.max(0, Math.floor(impNum(get(row, 'cantidad')).n || 0)),
-      precio: impNum(get(row, 'precio')).n || (match ? Number(match.price) || 0 : 0),
-      fecha: impDate(get(row, 'fecha')) || today(),
-      errs: [],
-    });
-  });
-  if (!impRows.length) { toast('⚠ No encontré filas con datos debajo de los encabezados'); return; }
-  impFileName = fileName;
-  impRows.forEach(impValidateRow);
-  impRender();
-  openModal('invImportModal');
-}
-function impValidateRow(r) {
-  const errs = [];
-  if (r.estado === 'existente') {
-    if (!PRODUCTS.some(p => p.name === r.nombre)) errs.push('El producto elegido no existe');
-  } else {
-    if (!r.nombre) errs.push('Falta el nombre');
-    else if (PRODUCTS.some(p => p.name.trim().toLowerCase() === r.nombre.trim().toLowerCase())) errs.push('Ya existe: márcalo como Existente');
-  }
-  if (!(r.cantidad > 0)) errs.push('Cantidad debe ser mayor a 0');
-  if (r.costo < 0 || r.envio < 0 || r.precio < 0) errs.push('Costos/precio no pueden ser negativos');
-  if (r.codigo && PRODUCTS.some(p => p.code && String(p.code).trim() === String(r.codigo).trim() && p.name !== r.nombre)) errs.push('Ese código pertenece a otro producto');
-  r.errs = errs;
-}
-function impSetState(i, v) {
-  const r = impRows[i]; if (!r) return;
-  r.estado = v;
-  if (v === 'existente' && !PRODUCTS.some(p => p.name === r.nombre)) r.nombre = '';
-  impValidateRow(r); impRender();
-}
-function impSetField(i, k, v) {
-  const r = impRows[i]; if (!r) return;
-  if (k === 'cantidad') r.cantidad = Math.max(0, Math.floor(Number(v) || 0));
-  else if (k === 'costo' || k === 'envio' || k === 'precio') r[k] = Number(v) || 0;
-  else r[k] = String(v == null ? '' : v);
-  impValidateRow(r); impRender();
-}
-function impRender() {
-  const names = [...PRODUCTS].sort((a, b) => a.name.localeCompare(b.name, 'es')).map(p => p.name);
-  put('impBody', impRows.map((r, i) => `<tr${r.errs.length ? ' style="opacity:.8"' : ''}>
-    <td><select onchange="impSetState(${i},this.value)"><option value="nuevo" ${r.estado === 'nuevo' ? 'selected' : ''}>Nuevo</option><option value="existente" ${r.estado === 'existente' ? 'selected' : ''}>Existente</option></select></td>
-    <td>${r.estado === 'existente'
-      ? `<select onchange="impSetField(${i},'nombre',this.value)"><option value="">Seleccionar…</option>${names.map(n => `<option ${n === r.nombre ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`
-      : `<input value="${esc(r.nombre)}" onchange="impSetField(${i},'nombre',this.value)">`}</td>
-    <td><input value="${esc(r.codigo)}" onchange="impSetField(${i},'codigo',this.value)"></td>
-    <td><input value="${esc(r.categoria)}" onchange="impSetField(${i},'categoria',this.value)"></td>
-    <td><input type="number" min="0" value="${r.costo}" onchange="impSetField(${i},'costo',this.value)"></td>
-    <td><input type="number" min="0" value="${r.envio}" onchange="impSetField(${i},'envio',this.value)"></td>
-    <td><input type="number" min="0" value="${r.cantidad}" onchange="impSetField(${i},'cantidad',this.value)"></td>
-    <td><input type="number" min="0" value="${r.precio}" onchange="impSetField(${i},'precio',this.value)"></td>
-    <td><input type="date" value="${esc(r.fecha)}" onchange="impSetField(${i},'fecha',this.value)"></td>
-    <td>${r.errs.length ? r.errs.map(e => `<span class="pill danger">${esc(e)}</span>`).join(' ') : '<span class="pill ok">Listo</span>'}</td>
-  </tr>`).join(''));
-  const ok = impRows.filter(r => !r.errs.length);
-  const nuevos = ok.filter(r => r.estado === 'nuevo').length;
-  put('impSummary', `<b>${esc(impFileName)}</b> -- ${impRows.length} fila(s): <b>${nuevos}</b> nueva(s), <b>${ok.length - nuevos}</b> existente(s)${impRows.length - ok.length ? `, <span class="pill danger">${impRows.length - ok.length} con error (se omiten)</span>` : ''}. En existentes la cantidad <b>se suma</b> al stock y se actualizan costo/envío/categoría/fecha; en nuevos define el stock inicial.`);
-  const btn = $('impSaveBtn'); if (btn) btn.disabled = !ok.length;
-}
-function closeInvImport() { closeModal('invImportModal'); impRows = []; }
-async function confirmInventoryImport() {
-  const ok = impRows.filter(r => !r.errs.length);
-  if (!ok.length) return toast('⚠ No hay filas válidas para guardar');
-  let nuevos = 0, existentes = 0, unidades = 0;
-  try {
-    for (const r of ok) {
-      let catId = null;
-      const catName = String(r.categoria || '').trim().toUpperCase();
-      if (catName) {
-        let c = CATS.find(x => x.name === catName);
-        if (!c) { c = await api('/api/admin/categories', { method: 'POST', body: { name: catName } }); CATS.push(c); }
-        catId = c.id;
-      }
-      if (r.estado === 'nuevo') {
-        await api('/api/admin/products', { method: 'POST', body: { name: r.nombre.trim(), code: r.codigo || null, category_id: catId, cost: r.costo, shipping_cost: r.envio, price: r.precio, stock: r.cantidad, min_stock: 1, purchase_date: r.fecha || today() } });
-        nuevos++; unidades += r.cantidad;
-      } else {
-        const p = PRODUCTS.find(x => x.name === r.nombre);
-        if (!p) continue;
-        await api('/api/admin/products/' + p.id, { method: 'PUT', body: { name: p.name, code: p.code, category_id: catId || p.category_id, cost: r.costo, shipping_cost: r.envio, price: Number(p.price), stock: p.stock, min_stock: p.min_stock, purchase_date: r.fecha || p.purchase_date } });
-        await api('/api/admin/products/' + p.id + '/stock', { method: 'POST', body: { qty: r.cantidad, fecha: r.fecha || today() } });
-        existentes++; unidades += r.cantidad;
-      }
-    }
-    closeInvImport();
-    toast(`✔ Inventario actualizado: ${nuevos} nuevo(s), ${existentes} existente(s), ${unidades} unidades`);
-    await fetchCaches(); renderInventory();
   } catch (e) { toast('⚠ ' + e.message); }
 }
 

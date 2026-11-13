@@ -55,7 +55,16 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'public', file));
 });
 
-app.use(express.static(path.join(process.cwd(), 'public')));
+app.use(express.static(path.join(process.cwd(), 'public'), {
+  index: false, // No permite listar el contenido de la carpeta
+  dotfiles: 'deny', // Bloquea el acceso a archivos que empiezan con punto (.env, .git)
+  extensions: ['html', 'js', 'css', 'png', 'jpg', 'jpeg', 'svg', 'ico', 'webp'], // Solo sirve estos tipos
+  setHeaders: (res, path) => {
+    if (path.endsWith('.js') || path.endsWith('.css')) {
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache de 1 día para estáticos
+    }
+  }
+}));
 
 io.on('connection', (socket) => {
   socket.on('join-portfolio', (portfolioId: string) => socket.join(`portfolio:${portfolioId}`));

@@ -21,11 +21,17 @@ const MES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep'
 const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
 async function api(path, opts = {}) {
-  const res = await fetch(path, {
-    ...opts,
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}), ...(opts.headers || {}) },
-    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-  });
+     const res = await fetch(path, {
+       ...opts,
+       credentials: 'include',
+       headers: { 
+         'Content-Type': 'application/json', 
+         ...(opts.headers || {}) 
+       },
+       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+     });
+     // ... el resto de la función sigue igual
+}
   const data = await res.json().catch(() => ({}));
   if (res.status === 401 && !path.includes('/auth/')) { logout(); throw new Error('Sesión vencida: ingresa de nuevo'); }
   if (!res.ok) throw new Error(data.error || 'Error ' + res.status);

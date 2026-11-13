@@ -105,7 +105,12 @@ router.post('/client/login', validate(clientLoginSchema), async (req, res) => {
     }
     if (!(await bcrypt.compare(String(pin), user.pin_hash)))
       return res.status(401).json({ error: 'WhatsApp o PIN incorrectos' });
-
+res.cookie('token', token, {
+     httpOnly: true, // JavaScript no puede leerla
+     secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción (Render)
+     sameSite: 'strict', // Previene CSRF
+     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 días
+   });
     res.json({ token: sign(user),
       user: { id: user.id, role: 'client', name: user.name, whatsapp: user.whatsapp, city: user.city, address: user.address, email: user.email },
       portfolio: { id: pf.id, slug: portfolio_slug }, must_change_pin: !!user.must_change_pin });
@@ -136,6 +141,12 @@ router.post('/client/register', validate(clientRegisterSchema), async (req, res)
       `INSERT INTO users (portfolio_id, role, whatsapp, pin_hash, name, city, address, email, status)
        VALUES ($1,'client',$2,$3,$4,$5,$6,$7,'Activo') RETURNING id,name,whatsapp,city,address,email`,
       [pf.id, tel, pinHash, String(name).trim(), city || null, address || null, em]);
+    res.cookie('token', token, {
+     httpOnly: true, // JavaScript no puede leerla
+     secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción (Render)
+     sameSite: 'strict', // Previene CSRF
+     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 días
+   });
     res.json({ token: sign({ id: user.id, role: 'client', portfolio_id: pf.id }), user: { ...user, role: 'client' }, portfolio: { id: pf.id, slug: portfolio_slug } });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
 import { pool } from './db.js';
 import { securityHeaders } from './middleware/security.js';
 import { authLimiter, apiLimiter } from './middleware/rateLimit.js';
@@ -26,6 +27,7 @@ setIO(io);
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000', credentials: true }));
 app.use(securityHeaders); // ← Solo una vez
 app.use(express.json({ limit: '25mb' }));
+app.use(cookieParser());
 
 // Tiempo real: cualquier cambio en bolsitas avisa a todos los navegadores conectados
 app.use('/api/orders', (req, res, next) => {

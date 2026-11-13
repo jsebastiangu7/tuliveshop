@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import { pool } from '../db.js';
+import { validate } from '../middleware/validate.js';
+import { adminLoginSchema, clientLoginSchema, clientRegisterSchema } from '../validations/auth.js';
 
 const router = Router();
 const sign = (u: any) => jwt.sign({ id: u.id, role: u.role, portfolio_id: u.portfolio_id },
@@ -29,7 +31,7 @@ const authUser = (req: any) => {
 };
 
 /* ── Admin: login ── */
-router.post('/admin/login', async (req, res) => {
+router.post('/admin/login', validate(adminLoginSchema), async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
@@ -78,7 +80,7 @@ router.post('/admin/forgot-password', async (req, res) => {
 });
 
 /* ── Cliente: login (PIN 1234 por defecto + cambio obligatorio) ── */
-router.post('/client/login', async (req, res) => {
+router.post('/client/login', validate(clientLoginSchema), async (req, res) => {
   try {
     const { whatsapp, pin, portfolio_slug } = req.body;
     if (!whatsapp || !pin || !portfolio_slug) return res.status(400).json({ error: 'WhatsApp, PIN y tienda requeridos' });
@@ -105,7 +107,7 @@ router.post('/client/login', async (req, res) => {
 });
 
 /* ── Cliente: registro (con email) ── */
-router.post('/client/register', async (req, res) => {
+router.post('/client/register', validate(clientRegisterSchema), async (req, res) => {
   try {
     const { whatsapp, pin, name, city, address, email, portfolio_slug } = req.body;
     if (!whatsapp || !pin || !name || !portfolio_slug) return res.status(400).json({ error: 'WhatsApp, PIN, nombre y tienda son obligatorios' });

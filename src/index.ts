@@ -6,13 +6,13 @@ import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import { pool } from './db.js';
 import { securityHeaders } from './middleware/security.js';
+import { authLimiter, apiLimiter } from './middleware/rateLimit.js';
 import { setIO, emitAll } from './realtime.js';
 import authRoutes from './routes/auth.js';
 import productRoutes from './routes/products.js';
 import orderRoutes from './routes/orders.js';
 import adminRoutes from './routes/admin.js';
 import superRoutes from './routes/super.js';
-import { authLimiter, apiLimiter } from './middleware/rateLimit.js';
 
 dotenv.config();
 
@@ -36,10 +36,10 @@ app.use('/api/orders', (req, res, next) => {
 });
 
 // Rutas de la API
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes); 
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/admin', apiLimiter, adminRoutes); 
 app.use('/api/super', superRoutes);
 
 app.get('/health', async (_req, res) => {

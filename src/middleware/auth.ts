@@ -20,6 +20,12 @@ import type { Request, Response, NextFunction } from 'express';
      } catch (e) {
        return res.status(401).json({ error: 'Token inválido o expirado' });
      }
+      import { pool } from '../db.js'; // Asegúrate de importar el pool
+
+   // Dentro de la función authenticate, después de req.user = decoded:
+   if (req.user.portfolio_id) {
+     await pool.query("SET LOCAL app.current_portfolio_id = $1", [req.user.portfolio_id]);
+   }
    }
 
    export function requireRole(...roles: string[]) {

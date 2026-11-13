@@ -1,4 +1,3 @@
-import { securityHeaders } from './middleware/security.js';
 import cors from 'cors';
 import path from 'node:path';
 import { createServer } from 'http';

@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { ZodSchema } from 'zod';
 
 export function validate(schema: ZodSchema) {
@@ -13,4 +13,4 @@ export function validate(schema: ZodSchema) {
     req.body = result.data;
     next();
   };
-} 
+}

@@ -203,10 +203,15 @@ router.post('/products', async (req: AuthRequest, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 
+const PRODUCT_FIELDS = ['name', 'code', 'category_id', 'cost', 'shipping_cost', 'price', 'stock', 'min_stock', 'purchase_date'];
+
 router.put('/products/:id', async (req: AuthRequest, res) => {
   try {
     const pf = pfOf(req);
-    const { name, code, category_id, cost, shipping_cost, price, stock, min_stock, purchase_date } = req.body;
+    const filtered = Object.fromEntries(
+      Object.entries(req.body).filter(([k]) => PRODUCT_FIELDS.includes(k))
+    );
+    const { name, code, category_id, cost, shipping_cost, price, stock, min_stock, purchase_date } = filtered as any;
     if (code) {
       const { rows: [dc] } = await pool.query(
         `SELECT id FROM products WHERE portfolio_id=$1 AND code=$2 AND id <> $3`, [pf, String(code).trim(), req.params.id]);

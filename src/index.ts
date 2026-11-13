@@ -1,3 +1,4 @@
+import express from 'express';
 import cors from 'cors';
 import path from 'node:path';
 import { createServer } from 'http';
@@ -23,7 +24,7 @@ const io = new Server(httpServer, {
 setIO(io);
 
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000', credentials: true }));
-app.use(securityHeaders);
+app.use(securityHeaders); // ← Solo una vez
 app.use(express.json({ limit: '25mb' }));
 
 // Tiempo real: cualquier cambio en bolsitas avisa a todos los navegadores conectados
@@ -34,11 +35,10 @@ app.use('/api/orders', (req, res, next) => {
   next();
 });
 
-// Rutas de la API
-app.use('/api/auth', authLimiter, authRoutes); 
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
-app.use('/api/admin', apiLimiter, adminRoutes); 
+app.use('/api/admin', apiLimiter, adminRoutes);
 app.use('/api/super', superRoutes);
 
 app.get('/health', async (_req, res) => {
@@ -50,13 +50,11 @@ app.get('/health', async (_req, res) => {
   }
 });
 
-// Landing comercial en la raíz; la tienda abre con ?t=slug
 app.get('/', (req, res) => {
   const file = req.query.t ? 'index.html' : 'landing.html';
   res.sendFile(path.join(process.cwd(), 'public', file));
 });
 
-// Frontend (tienda, landing y paneles) servido por este mismo servidor
 app.use(express.static(path.join(process.cwd(), 'public')));
 
 io.on('connection', (socket) => {

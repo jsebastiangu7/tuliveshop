@@ -5,6 +5,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import { pool } from './db.js';
+import { securityHeaders } from './middleware/security.js';
 import { setIO, emitAll } from './realtime.js';
 import authRoutes from './routes/auth.js';
 import productRoutes from './routes/products.js';
@@ -22,10 +23,8 @@ const io = new Server(httpServer, {
 });
 setIO(io);
 
-app.use('/api/auth/', authLimiter); // Login/registro
-app.use('/api/admin/', apiLimiter); // Panel admin 
-app.use(securityHeaders);import express from 'express';
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000', credentials: true }));
+app.use(securityHeaders);
 app.use(express.json({ limit: '25mb' }));
 
 // Tiempo real: cualquier cambio en bolsitas avisa a todos los navegadores conectados

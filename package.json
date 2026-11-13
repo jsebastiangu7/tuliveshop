@@ -19,7 +19,8 @@
     "socket.io": "^4.8.4",
     "nodemailer": "^6.9.14", 
     "express-rate-limit": "^7.4.0",
-    "zod": "^3.23.8" 
+    "zod": "^3.23.8",
+    "cookie-parser": "^1.4.6"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -31,7 +32,8 @@
     "@types/pg": "^8.11.6",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
-    "@types/nodemailer": "^6.4.15"
+    "@types/nodemailer": "^6.4.15", 
+    "@types/cookie-parser": "^1.4.7" 
   },
   "description": "",
   "main": "index.js",

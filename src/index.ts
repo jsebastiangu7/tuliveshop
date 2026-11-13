@@ -1,4 +1,4 @@
-import express from 'express';
+import { securityHeaders } from './middleware/security.js';
 import cors from 'cors';
 import path from 'node:path';
 import { createServer } from 'http';
@@ -20,7 +20,7 @@ const io = new Server(httpServer, {
   cors: { origin: process.env.CLIENT_URL || 'http://localhost:3000', credentials: true },
 });
 setIO(io);
-
+app.use(securityHeaders);import express from 'express';
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000', credentials: true }));
 app.use(express.json({ limit: '25mb' }));
 

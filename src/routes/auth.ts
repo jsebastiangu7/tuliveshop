@@ -1,3 +1,4 @@
+import { encrypt } from '../utils/encryption.js';
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -127,6 +128,9 @@ router.post('/client/register', validate(clientRegisterSchema), async (req, res)
     if (!pf) return res.status(404).json({ error: 'Tienda no encontrada' });
     const tel = String(whatsapp).replace(/\D/g, '');
     const em = email ? String(email).toLowerCase().trim() : null;
+    const telEnc = tel ? encrypt(tel) : null;
+   const emailEnc = em ? encrypt(em) : null;
+   // ... luego usa telEnc y emailEnc en el INSERT de la base de datos
     const { rows: [existing] } = await pool.query(
       `SELECT * FROM users WHERE whatsapp=$1 AND portfolio_id=$2 AND role='client'`, [tel, pf.id]);
     const pinHash = await bcrypt.hash(String(pin), 10);

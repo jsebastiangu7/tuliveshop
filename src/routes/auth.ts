@@ -45,6 +45,12 @@ router.post('/admin/login', validate(adminLoginSchema), async (req, res) => {
       const { rows: [pf] } = await pool.query(`SELECT id,name,slug FROM portfolios WHERE id=$1`, [user.portfolio_id]);
       portfolio = pf;
     }
+    res.cookie('token', token, {
+     httpOnly: true, // JavaScript no puede leerla
+     secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción (Render)
+     sameSite: 'strict', // Previene CSRF
+     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 días
+   });
     res.json({ token: sign(user), user: { id: user.id, role: user.role, name: user.name, email: user.email },
       portfolio, must_change_password: !!user.must_change_password });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }

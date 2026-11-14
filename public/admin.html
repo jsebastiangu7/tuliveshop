@@ -8,7 +8,6 @@
 <title>Tu Live Shop · Panel Administrador</title>
 <link rel="stylesheet" href="/styles.css">
 <style>
-/* === TEMA UNIFICADO: BLUE LIQUID GLASS === */
 :root {
   --bg: #0f172a;
   --bg-gradient: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.15) 0%, transparent 40%);
@@ -28,7 +27,7 @@
   --bg-gradient: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.1) 0%, transparent 40%);
   --surface: rgba(255, 255, 255, 0.7);
   --surface-hover: rgba(255, 255, 255, 0.9);
-  --border: rgba(255, 255, 255, 0.6);
+  --border: rgba(0, 0, 0, 0.08);
   --brand: #0284c7;
   --brand-hover: #0369a1;
   --brand-glow: rgba(2, 132, 199, 0.3);
@@ -36,15 +35,13 @@
   --text-muted: #475569;
   --shadow: 0 8px 32px rgba(2, 132, 199, 0.1);
 }
-
 body {
   background: var(--bg);
   background-image: var(--bg-gradient);
   background-attachment: fixed;
   color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
 }
-
-/* Efecto Liquid Glass aplicado a componentes clave */
 .glass, .panel, .card, .modal, header, .tablewrap, .chip {
   background: var(--surface) !important;
   backdrop-filter: blur(16px) !important;
@@ -53,23 +50,22 @@ body {
   box-shadow: var(--shadow) !important;
   color: var(--text) !important;
 }
-
 .btn.primary, .btn-primary {
   background: var(--brand) !important;
   color: #fff !important;
   border: none !important;
   box-shadow: 0 4px 14px var(--brand-glow) !important;
 }
-.btn.primary:hover, .btn-primary:hover {
-  background: var(--brand-hover) !important;
-  transform: translateY(-1px);
-}
-
+.btn.primary:hover, .btn-primary:hover { background: var(--brand-hover) !important; transform: translateY(-1px); }
 table.adm { color: var(--text) !important; }
 table.adm th { background: var(--surface-hover) !important; color: var(--text-muted) !important; }
 .note, .muted { color: var(--text-muted) !important; }
+input, select, textarea {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
 
-/* Ajustes específicos del layout existente */
 nav#tabs{display:flex;gap:6px;flex-wrap:wrap;margin-right:auto}
 table.adm{width:100%;border-collapse:collapse;font-size:13px}
 table.adm th,table.adm td{padding:8px 9px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
@@ -79,14 +75,14 @@ table.adm th{font-size:11px;text-transform:uppercase;position:sticky;top:0}
 .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
 .field{display:flex;flex-direction:column;gap:5px}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
-.toolbar input,.toolbar select{border:1px solid var(--border);border-radius:10px;padding:9px;font:inherit;background:var(--surface);color:var(--text)}
+.toolbar input,.toolbar select{border-radius:10px;padding:9px;font:inherit}
 .empty{color:var(--text-muted);text-align:center;padding:24px}
 .modal{width:min(760px,100%)}
 h3{margin:14px 0 6px;font-size:15px}
-input, select, textarea {
-  background: var(--surface) !important;
-  color: var(--text) !important;
-  border: 1px solid var(--border) !important;
+.theme-toggle {
+  width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface); cursor: pointer; font-size: 15px;
+  display: flex; align-items: center; justify-content: center;
 }
 </style>
 </head>
@@ -94,8 +90,11 @@ input, select, textarea {
 <header id="hdr" class="hidden glass">
   <div class="brand" style="cursor:pointer" onclick="location.href='/'" title="Ir a la tienda">Tu <span>Live Shop</span> · Admin</div>
   <nav id="tabs" class="chips"></nav>
-  <span id="whoName" class="pill"></span>
-  <button class="btn" onclick="logout()">Salir</button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn">🌙</button>
+    <span id="whoName" class="pill"></span>
+    <button class="btn" onclick="logout()">Salir</button>
+  </div>
 </header>
 <main>
   <section id="view-login" class="view active">
@@ -115,7 +114,7 @@ input, select, textarea {
 
   <section id="view-ventas" class="view">
     <h1>🛒 Venta rápida (Live)</h1>
-    <p class="note">Captura el pedido mientras haces el LIVE. El botón Guardar registra todo en un solo paso.</p>
+    <p class="note">Captura el pedido mientras haces el LIVE.</p>
     <div class="panel glass">
       <div class="fgrid">
         <div class="field"><label>Cliente</label><select id="vClient"><option value="new">+ Nuevo cliente</option></select></div>
@@ -130,14 +129,7 @@ input, select, textarea {
         <div class="field" style="flex:0.5"><label>&nbsp;</label><button class="btn primary" onclick="addVentaRow()">+ Agregar</button></div>
       </div>
       <div class="tablewrap" style="margin-top:12px"><table class="adm"><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Total</th><th></th></tr></thead><tbody id="vItems"></tbody></table></div>
-      <div class="totals" style="margin-top:16px;display:flex;gap:18px;justify-content:flex-end;font-weight:800"><span>Total: <b id="vTotal">$0</b></span></div>
-      <h3 style="margin-top:24px">Abono inicial (opcional)</h3>
-      <div class="fgrid">
-        <div class="field"><label>Valor</label><input id="vPayAmount" type="number" min="0" value="0"></div>
-        <div class="field"><label>Medio</label><select id="vPayMethod"><option>Transferencia</option><option>Nequi</option><option>Daviplata</option><option>Efectivo</option><option>Bre-b</option><option>Otro</option></select></div>
-        <div class="field"><label>Referencia</label><input id="vPayRef"></div>
-        <div class="field"><label>Fecha</label><input id="vPayDate" type="date"></div>
-      </div>
+      <div style="margin-top:16px;display:flex;gap:18px;justify-content:flex-end;font-weight:800"><span>Total: <b id="vTotal">$0</b></span></div>
       <div class="actions" style="margin-top:20px;justify-content:flex-end">
         <button class="btn" onclick="clearVenta()">Limpiar</button>
         <button class="btn primary" onclick="saveVenta()">💾 Guardar pedido</button>
@@ -160,7 +152,7 @@ input, select, textarea {
   </section>
 
   <section id="view-abonos" class="view">
-    <h1>Abonos por confirmar</h1><p class="note">Reportes de pago Bre-b enviados por los clientes (llegan en tiempo real).</p>
+    <h1>Abonos por confirmar</h1><p class="note">Reportes de pago Bre-b enviados por los clientes.</p>
     <div id="reports"></div>
   </section>
 
@@ -209,7 +201,6 @@ input, select, textarea {
 
   <section id="view-logis" class="view">
     <h1>Logística</h1><p class="note">Pedidos pagados por despachar y envíos registrados.</p>
-    <div class="toolbar"><button class="btn" onclick="exportShipmentsExcel()">⬇ Excel envíos</button></div>
     <h3>📦 Por enviar</h3><div id="logisPending"></div>
     <h3 style="margin-top:20px">🚚 Enviados</h3><div id="logisSent"></div>
   </section>
@@ -220,19 +211,22 @@ input, select, textarea {
       <h2 style="margin-top:0">Apariencia</h2>
       <div class="fgrid">
         <div class="field"><label>Tema de color</label><select id="uiThemeSel" onchange="setTheme(this.value)"><option value="light">Claro</option><option value="dark">Oscuro</option></select></div>
-        <div class="field pk-pc-only"><label>Ubicación del menú (PC)</label><select id="uiLayoutSel" onchange="setLayout(this.value)"><option value="top">Barra de menú superior</option><option value="side">Barra de menú lateral</option></select></div>
       </div>
     </div>
-    
     <div class="panel glass" style="margin-top:24px; border: 2px solid var(--danger) !important; background: rgba(239, 68, 68, 0.05) !important;">
       <h2 style="margin-top:0; color:var(--danger)">⚠️ Zona de peligro: Borrar toda la tienda</h2>
-      <p class="note" style="color:var(--danger)">Esta acción eliminará <b>permanentemente</b> todo el inventario, categorías, kits, clientes, pedidos, abonos, logística, objetivos, donaciones y la configuración personalizada. <b>No se puede deshacer.</b></p>
+      <p class="note" style="color:var(--danger)">Esta acción eliminará permanentemente todo. No se puede deshacer.</p>
       <button class="btn danger" style="background:var(--danger);color:#fff;border:none" onclick="openWipeModal()">Borrar toda la información de la tienda</button>
     </div>
   </section>
+
+  <section id="view-legal" class="view">
+    <h1>Legal</h1><p class="note">Política de privacidad y términos de servicio.</p>
+    <div class="panel glass" id="legalContent"></div>
+  </section>
 </main>
 
-<!-- Modales (simplificados para el ejemplo, el JS los maneja) -->
+<!-- Modales -->
 <div id="productModal" class="modal-backdrop"><div class="modal glass">
   <h2 id="prodTitle">Producto</h2>
   <input type="hidden" id="pId">
@@ -242,7 +236,7 @@ input, select, textarea {
     <div class="field"><label>Categoría</label><select id="pCat"></select></div>
     <div class="field"><label>Fecha de compra</label><input id="pDate" type="date"></div>
     <div class="field"><label>Costo</label><input id="pCost" type="number" min="0"></div>
-    <div class="field"><label>Envío / costo adicional</label><input id="pShip" type="number" min="0"></div>
+    <div class="field"><label>Envío</label><input id="pShip" type="number" min="0"></div>
     <div class="field"><label>Precio de venta</label><input id="pPrice" type="number" min="0"></div>
     <div class="field"><label>Stock</label><input id="pStock" type="number" min="0"></div>
     <div class="field"><label>Mínimo de reposición</label><input id="pMin" type="number" min="0"></div>
@@ -282,22 +276,18 @@ input, select, textarea {
   <div class="fgrid">
     <div class="field"><label>Pago del envío</label><select id="shPay"><option value="adelantado">Adelantado</option><option value="por_cobrar">Por cobrar</option></select></div>
     <div class="field"><label>Monto</label><input id="shAmount" type="number" min="0"></div>
-    <div class="field"><label>Transportadora</label><select id="shCarrier" onchange="carrierChanged()"><option>Interrapidísimo</option><option>Envía</option><option>Coordinadora</option><option>Servientrega</option><option value="envío local">envío local</option><option value="otra">otra</option></select></div>
-    <div class="field" id="shCarrierOtherField" style="display:none"><label>Nombre de la transportadora</label><input id="shCarrierOther"></div>
-    <div class="field"><label>Medidas del paquete (opcional)</label><input id="shDims"></div>
+    <div class="field"><label>Transportadora</label><select id="shCarrier"><option>Interrapidísimo</option><option>Envía</option><option>Coordinadora</option><option>Servientrega</option><option value="envío local">envío local</option><option value="otra">otra</option></select></div>
+    <div class="field"><label>Medidas</label><input id="shDims"></div>
     <div class="field"><label>Ciudad</label><input id="shCity"></div>
     <div class="field"><label>Dirección</label><input id="shAddress"></div>
-    <div class="field"><label>Dirección de este envío</label><select id="shAddrKind"><option value="temporal">Temporal (no modifica la ficha del cliente)</option><option value="principal">Principal (actualiza al cliente)</option></select></div>
   </div>
-  <div id="shHint" class="note" style="margin:10px 0"></div>
-  <div class="modal-actions" style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end"><button class="btn" onclick="closeModal('shipModal')">Cancelar</button><button class="btn" onclick="saveShipment('save')">Guardar</button><button class="btn primary" id="shSendBtn" onclick="saveShipment('send')">Enviar</button></div>
+  <div class="modal-actions" style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end"><button class="btn" onclick="closeModal('shipModal')">Cancelar</button><button class="btn" onclick="saveShipment('save')">Guardar</button><button class="btn primary" onclick="saveShipment('send')">Enviar</button></div>
 </div></div>
 
 <div id="wipeModal" class="modal-backdrop"><div class="modal glass" style="border: 2px solid var(--danger) !important; max-width: 480px;">
   <h3 style="color:var(--danger); margin-top:0">⚠️ Confirmar borrado total</h3>
-  <p class="note">Para confirmar, escribe <b>exactamente</b> la siguiente frase:</p>
-  <p style="font-weight:800; color:var(--danger); background:var(--surface-hover); padding:12px; border-radius:10px; text-align:center; font-size:14px;">Estoy seguro de hacer el borrado</p>
-  <div class="field"><label>Escribe la frase exacta para confirmar</label><input id="wipeConfirmText" type="text" placeholder="Estoy seguro de hacer el borrado" autocomplete="off"></div>
+  <p class="note">Escribe <b>exactamente</b>: <span style="color:var(--danger);font-weight:800">Estoy seguro de hacer el borrado</span></p>
+  <div class="field"><label>Frase de confirmación</label><input id="wipeConfirmText" type="text" placeholder="Estoy seguro de hacer el borrado" autocomplete="off"></div>
   <div class="err" id="wipeErr" style="min-height:18px; color:var(--danger); font-weight:700;"></div>
   <div class="modal-actions" style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end;">
     <button class="btn" onclick="closeModal('wipeModal')">Cancelar</button>
@@ -309,5 +299,25 @@ input, select, textarea {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="/admin.js"></script>
+<script>
+// Toggle de tema para admin
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('uiTheme', next);
+  document.getElementById('themeBtn').textContent = next === 'dark' ? '🌙' : '☀️';
+  if (document.getElementById('uiThemeSel')) document.getElementById('uiThemeSel').value = next;
+}
+// Inicializar tema al cargar
+(function() {
+  const saved = localStorage.getItem('uiTheme');
+  if (saved) {
+    document.documentElement.setAttribute('data-theme', saved);
+    document.getElementById('themeBtn').textContent = saved === 'dark' ? '🌙' : '☀️';
+  }
+})();
+</script>
 </body>
 </html>

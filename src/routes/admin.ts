@@ -995,5 +995,21 @@ router.post('/wipe', async (req: AuthRequest, res) => {
     res.status(500).json({ error: 'Error al borrar la tienda: ' + (e.message || 'desconocido') });
   }
 });
-
+/* ─────────────── Reportes de abonos pendientes ─────────────── */
+router.get('/orders/reports/pending', async (req: AuthRequest, res: Response) => {
+  try {
+    const pf = pfOf(req);
+    const { rows } = await pool.query(
+      `SELECT pr.id, pr.order_id, pr.amount, pr.reported_at, o.order_number, u.name AS client_name, u.whatsapp AS client_whatsapp
+       FROM payment_reports pr
+       JOIN orders o ON o.id = pr.order_id
+       LEFT JOIN users u ON u.id = o.client_id
+       WHERE pr.portfolio_id = $1 AND pr.status = 'pending'
+       ORDER BY pr.reported_at DESC`, [pf]);
+    res.json(rows);
+  } catch (e: any) {
+    console.error('Error reports pending:', e);
+    res.status(500).json({ error: 'Error al cargar reportes: ' + e.message });
+  }
+});
 export default router;

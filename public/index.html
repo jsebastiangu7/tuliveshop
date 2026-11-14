@@ -13,11 +13,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
+/* === TEMA UNIFICADO: BLUE LIQUID GLASS === */
 :root {
   --bg: #0f172a;
   --bg-gradient: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.15) 0%, transparent 40%);
-  --surface: rgba(30, 41, 59, 0.6);
-  --surface-hover: rgba(51, 65, 85, 0.7);
+  --surface: rgba(30, 41, 59, 0.65);
+  --surface-hover: rgba(51, 65, 85, 0.8);
   --border: rgba(255, 255, 255, 0.08);
   --brand: #3b82f6;
   --brand-hover: #2563eb;
@@ -25,12 +26,13 @@
   --text: #f8fafc;
   --text-muted: #94a3b8;
   --shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  --ok: #22c55e; --warn: #f59e0b; --danger: #ef4444;
 }
 [data-theme="light"] {
   --bg: #f0f9ff;
   --bg-gradient: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.1) 0%, transparent 40%);
-  --surface: rgba(255, 255, 255, 0.65);
-  --surface-hover: rgba(255, 255, 255, 0.85);
+  --surface: rgba(255, 255, 255, 0.7);
+  --surface-hover: rgba(255, 255, 255, 0.9);
   --border: rgba(255, 255, 255, 0.6);
   --brand: #0284c7;
   --brand-hover: #0369a1;
@@ -184,7 +186,7 @@ footer a { color: var(--brand); text-decoration: none; }
   <section class="hero">
     <span class="tag">Hecho para vendedores de lives</span>
     <h1>Vende en vivo. Cuadra la caja <span class="highlight">sin perder la voz.</span></h1>
-    <p>Registra pedidos mientras transmites, controla inventario y abonos, y descubre tu ganancia real al terminar el live.</p>
+    <p>Tu Live Shop registra los pedidos mientras transmites, controla inventario y abonos, y te muestra cuánto ganaste de verdad al terminar el live.</p>
     <div class="cta">
       <a href="#precio" class="btn btn-primary">Quiero Tu Live Shop</a>
       <a href="#demo" class="btn btn-outline">Ver cómo funciona</a>
@@ -203,12 +205,12 @@ footer a { color: var(--brand); text-decoration: none; }
       <div class="card glass">
         <span class="icon">❌</span>
         <h3>Como vendes hoy</h3>
-        <p>Anotas pedidos a mano mientras hablas con la cámara. No sabes cuántas unidades quedan, los abonos viven en la memoria y al final del mes no sabes cuánto ganaste realmente.</p>
+        <p>Anotas pedidos a mano mientras hablas con la cámara. No sabes cuántas unidades quedan hasta que alguien las pide. Los abonos y saldos viven en la memoria de alguien. Al final del mes no sabes cuánto ganaste, solo cuánto entró.</p>
       </div>
       <div class="card glass">
         <span class="icon">✅</span>
         <h3>Con Tu Live Shop</h3>
-        <p>Capturas cada pedido en segundos. El inventario baja solo con cada venta. Cada abono queda registrado con saldo y factura en PDF. Un panel que separa tu ganancia real.</p>
+        <p>Capturas cada pedido en segundos, durante el live. Inventario por código de barras que baja solo con cada venta. Cada abono queda registrado, con saldo y factura en PDF. Un panel que separa tu ganancia real de lo que debes reinvertir y apartar.</p>
       </div>
     </div>
   </section>
@@ -217,11 +219,11 @@ footer a { color: var(--brand); text-decoration: none; }
     <h2 class="section-title">Lo que incluye</h2>
     <p class="section-sub">Todo lo que necesita una tienda que vende en vivo.</p>
     <div class="grid">
-      <div class="card glass"><span class="icon">🛒</span><h3>Pedidos del live</h3><p>Registra cliente, producto y valor mientras transmites. Estado: pendiente, abonado o pagado.</p></div>
-      <div class="card glass"><span class="icon">📦</span><h3>Inventario con código de barras</h3><p>Escanea, cuenta y deja de vender lo que ya no tienes. Descuento automático.</p></div>
-      <div class="card glass"><span class="icon">💰</span><h3>Abonos y saldos</h3><p>Cuánto pagó, cuánto debe y desde cuándo. Sin discusiones ni cuadernos perdidos.</p></div>
-      <div class="card glass"><span class="icon">🧾</span><h3>Facturas en PDF</h3><p>Genera el comprobante de cada cliente con tu logo y envíalo en un clic.</p></div>
-      <div class="card glass"><span class="icon">🚚</span><h3>Logística y envíos</h3><p>Sabe qué se empaca, qué se despacha y qué falta por cobrar.</p></div>
+      <div class="card glass"><span class="icon">🛒</span><h3>Pedidos del live</h3><p>Registra cliente, producto, talla y valor mientras transmites. Cada pedido queda con su estado: pendiente, abonado o pagado.</p></div>
+      <div class="card glass"><span class="icon">📦</span><h3>Inventario con código de barras</h3><p>Escanea, cuenta y deja de vender lo que ya no tienes.</p></div>
+      <div class="card glass"><span class="icon">💰</span><h3>Abonos y saldos</h3><p>Cuánto pagó, cuánto debe y desde cuándo. Sin discusiones.</p></div>
+      <div class="card glass"><span class="icon">🧾</span><h3>Facturas en PDF</h3><p>Genera el comprobante de cada cliente y envíalo en un clic.</p></div>
+      <div class="card glass"><span class="icon">🚚</span><h3>Logística y envíos</h3><p>Qué se empaca, qué se despacha y qué falta por cobrar.</p></div>
       <div class="card glass"><span class="icon">🎁</span><h3>Kits y combos</h3><p>Arma paquetes de varios productos y vende el combo como una sola unidad.</p></div>
     </div>
   </section>
@@ -238,7 +240,7 @@ footer a { color: var(--brand); text-decoration: none; }
 
     <div id="demo-pedidos" class="demo-screen glass">
       <h3 style="font-size:18px; margin-bottom:8px;">Captura rápida durante el live</h3>
-      <p style="color:var(--text-muted); font-size:14px; margin-bottom:16px;">Un cliente grita "¡mío!" y tú lo registras en segundos.</p>
+      <p style="color:var(--text-muted); font-size:14px; margin-bottom:16px;">Un cliente grita "¡mío!" y tú lo registras en segundos. Todo queda ordenado por cliente para cobrar y despachar después.</p>
       <div class="mock-row"><span><b>Mariana R.</b> <span style="color:var(--text-muted)">· Blusa lino ×2</span></span> <span>$78.000</span> <span class="mock-badge badge-ok">Pagado</span></div>
       <div class="mock-row"><span><b>Johana P.</b> <span style="color:var(--text-muted)">· Bolso mini ×1</span></span> <span>$45.000</span> <span class="mock-badge badge-warn">Abono $20.000</span></div>
       <div class="mock-row"><span><b>Camila V.</b> <span style="color:var(--text-muted)">· Kit 3 aretes</span></span> <span>$36.000</span> <span class="mock-badge badge-muted">Pendiente</span></div>
@@ -246,7 +248,7 @@ footer a { color: var(--brand); text-decoration: none; }
 
     <div id="demo-inventario" class="demo-screen glass" style="display:none;">
       <h3 style="font-size:18px; margin-bottom:8px;">Sabes qué tienes antes de ofrecerlo</h3>
-      <p style="color:var(--text-muted); font-size:14px; margin-bottom:16px;">Escanea el código de barras o importa tu Excel. Las unidades bajas se marcan solas.</p>
+      <p style="color:var(--text-muted); font-size:14px; margin-bottom:16px;">Escanea el código de barras o importa tu Excel. Cada venta descuenta stock y las unidades bajas se marcan solas.</p>
       <div class="mock-row"><span><b>Blusa lino</b></span> <span>Stock: 14</span> <span>$39.000</span></div>
       <div class="mock-row"><span><b>Bolso mini</b></span> <span style="color:#f59e0b">Stock: 2 ⚠️</span> <span>$45.000</span></div>
       <div class="mock-row"><span><b>Aretes dorados</b></span> <span>Stock: 31</span> <span>$12.000</span></div>
@@ -254,7 +256,7 @@ footer a { color: var(--brand); text-decoration: none; }
 
     <div id="demo-panel" class="demo-screen glass" style="display:none;">
       <h3 style="font-size:18px; margin-bottom:8px;">Tu ganancia real, sin adivinar</h3>
-      <p style="color:var(--text-muted); font-size:14px; margin-bottom:16px;">Ventas, costos y lo que debes apartar en un solo vistazo.</p>
+      <p style="color:var(--text-muted); font-size:14px; margin-bottom:16px;">Ventas, costos y lo que debes apartar en un solo vistazo, con metas que puedes seguir semana a semana.</p>
       <div class="mock-row"><span>Ventas del mes</span> <b>$2.480.000</b></div>
       <div class="mock-row"><span>Ganancia neta</span> <b style="color:#22c55e">$930.000</b></div>
       <div class="mock-row"><span>Meta del mes</span> <span style="color:var(--brand)">68% ████████░░</span></div>

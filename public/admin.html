@@ -84,16 +84,54 @@ h3{margin:14px 0 6px;font-size:15px}
   background: var(--surface); cursor: pointer; font-size: 15px;
   display: flex; align-items: center; justify-content: center;
 }
+
+/* Menú de usuario */
+.who-wrap { position: relative; }
+#userMenu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  min-width: 200px;
+  border-radius: 12px;
+  padding: 8px;
+  z-index: 200;
+  flex-direction: column;
+  gap: 4px;
+}
+#userMenu.open { display: flex; }
+#userMenu .btn {
+  justify-content: flex-start;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+}
+#userMenu .divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
 </style>
 </head>
 <body>
 <header id="hdr" class="hidden glass">
   <div class="brand" style="cursor:pointer" onclick="location.href='/'" title="Ir a la tienda">Tu <span>Live Shop</span> · Admin</div>
   <nav id="tabs" class="chips"></nav>
-  <div style="display:flex;gap:8px;align-items:center">
+  <div style="display:flex; gap:8px; align-items:center; position:relative;">
     <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn">🌙</button>
-    <span id="whoName" class="pill"></span>
-    <button class="btn" onclick="logout()">Salir</button>
+    
+    <div class="who-wrap">
+      <button class="btn btn-ghost who-btn" onclick="toggleUserMenu()">
+        👑 <span id="whoName">Admin</span> ▾
+      </button>
+      <div id="userMenu" class="glass">
+        <button class="btn btn-ghost" onclick="menuGo('config')">⚙️ Configuración</button>
+        <button class="btn btn-ghost" onclick="menuGo('legal')">📜 Legal</button>
+        <div class="divider"></div>
+        <button class="btn btn-ghost" style="color:var(--danger);" onclick="logout()">🚪 Salir</button>
+      </div>
+    </div>
   </div>
 </header>
 <main>
@@ -287,37 +325,4 @@ h3{margin:14px 0 6px;font-size:15px}
 <div id="wipeModal" class="modal-backdrop"><div class="modal glass" style="border: 2px solid var(--danger) !important; max-width: 480px;">
   <h3 style="color:var(--danger); margin-top:0">⚠️ Confirmar borrado total</h3>
   <p class="note">Escribe <b>exactamente</b>: <span style="color:var(--danger);font-weight:800">Estoy seguro de hacer el borrado</span></p>
-  <div class="field"><label>Frase de confirmación</label><input id="wipeConfirmText" type="text" placeholder="Estoy seguro de hacer el borrado" autocomplete="off"></div>
-  <div class="err" id="wipeErr" style="min-height:18px; color:var(--danger); font-weight:700;"></div>
-  <div class="modal-actions" style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end;">
-    <button class="btn" onclick="closeModal('wipeModal')">Cancelar</button>
-    <button class="btn danger" style="background:var(--danger);color:#fff;border:none" id="wipeExecuteBtn" onclick="executeWipe()" disabled>Borrar todo permanentemente</button>
-  </div>
-</div></div>
-
-<div id="toast" class="toast hidden" style="position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--text);padding:12px 20px;border-radius:12px;font-weight:700;font-size:14px;z-index:400;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.3s;border:1px solid var(--border)"></div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="/admin.js"></script>
-<script>
-// Toggle de tema para admin
-function toggleTheme() {
-  const html = document.documentElement;
-  const current = html.getAttribute('data-theme');
-  const next = current === 'dark' ? 'light' : 'dark';
-  html.setAttribute('data-theme', next);
-  localStorage.setItem('uiTheme', next);
-  document.getElementById('themeBtn').textContent = next === 'dark' ? '🌙' : '☀️';
-  if (document.getElementById('uiThemeSel')) document.getElementById('uiThemeSel').value = next;
-}
-// Inicializar tema al cargar
-(function() {
-  const saved = localStorage.getItem('uiTheme');
-  if (saved) {
-    document.documentElement.setAttribute('data-theme', saved);
-    document.getElementById('themeBtn').textContent = saved === 'dark' ? '🌙' : '☀️';
-  }
-})();
-</script>
-</body>
-</html>
+  <div class="field"><label>Frase de confirmación</label><input i

@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="description" content="Tu Live Shop: El sistema de ventas, inventario y logística diseñado para emprendedores que venden en vivo.">
+<title>Tu Live Shop · Vende en vivo, cuadra la caja sin perder la voz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f172a;
+  --bg-gradient: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.15) 0%, transparent 40%);
+  --surface: rgba(30, 41, 59, 0.65);
+  --surface-hover: rgba(51, 65, 85, 0.8);
+  --border: rgba(255, 255, 255, 0.08);
+  --brand: #3b82f6;
+  --brand-hover: #2563eb;
+  --brand-glow: rgba(59, 130, 246, 0.4);
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+[data-theme="light"] {
+  --bg: #f0f9ff;
+  --bg-gradient: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.1) 0%, transparent 40%);
+  --surface: rgba(255, 255, 255, 0.7);
+  --surface-hover: rgba(255, 255, 255, 0.9);
+  --border: rgba(0, 0, 0, 0.08);
+  --brand: #0284c7;
+  --brand-hover: #0369a1;
+  --brand-glow: rgba(2, 132, 199, 0.3);
+  --text: #0f172a;
+  --text-muted: #475569;
+  --shadow: 0 8px 32px rgba(2, 132, 199, 0.1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  background-image: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+.glass {
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+header {
+  position: sticky; top: 0; z-index: 100;
+  padding: 16px 24px;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+}
+.brand { font-size: 20px; font-weight: 800; text-decoration: none; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.brand span { color: var(--brand); }
+.nav-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.btn {
+  padding: 10px 20px; border-radius: 12px; font-weight: 600; font-size: 14px;
+  text-decoration: none; cursor: pointer; transition: all 0.2s ease; border: none; display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+.btn-ghost:hover { color: var(--text); background: var(--surface-hover); }
+.btn-primary {
+  background: var(--brand); color: #fff;
+  box-shadow: 0 4px 14px var(--brand-glow);
+}
+.btn-primary:hover { background: var(--brand-hover); transform: translateY(-1px); }
+.btn-outline {
+  background: transparent; color: var(--brand);
+  border: 1px solid var(--brand);
+}
+.btn-outline:hover { background: var(--brand); color: #fff; }
+.theme-toggle {
+  width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface); cursor: pointer; font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.theme-toggle:hover { background: var(--surface-hover); }
+main { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+section { margin-bottom: 80px; scroll-margin-top: 100px; }
+.hero { text-align: center; padding: 60px 0 40px; }
+.hero .tag {
+  display: inline-block; background: rgba(59, 130, 246, 0.15); color: var(--brand);
+  padding: 6px 16px; border-radius: 999px; font-weight: 600; font-size: 13px; margin-bottom: 20px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+.hero h1 { font-size: clamp(36px, 6vw, 56px); font-weight: 800; line-height: 1.1; margin-bottom: 20px; letter-spacing: -0.02em; }
+.hero h1 .highlight {
+  background: linear-gradient(135deg, var(--brand), #06b6d4);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.hero p { font-size: 18px; color: var(--text-muted); max-width: 600px; margin: 0 auto 32px; }
+.hero .cta { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+.stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 60px;
+}
+.stat-card { padding: 24px; text-align: center; border-radius: 16px; }
+.stat-card b { font-size: 28px; font-weight: 800; color: var(--brand); display: block; margin-bottom: 4px; }
+.stat-card span { font-size: 14px; color: var(--text-muted); }
+.section-title { text-align: center; font-size: clamp(28px, 4vw, 36px); font-weight: 800; margin-bottom: 12px; }
+.section-sub { text-align: center; color: var(--text-muted); max-width: 600px; margin: 0 auto 48px; font-size: 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+.card { padding: 28px; border-radius: 20px; transition: transform 0.2s, background 0.2s; }
+.card:hover { transform: translateY(-4px); background: var(--surface-hover); }
+.card .icon { font-size: 32px; margin-bottom: 16px; display: block; }
+.card h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.card p { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+.demo-tabs { display: flex; justify-content: center; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+.demo-tab {
+  padding: 10px 20px; border-radius: 999px; background: transparent; border: 1px solid var(--border);
+  color: var(--text-muted); cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.2s;
+}
+.demo-tab.active, .demo-tab:hover { background: var(--brand); color: #fff; border-color: var(--brand); }
+.demo-screen { padding: 32px; border-radius: 20px; min-height: 300px; display: flex; flex-direction: column; gap: 16px; }
+.mock-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.mock-row:last-child { border-bottom: none; }
+.mock-badge { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+.badge-ok { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.badge-warn { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.badge-muted { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+.faq details {
+  padding: 20px 24px; border-radius: 16px; margin-bottom: 12px; cursor: pointer; transition: background 0.2s;
+}
+.faq details:hover { background: var(--surface-hover); }
+.faq summary { font-weight: 600; font-size: 16px; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+.faq summary::after { content: '+'; font-size: 20px; color: var(--brand); }
+.faq details[open] summary::after { content: '−'; }
+.faq p { margin-top: 12px; color: var(--text-muted); font-size: 15px; }
+.pricing-card {
+  max-width: 480px; margin: 0 auto; padding: 40px 32px; border-radius: 24px; text-align: center;
+  border: 1px solid var(--brand); position: relative; overflow: hidden;
+}
+.pricing-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  background: linear-gradient(90deg, var(--brand), #06b6d4);
+}
+.price-tag { font-size: 48px; font-weight: 800; color: var(--brand); margin: 16px 0 8px; }
+.price-tag span { font-size: 16px; font-weight: 500; color: var(--text-muted); }
+.features-list { list-style: none; text-align: left; margin: 32px 0; }
+.features-list li { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 15px; display: flex; align-items: center; gap: 10px; }
+.features-list li::before { content: '✓'; color: var(--brand); font-weight: 800; }
+footer { text-align: center; padding: 40px 24px; color: var(--text-muted); font-size: 14px; border-top: 1px solid var(--border); }
+footer a { color: var(--brand); text-decoration: none; }
+
+@media (max-width: 640px) {
+  header { padding: 12px 16px; }
+  .nav-actions { width: 100%; justify-content: center; margin-top: 8px; }
+  .hero { padding: 40px 0 20px; }
+  main { padding: 24px 16px 60px; }
+}
+</style>
+</head>
+<body>
+
+<header class="glass">
+  <a href="#" class="brand">🎥 Tu <span>Live Shop</span></a>
+  <div class="nav-actions">
+    <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn">🌙</button>
+    <a href="/index.html" class="btn btn-ghost">Ingresar</a>
+    <a href="https://wa.me/573052889858?text=Hola%2C%20quiero%20suscribirme%20a%20Tu%20Live%20Shop" target="_blank" rel="noopener" class="btn btn-primary">Suscribirme</a>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <span class="tag">Hecho para vendedores de lives</span>
+    <h1>Vende en vivo. Cuadra la caja <span class="highlight">sin perder la voz.</span></h1>
+    <p>Tu Live Shop registra los pedidos mientras transmites, controla inventario y abonos, y te muestra cuánto ganaste de verdad al terminar el live.</p>
+    <div class="cta">
+      <a href="#precio" class="btn btn-primary">Quiero Tu Live Shop</a>
+      <a href="#demo" class="btn btn-outline">Ver cómo funciona</a>
+    </div>
+    <div class="stats">
+      <div class="stat-card glass"><b>$21.000</b><span>COP al mes</span></div>
+      <div class="stat-card glass"><b>100%</b><span>Tu marca</span></div>
+      <div class="stat-card glass"><b>24/7</b><span>Tienda en línea</span></div>
+    </div>
+  </section>
+
+  <section id="problema">
+    <h2 class="section-title">El problema real</h2>
+    <p class="section-sub">Vendes bien en el live, pero pierdes plata por el desorden.</p>
+    <div class="grid">
+      <div class="card glass">
+        <span class="icon">❌</span>
+        <h3>Como vendes hoy</h3>
+        <p>Anotas pedidos a mano mientras hablas con la cámara. No sabes cuántas unidades quedan, los abonos viven en la memoria y al final del mes no sabes cuánto ganaste.</p>
+      </div>
+      <div class="card glass">
+        <span class="icon">✅</span>
+        <h3>Con Tu Live Shop</h3>
+        <p>Capturas cada pedido en segundos. El inventario baja solo con cada venta. Cada abono queda registrado con saldo y factura en PDF.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="funciones">
+    <h2 class="section-title">Lo que incluye</h2>
+    <p class="section-sub">Todo lo que necesita una tienda que vende en vivo.</p>
+    <div class="grid">
+      <div class="card glass"><span class="icon">🛒</span><h3>Pedidos del live</h3><p>Registra cliente, producto y valor mientras transmites. Estado: pendiente, abonado o pagado.</p></div>
+      <div class="card glass"><span class="icon">📦</span><h3>Inventario con código de barras</h3><p>Escanea, cuenta y deja de vender lo que ya no tienes.</p></div>
+      <div class="card glass"><span class="icon">💰</span><h3>Abonos y saldos</h3><p>Cuánto pagó, cuánto debe y desde cuándo. Sin discusiones.</p></div>
+      <div class="card glass"><span class="icon">🧾</span><h3>Facturas en PDF</h3><p>Genera el comprobante de cada cliente y envíalo en un clic.</p></div>
+      <div class="card glass"><span class="icon">🚚</span><h3>Logística y envíos</h3><p>Qué se empaca, qué se despacha y qué falta por cobrar.</p></div>
+      <div class="card glass"><span class="icon">🎁</span><h3>Kits y combos</h3><p>Arma paquetes de varios productos y vende el combo como una sola unidad.</p></div>
+    </div>
+  </section>
+
+  <section id="demo">
+    <h2 class="section-title">Mira cómo se ve</h2>
+    <p class="section-sub">Tres pantallas que usarás en cada live.</p>
+    <div class="demo-tabs">
+      <button class="demo-tab active" onclick="showDemo('pedidos', this)">Pedidos</button>
+      <button class="demo-tab" onclick="showDemo('inventario', this)">Inventario</button>
+      <button class="demo-tab" onclick="showDemo('panel', this)">Panel de Ganancia</button>
+    </div>
+    <div id="demo-pedidos" class="demo-screen glass">
+      <h3 style="font-size:18px; margin-bottom:8px;">Captura rápida durante el live</h3>
+      <div class="mock-row"><span><b>Mariana R.</b> <span style="color:var(--text-muted)">· Blusa lino ×2</span></span> <span>$78.000</span> <span class="mock-badge badge-ok">Pagado</span></div>
+      <div class="mock-row"><span><b>Johana P.</b> <span style="color:var(--text-muted)">· Bolso mini ×1</span></span> <span>$45.000</span> <span class="mock-badge badge-warn">Abono $20.000</span></div>
+      <div class="mock-row"><span><b>Camila V.</b> <span style="color:var(--text-muted)">· Kit 3 aretes</span></span> <span>$36.000</span> <span class="mock-badge badge-muted">Pendiente</span></div>
+    </div>
+    <div id="demo-inventario" class="demo-screen glass" style="display:none;">
+      <h3 style="font-size:18px; margin-bottom:8px;">Sabes qué tienes antes de ofrecerlo</h3>
+      <div class="mock-row"><span><b>Blusa lino</b></span> <span>Stock: 14</span> <span>$39.000</span></div>
+      <div class="mock-row"><span><b>Bolso mini</b></span> <span style="color:#f59e0b">Stock: 2 ⚠️</span> <span>$45.000</span></div>
+      <div class="mock-row"><span><b>Aretes dorados</b></span> <span>Stock: 31</span> <span>$12.000</span></div>
+    </div>
+    <div id="demo-panel" class="demo-screen glass" style="display:none;">
+      <h3 style="font-size:18px; margin-bottom:8px;">Tu ganancia real, sin adivinar</h3>
+      <div class="mock-row"><span>Ventas del mes</span> <b>$2.480.000</b></div>
+      <div class="mock-row"><span>Ganancia neta</span> <b style="color:#22c55e">$930.000</b></div>
+      <div class="mock-row"><span>Meta del mes</span> <span style="color:var(--brand)">68% ████████░░</span></div>
+    </div>
+  </section>
+
+  <section id="precio">
+    <h2 class="section-title">Un solo plan. Un solo precio.</h2>
+    <div class="pricing-card glass">
+      <span class="tag" style="background:rgba(59, 130, 246, 0.15); color:var(--brand); border-color:rgba(59, 130, 246, 0.3);">LANZAMIENTO</span>
+      <div class="price-tag">$21.000 <span>COP / mes</span></div>
+      <ul class="features-list">
+        <li>Pedidos, inventario, abonos y facturas</li>
+        <li>Logística, kits y panel de ganancias</li>
+        <li>Importación de Excel</li>
+        <li>Tema claro y oscuro</li>
+        <li>Cancelas cuando quieras</li>
+      </ul>
+      <a href="https://wa.me/573052889858?text=Hola%2C%20quiero%20suscribirme%20a%20Tu%20Live%20Shop" target="_blank" rel="noopener" class="btn btn-primary" style="width:100%; justify-content:center; padding:14px; font-size:16px;">📲 Suscribirme por WhatsApp</a>
+    </div>
+  </section>
+
+  <section id="faq" class="faq">
+    <h2 class="section-title">Preguntas frecuentes</h2>
+    <details class="glass"><summary>¿Cómo pago y cómo se activa?</summary><p>Haces clic en el botón de WhatsApp, coordinamos el pago y activamos tu acceso.</p></details>
+    <details class="glass"><summary>¿Funciona con TikTok, Instagram y Facebook?</summary><p>Sí. Tú registras los pedidos del live en la aplicación.</p></details>
+    <details class="glass"><summary>¿Necesito instalar algo?</summary><p>Se usa desde el navegador de tu celular o computador.</p></details>
+    <details class="glass"><summary>¿Puedo traer mi inventario de Excel?</summary><p>Sí. Puedes importar tu archivo y empezar con tus productos ya cargados.</p></details>
+  </section>
+</main>
+
+<footer class="glass">
+  <p>© 2026 Tu Live Shop · Hecho para vendedores de lives en Colombia.</p>
+</footer>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  document.getElementById('themeBtn').textContent = next === 'dark' ? '🌙' : '☀️';
+}
+(function() {
+  const saved = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = saved || (prefersDark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('themeBtn').textContent = theme === 'dark' ? '🌙' : '☀️';
+})();
+
+function showDemo(id, btn) {
+  document.querySelectorAll('.demo-screen').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.demo-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('demo-' + id).style.display = 'flex';
+  if (btn) btn.classList.add('active');
+}
+</script>
+</body>
+</html>

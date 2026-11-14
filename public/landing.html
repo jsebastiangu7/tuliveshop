@@ -154,7 +154,7 @@ section { margin-bottom: 80px; scroll-margin-top: 100px; }
 footer { text-align: center; padding: 40px 24px; color: var(--text-muted); font-size: 14px; border-top: 1px solid var(--border); }
 footer a { color: var(--brand); text-decoration: none; }
 
-/* Modal de login */
+/* Modal */
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
   display: none; align-items: center; justify-content: center; z-index: 200; padding: 16px;
@@ -178,6 +178,7 @@ footer a { color: var(--brand); text-decoration: none; }
 .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
 .modal-actions .btn { flex: 1; justify-content: center; }
 .form-error { color: var(--danger); font-size: 13px; min-height: 18px; margin-top: 8px; text-align: center; }
+.form-error.success { color: var(--ok); }
 
 @media (max-width: 640px) {
   header { padding: 12px 16px; }
@@ -301,36 +302,92 @@ footer a { color: var(--brand); text-decoration: none; }
   <p>© 2026 Tu Live Shop · Hecho para vendedores de lives en Colombia.</p>
 </footer>
 
-<!-- MODAL LOGIN CLIENTE -->
+<!-- MODAL LOGIN CLIENTE (2 PASOS) -->
 <div class="modal-overlay" id="clientLoginModal">
   <div class="modal-box">
-    <h3>🛍️ Ingreso Cliente</h3>
-    <p class="subtitle">Accede a tu bolsita con tu WhatsApp y PIN</p>
-    <form onsubmit="handleClientLogin(event)">
+    <h3>🛍️ Acceso a tu Bolsita</h3>
+    <p class="subtitle">Ingresa con tu WhatsApp y PIN</p>
+    
+    <div id="clientLoginStep1">
+      <form onsubmit="handleClientLoginStep1(event)">
+        <div class="form-group">
+          <label>WhatsApp</label>
+          <input type="text" id="cliWa" inputmode="numeric" placeholder="3001234567" required>
+        </div>
+        <div class="form-group">
+          <label>PIN</label>
+          <input type="password" id="cliPin" inputmode="numeric" placeholder="••••" minlength="4" required>
+        </div>
+        <div class="form-error" id="cliErr"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="closeClientModals()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Ingresar</button>
+        </div>
+      </form>
+      <div style="text-align: center; margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
+        <button class="btn btn-ghost" style="font-size: 13px; padding: 8px;" onclick="showClientRegister()">¿No tienes cuenta? Regístrate aquí</button>
+        <button class="btn btn-ghost" style="font-size: 13px; padding: 8px; color: var(--brand);" onclick="showClientRecover()">¿Olvidaste tu PIN?</button>
+      </div>
+    </div>
+
+    <div id="clientLoginStep2" style="display: none;">
+      <p class="subtitle">Tu número está registrado en varias tiendas. Selecciona una:</p>
+      <div id="storeSelectionList" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;"></div>
+      <button class="btn btn-ghost" style="width: 100%; justify-content: center;" onclick="backToClientStep1()">← Volver</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REGISTRO CLIENTE -->
+<div class="modal-overlay" id="clientRegisterModal">
+  <div class="modal-box">
+    <h3>📝 Crear cuenta de Cliente</h3>
+    <form onsubmit="handleClientRegister(event)">
       <div class="form-group">
-        <label>Tienda</label>
-        <select id="cliStore" required>
-          <option value="">Selecciona tu tienda...</option>
-          <option value="ttshop">Pandala Kawaii</option>
-        </select>
+        <label>Nombre completo</label>
+        <input id="regName" required>
       </div>
       <div class="form-group">
         <label>WhatsApp</label>
-        <input type="text" id="cliWa" inputmode="numeric" placeholder="3001234567" required>
+        <input type="text" id="regWa" inputmode="numeric" placeholder="3001234567" required>
       </div>
       <div class="form-group">
-        <label>PIN</label>
-        <input type="password" id="cliPin" inputmode="numeric" placeholder="••••" minlength="4" required>
+        <label>Correo (para recuperar tu PIN)</label>
+        <input type="email" id="regEmail" required>
       </div>
-      <div class="form-error" id="cliErr"></div>
+      <div class="form-group">
+        <label>Crea tu PIN (4 a 8 dígitos)</label>
+        <input type="password" id="regPin" inputmode="numeric" minlength="4" maxlength="8" required>
+      </div>
+      <div class="form-error" id="regErr"></div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" onclick="closeClientLogin()">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Ingresar</button>
+        <button type="button" class="btn btn-ghost" onclick="closeClientModals()">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Registrarme</button>
       </div>
     </form>
-    <p style="text-align:center; margin-top:16px; font-size:13px; color:var(--text-muted);">
-      ¿Primera vez? Tu PIN inicial es <b>1234</b>.
-    </p>
+  </div>
+</div>
+
+<!-- MODAL RECUPERAR PIN -->
+<div class="modal-overlay" id="clientRecoverModal">
+  <div class="modal-box">
+    <h3>🔑 Recuperar PIN</h3>
+    <p class="subtitle">Te enviaremos un PIN temporal a tu correo registrado.</p>
+    <form onsubmit="handleClientRecover(event)">
+      <div class="form-group">
+        <label>WhatsApp registrado</label>
+        <input type="text" id="recWa" inputmode="numeric" placeholder="3001234567" required>
+      </div>
+      <div class="form-group">
+        <label>Correo registrado</label>
+        <input type="email" id="recEmail" required>
+      </div>
+      <div class="form-error" id="recErr"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeClientModals()">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Enviar PIN temporal</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -344,7 +401,6 @@ function toggleTheme() {
   localStorage.setItem('theme', next);
   document.getElementById('themeBtn').textContent = next === 'dark' ? '🌙' : '☀️';
 }
-// Inicializar tema
 (function() {
   const saved = localStorage.getItem('theme');
   const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -361,34 +417,150 @@ function showDemo(id, btn) {
   if (btn) btn.classList.add('active');
 }
 
-// Modal cliente
-function openClientLogin() { document.getElementById('clientLoginModal').classList.add('open'); }
-function closeClientLogin() {
-  document.getElementById('clientLoginModal').classList.remove('open');
+// Modales cliente
+let pendingClientData = null;
+
+function closeClientModals() {
+  ['clientLoginModal', 'clientRegisterModal', 'clientRecoverModal'].forEach(id => {
+    document.getElementById(id).classList.remove('open');
+  });
   document.getElementById('cliErr').textContent = '';
+  document.getElementById('regErr').textContent = '';
+  document.getElementById('recErr').textContent = '';
+  backToClientStep1();
 }
 
-async function handleClientLogin(e) {
+function showClientRegister() {
+  document.getElementById('clientLoginModal').classList.remove('open');
+  document.getElementById('clientRegisterModal').classList.add('open');
+}
+
+function showClientRecover() {
+  document.getElementById('clientLoginModal').classList.remove('open');
+  document.getElementById('clientRecoverModal').classList.add('open');
+}
+
+function backToClientStep1() {
+  document.getElementById('clientLoginStep1').style.display = 'block';
+  document.getElementById('clientLoginStep2').style.display = 'none';
+  pendingClientData = null;
+}
+
+function openClientLogin() {
+  document.getElementById('clientLoginModal').classList.add('open');
+}
+
+async function handleClientLoginStep1(e) {
   e.preventDefault();
   const err = document.getElementById('cliErr');
-  err.textContent = '';
+  err.textContent = 'Verificando...';
+  err.className = 'form-error';
+  
   try {
     const res = await fetch('/api/auth/client/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         whatsapp: document.getElementById('cliWa').value,
-        pin: document.getElementById('cliPin').value,
-        portfolio_slug: document.getElementById('cliStore').value
+        pin: document.getElementById('cliPin').value
       })
     });
+    
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Error al ingresar');
+    if (!res.ok) {
+      if (data.error && data.error.includes('no encontrada')) {
+        throw new Error('WhatsApp o PIN incorrectos.');
+      }
+      throw new Error(data.error || 'Error al ingresar');
+    }
+
+    if (data.multiple_stores) {
+      pendingClientData = data;
+      const list = document.getElementById('storeSelectionList');
+      list.innerHTML = data.multiple_stores.map(store => 
+        `<button class="btn btn-outline" style="width:100%; justify-content:center;" onclick="finalizeClientLogin('${store.slug}')">
+          🏪 ${store.name}
+        </button>`
+      ).join('');
+      document.getElementById('clientLoginStep1').style.display = 'none';
+      document.getElementById('clientLoginStep2').style.display = 'block';
+      err.textContent = '';
+    } else {
+      finalizeClientLogin(data.portfolio.slug, data);
+    }
+  } catch (e) {
+    err.textContent = e.message;
+  }
+}
+
+async function finalizeClientLogin(slug, dataOverride = null) {
+  try {
+    const data = dataOverride || pendingClientData;
+    localStorage.setItem('pk_token', data.token);
+    localStorage.setItem('pk_user', JSON.stringify(data.user));
+    localStorage.setItem('pk_slug', slug);
+    
+    closeClientModals();
+    window.location.href = '/?t=' + slug;
+  } catch (e) {
+    document.getElementById('cliErr').textContent = 'Error al seleccionar la tienda.';
+  }
+}
+
+async function handleClientRegister(e) {
+  e.preventDefault();
+  const err = document.getElementById('regErr');
+  err.textContent = 'Registrando...';
+  err.className = 'form-error';
+  
+  try {
+    const res = await fetch('/api/auth/client/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: document.getElementById('regName').value,
+        whatsapp: document.getElementById('regWa').value,
+        email: document.getElementById('regEmail').value,
+        pin: document.getElementById('regPin').value,
+        portfolio_slug: 'ttshop'
+      })
+    });
+    
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al registrarse');
+    
     localStorage.setItem('pk_token', data.token);
     localStorage.setItem('pk_user', JSON.stringify(data.user));
     localStorage.setItem('pk_slug', data.portfolio.slug);
+    
+    closeClientModals();
     window.location.href = '/?t=' + data.portfolio.slug;
   } catch (e) {
+    err.textContent = e.message;
+  }
+}
+
+async function handleClientRecover(e) {
+  e.preventDefault();
+  const err = document.getElementById('recErr');
+  err.textContent = 'Enviando...';
+  err.className = 'form-error';
+  
+  try {
+    const res = await fetch('/api/auth/client/forgot-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        whatsapp: document.getElementById('recWa').value,
+        email: document.getElementById('recEmail').value
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'No se pudo enviar el PIN.');
+    err.className = 'form-error success';
+    err.textContent = '✔ Si los datos coinciden, recibirás un PIN temporal en tu correo.';
+  } catch (e) {
+    err.className = 'form-error';
     err.textContent = e.message;
   }
 }

@@ -609,5 +609,24 @@ body.layout-side .hdr-icons{margin-left:0}
     </div>
   </div>
 </div>
+  <!-- MODAL: Importando JSON -->
+<div id="importModal" class="modal-backdrop">
+  <div class="modal" style="text-align: center; max-width: 420px;">
+    <div style="font-size: 48px; margin-bottom: 12px;">⏳</div>
+    <h3 style="margin: 0 0 8px;">Importando datos...</h3>
+    <p class="note">Procesando inventario, clientes, pedidos y abonos.<br>No cierres ni recargues esta pestaña.</p>
+    <p id="importTimer" style="font-size: 20px; font-weight: 800; color: var(--brand); margin: 16px 0;">Tiempo: 0s</p>
+    <div style="width: 100%; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
+      <div style="width: 100%; height: 100%; background: linear-gradient(90deg, var(--brand), var(--pink)); animation: importPulse 1.5s infinite;"></div>
+    </div>
+    <style>
+      @keyframes importPulse { 
+        0% { opacity: 0.5; transform: scaleX(0.95); } 
+        50% { opacity: 1; transform: scaleX(1); } 
+        100% { opacity: 0.5; transform: scaleX(0.95); } 
+      }
+    </style>
+  </div>
+</div>
 </body>
 </html>

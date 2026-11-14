@@ -1,4 +1,4 @@
-/* ===== Pandala Kawaii · Panel Administrador (paridad total + Excel + importación + responsive) ===== */
+/* ===== Pandala Kawaii · Panel Administrador (limpio + Excel + import + responsive + seguridad) ===== */
 let token = localStorage.getItem('token') || '';
 let user = JSON.parse(localStorage.getItem('user') || 'null');
 let CFG = null, PRODUCTS = [], KITS = [], CATS = [], CLIENTS = [], ORDERS = [];
@@ -21,17 +21,12 @@ const MES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep'
 const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
 async function api(path, opts = {}) {
-     const res = await fetch(path, {
-       ...opts,
-       credentials: 'include',
-       headers: { 
-         'Content-Type': 'application/json', 
-         ...(opts.headers || {}) 
-       },
-       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-     });
-     // ... el resto de la función sigue igual
-}
+  const res = await fetch(path, {
+    ...opts,
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}), ...(opts.headers || {}) },
+    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+  });
   const data = await res.json().catch(() => ({}));
   if (res.status === 401 && !path.includes('/auth/')) { logout(); throw new Error('Sesión vencida: ingresa de nuevo'); }
   if (!res.ok) throw new Error(data.error || 'Error ' + res.status);
@@ -83,6 +78,7 @@ async function adminLogin(ev) {
     if (d.portfolio) localStorage.setItem('portfolio', JSON.stringify(d.portfolio));
     if (user.role === 'super_admin') { location.href = '/super.html'; return; }
     enterPanel();
+    if (d.must_change_password) { const cp = document.getElementById('pkChangePwd'); if (cp) cp.classList.add('open'); }
   } catch (e) { $('aErr').textContent = e.message; }
 }
 function logout() {
@@ -128,16 +124,11 @@ function renderLegal() {
   $('legalBtnTerms').className = 'btn' + (legalDoc === 'terms' ? ' primary' : '');
 }
 
-/* ---------- UI extra inyectada: base del resumen, Excel, plantilla, importación, responsive ---------- */
+/* ---------- UI extra inyectada ---------- */
 function injectStyleOnce() {
   if ($('admExtraCss')) return;
   const s = document.createElement('style'); s.id = 'admExtraCss';
-  s.textContent = `
-@media(max-width:900px){header{padding:8px 10px}.hdr-bottom{gap:8px}nav#tabs{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:thin}.hdr-icons{margin-left:0}}
-@media(max-width:650px){.toolbar{gap:6px}.toolbar input,.toolbar select{flex:1 1 46%;min-width:0}.modal{padding:16px}.fgrid{grid-template-columns:1fr 1fr}.who-btn span{max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.metric{font-size:23px}}
-@media(max-width:430px){.fgrid{grid-template-columns:1fr}.cards{grid-template-columns:1fr 1fr}.metric{font-size:21px;white-space:nowrap}}
-.imp-table input,.imp-table select{padding:6px 8px;font-size:12.5px;min-width:70px}
-`;
+  s.textContent = `@media(max-width:900px){header{padding:8px 10px}.hdr-bottom{gap:8px}nav#tabs{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:thin}.hdr-icons{margin-left:0}} @media(max-width:650px){.toolbar{gap:6px}.toolbar input,.toolbar select{flex:1 1 46%;min-width:0}.modal{padding:16px}.fgrid{grid-template-columns:1fr 1fr}.who-btn span{max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.metric{font-size:23px}} @media(max-width:430px){.fgrid{grid-template-columns:1fr}.cards{grid-template-columns:1fr 1fr}.metric{font-size:21px;white-space:nowrap}} .imp-table input,.imp-table select{padding:6px 8px;font-size:12.5px;min-width:70px}`;
   document.head.appendChild(s);
 }
 function ensureXLSX() {
@@ -167,11 +158,11 @@ function ensureExtraUI() {
   if (!$('invImportModal')) {
     document.body.insertAdjacentHTML('beforeend', `
 <div id="invImportModal" class="modal-backdrop"><div class="modal" style="width:min(1080px,100%)">
-<h2>Revisar archivo de inventario</h2>
-<p class="note">Nada se guarda hasta confirmar. En <b>existentes</b> la cantidad se suma al stock y se actualizan costo/envío/categoría/fecha; en <b>nuevos</b> define el stock inicial.</p>
-<div id="impSummary" class="note" style="margin:8px 0"></div>
-<div class="tablewrap" style="max-height:52vh"><table class="adm imp-table"><thead><tr><th>Estado</th><th>Producto</th><th>Código</th><th>Categoría</th><th>Costo</th><th>Envío</th><th>Cant.</th><th>Precio</th><th>Fecha compra</th><th>Avisos</th></tr></thead><tbody id="impBody"></tbody></table></div>
-<div class="modal-actions"><button class="btn" onclick="closeInvImport()">Cerrar</button><button class="btn" onclick="closeInvImport()">Cancelar</button><button class="btn primary" id="impSaveBtn" onclick="confirmInventoryImport()">Guardar</button></div>
+  <h2>Revisar archivo de inventario</h2>
+  <p class="note">Nada se guarda hasta confirmar. En <b>existentes</b> la cantidad se suma al stock y se actualizan costo/envío/categoría/fecha; en <b>nuevos</b> define el stock inicial.</p>
+  <div id="impSummary" class="note" style="margin:8px 0"></div>
+  <div class="tablewrap" style="max-height:52vh"><table class="adm imp-table"><thead><tr><th>Estado</th><th>Producto</th><th>Código</th><th>Categoría</th><th>Costo</th><th>Envío</th><th>Cant.</th><th>Precio</th><th>Fecha compra</th><th>Avisos</th></tr></thead><tbody id="impBody"></tbody></table></div>
+  <div class="modal-actions"><button class="btn" onclick="closeInvImport()">Cerrar</button><button class="btn" onclick="closeInvImport()">Cancelar</button><button class="btn primary" id="impSaveBtn" onclick="confirmInventoryImport()">Guardar</button></div>
 </div></div>`);
   }
 }
@@ -188,12 +179,12 @@ function downloadExcel(filename, sheetName, rows) {
 function exportOrdersExcel() {
   downloadExcel('Pedidos_' + today() + '.xlsx', 'Pedidos', ORDERS.map(o => ({
     Pedido: o.order_number, Fecha: String(o.created_at || '').slice(0, 10), Cliente: o.client_name || '',
-    Estado: STATUS_LABEL[o.status] || o.status, Ítems: o.items_count, Total: o.total, Abonado: o.paid, Saldo: o.balance,
+    Estado: STATUS_LABEL[o.status] || o.status, 'Ítems': o.items_count, Total: o.total, Abonado: o.paid, Saldo: o.balance,
   })));
 }
 function exportClientsExcel() {
   downloadExcel('Clientes_' + today() + '.xlsx', 'Clientes', CLIENTS.map(c => ({
-    Cliente: c.name, WhatsApp: c.whatsapp || '', Ciudad: c.city || '', Dirección: c.address || '',
+    Cliente: c.name, WhatsApp: c.whatsapp || '', Ciudad: c.city || '', 'Dirección': c.address || '',
     Estado: c.status, Pedidos: c.orders, Total: c.total, Abonado: c.paid, Saldo: c.balance,
   })));
 }
@@ -203,14 +194,14 @@ function exportShipmentsExcel() {
     Estado: s.status === 'enviado' ? 'Enviado' : (s.status === 'guardado' ? 'Guardado' : 'Por enviar'),
     Pago: s.pay_mode === 'adelantado' ? 'Adelantado' : 'Por cobrar', Monto: Number(s.amount) || 0,
     Transportadora: s.carrier + (s.carrier_other ? ' (' + s.carrier_other + ')' : ''), Medidas: s.dimensions || '',
-    Ciudad: s.city || '', Dirección: s.address || '', 'Dirección principal': s.address_kind === 'principal' ? 'Sí' : 'No',
+    Ciudad: s.city || '', 'Dirección': s.address || '', 'Dirección principal': s.address_kind === 'principal' ? 'Sí' : 'No',
     Enviado: s.shipped_at ? String(s.shipped_at).slice(0, 10) : '',
   })));
 }
 function exportInventoryExcel() {
   downloadExcel('Inventario_' + today() + '.xlsx', 'Inventario', PRODUCTS.map(p => ({
-    Producto: p.name, 'Código de barras': p.code || '', Categoría: p.category || '', Costo: Number(p.cost) || 0,
-    Envío: Number(p.shipping_cost) || 0, Stock: p.stock, Disponible: p.available, Estado: p.status,
+    Producto: p.name, 'Código de barras': p.code || '', 'Categoría': p.category || '', Costo: Number(p.cost) || 0,
+    'Envío': Number(p.shipping_cost) || 0, Stock: p.stock, Disponible: p.available, Estado: p.status,
     'Precio venta': Number(p.price) || 0,
     'Margen %': p.price > 0 ? Number((((Number(p.price) - Number(p.cost) - Number(p.shipping_cost)) / Number(p.price)) * 100).toFixed(1)) : 0,
     'Fecha compra': p.purchase_date || '',
@@ -243,8 +234,8 @@ function impDate(v) {
   if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v)) return new Date(v.getTime() + 12 * 3600000).toISOString().slice(0, 10);
   if (typeof v === 'number' && v > 20000 && v < 80000) return new Date(Math.round((v - 25569) * 86400000) + 12 * 3600000).toISOString().slice(0, 10);
   const t = String(v).trim(); let m;
-  if ((m = t.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/))) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
-  if ((m = t.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/))) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  if ((m = t.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/))) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  if ((m = t.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/))) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
   return '';
 }
 function handleInventoryFile(event) {
@@ -328,9 +319,7 @@ function impRender() {
   const names = [...PRODUCTS].sort((a, b) => a.name.localeCompare(b.name, 'es')).map(p => p.name);
   put('impBody', impRows.map((r, i) => `<tr${r.errs.length ? ' style="opacity:.8"' : ''}>
     <td><select onchange="impSetState(${i},this.value)"><option value="nuevo" ${r.estado === 'nuevo' ? 'selected' : ''}>Nuevo</option><option value="existente" ${r.estado === 'existente' ? 'selected' : ''}>Existente</option></select></td>
-    <td>${r.estado === 'existente'
-      ? `<select onchange="impSetField(${i},'nombre',this.value)"><option value="">Seleccionar…</option>${names.map(n => `<option ${n === r.nombre ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`
-      : `<input value="${esc(r.nombre)}" onchange="impSetField(${i},'nombre',this.value)">`}</td>
+    <td>${r.estado === 'existente' ? `<select onchange="impSetField(${i},'nombre',this.value)"><option value="">Seleccionar…</option>${names.map(n => `<option ${n === r.nombre ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>` : `<input value="${esc(r.nombre)}" onchange="impSetField(${i},'nombre',this.value)">`}</td>
     <td><input value="${esc(r.codigo)}" onchange="impSetField(${i},'codigo',this.value)"></td>
     <td><input value="${esc(r.categoria)}" onchange="impSetField(${i},'categoria',this.value)"></td>
     <td><input type="number" min="0" value="${r.costo}" onchange="impSetField(${i},'costo',this.value)"></td>
@@ -543,27 +532,27 @@ function renderSummary() {
   const entregado = DONATIONS.filter(d => String(d.donation_date || '').slice(0, 4) === y).reduce((a, d) => a + d.amount, 0);
   const keys = monthKeysBack(6, nowK);
   box.innerHTML = `
-  <div class="note" style="margin-bottom:8px">Resumen ${MONTHS_ES[Number(nowK.slice(5, 7)) - 1]} ${y} · base: <b>${base === 'cobrado' ? 'lo cobrado' : 'lo vendido'}</b></div>
-  <div class="grid cards3">
-    <div class="card"><div class="label">Utilidad neta del mes</div><div class="metric">${money(utilM)}</div>
-      <div class="note">${delta === null ? 'Sin mes anterior para comparar' : (delta >= 0 ? '▲ ' : '▼ ') + Math.abs(delta).toFixed(1) + '% vs mes anterior (' + money(utilP) + ')'}</div></div>
-    <div class="card"><div class="label">Libre del mes</div><div class="metric">${money(libre)}</div>
-      <div class="note">después de diezmo, ofrenda, impuesto y reinversión</div></div>
-    <div class="card"><div class="label">Objetivos</div><div class="metric">${topGoal ? topGoal.pct.toFixed(0) + '%' : 'Sin objetivos'}</div>
-      <div class="note">${act.length} activo(s) · ${GOALS.filter(g => g.target > 0 && g.contributed >= g.target).length} cumplido(s)</div></div>
-    <div class="card"><div class="label">Diezmo y ofrenda del año</div><div class="metric">${money(entregado)} entregado</div>
-      <div class="note">calculado ${money(dyCalc + ofCalc)} · pendiente ${money(Math.max(0, dyCalc + ofCalc - entregado))}</div></div>
-    <div class="card"><div class="label">Reinversión sugerida</div><div class="metric">${pc.reinvEnabled ? money(reinvS) : 'Desactivada'}</div>
-      <div class="note">listo para reponer inventario top</div></div>
-  </div>
-  <div class="grid dashboard-grid" style="margin-top:14px">
-    <div class="panel"><h2>Utilidad neta y libre (6 meses)</h2><div id="chUtilNetaLibre"></div></div>
-    <div class="panel"><h2>Reparto de la utilidad del mes</h2><div id="chReparto"></div></div>
-  </div>
-  <div class="grid dashboard-grid" style="margin-top:14px">
-    <div class="panel"><h2>Cumplimiento de objetivos</h2><div id="sumGoals"></div></div>
-    <div class="panel"><h2>Reinversión: sugerida vs real</h2><div id="sumReinv"></div></div>
-  </div>`;
+<div class="note" style="margin-bottom:8px">Resumen ${MONTHS_ES[Number(nowK.slice(5, 7)) - 1]} ${y} · base: <b>${base === 'cobrado' ? 'lo cobrado' : 'lo vendido'}</b></div>
+<div class="grid cards3">
+  <div class="card"><div class="label">Utilidad neta del mes</div><div class="metric">${money(utilM)}</div>
+    <div class="note">${delta === null ? 'Sin mes anterior para comparar' : (delta >= 0 ? '▲ ' : '▼ ') + Math.abs(delta).toFixed(1) + '% vs mes anterior (' + money(utilP) + ')'}</div></div>
+  <div class="card"><div class="label">Libre del mes</div><div class="metric">${money(libre)}</div>
+    <div class="note">después de diezmo, ofrenda, impuesto y reinversión</div></div>
+  <div class="card"><div class="label">Objetivos</div><div class="metric">${topGoal ? topGoal.pct.toFixed(0) + '%' : 'Sin objetivos'}</div>
+    <div class="note">${act.length} activo(s) · ${GOALS.filter(g => g.target > 0 && g.contributed >= g.target).length} cumplido(s)</div></div>
+  <div class="card"><div class="label">Diezmo y ofrenda del año</div><div class="metric">${money(entregado)} entregado</div>
+    <div class="note">calculado ${money(dyCalc + ofCalc)} · pendiente ${money(Math.max(0, dyCalc + ofCalc - entregado))}</div></div>
+  <div class="card"><div class="label">Reinversión sugerida</div><div class="metric">${pc.reinvEnabled ? money(reinvS) : 'Desactivada'}</div>
+    <div class="note">listo para reponer inventario top</div></div>
+</div>
+<div class="grid dashboard-grid" style="margin-top:14px">
+  <div class="panel"><h2>Utilidad neta y libre (6 meses)</h2><div id="chUtilNetaLibre"></div></div>
+  <div class="panel"><h2>Reparto de la utilidad del mes</h2><div id="chReparto"></div></div>
+</div>
+<div class="grid dashboard-grid" style="margin-top:14px">
+  <div class="panel"><h2>Cumplimiento de objetivos</h2><div id="sumGoals"></div></div>
+  <div class="panel"><h2>Reinversión: sugerida vs real</h2><div id="sumReinv"></div></div>
+</div>`;
   chartBars('chUtilNetaLibre', keys.map(mesLabel), [
     { name: 'Utilidad neta', values: keys.map(utilOf), color: CH_COLORS[0] },
     { name: 'Libre', values: keys.map(libreOf), color: CH_COLORS[1] },
@@ -669,13 +658,13 @@ function renderProfitBox() {
   const reinvS = utilY * pc.reinvPct / 100;
   const reinvR = monthKeysBack(12, y + '-12').reduce((a, k) => a + investmentOf(k), 0);
   el.innerHTML = `
-  <div class="grid cards3">
-    <div class="card"><div class="label">Diezmo (${pc.diezmoPct}% utilidad ${y})</div><div class="metric">${money(diez)}</div></div>
-    <div class="card"><div class="label">Ofrenda (${pc.ofrendaPct}% utilidad ${y})</div><div class="metric">${money(ofr)}</div></div>
-    <div class="card"><div class="label">Reinversión sugerida (${pc.reinvPct}%)</div><div class="metric">${pc.reinvEnabled ? money(reinvS) : 'Desactivada'}</div>
-      <div class="note">real invertido: ${money(reinvR)}</div></div>
-  </div>
-  <div class="note" style="margin-top:8px">Utilidad ${y}: <b>${money(utilY)}</b>. Edita porcentajes en el menú 👑 → Configuración.</div>`;
+<div class="grid cards3">
+  <div class="card"><div class="label">Diezmo (${pc.diezmoPct}% utilidad ${y})</div><div class="metric">${money(diez)}</div></div>
+  <div class="card"><div class="label">Ofrenda (${pc.ofrendaPct}% utilidad ${y})</div><div class="metric">${money(ofr)}</div></div>
+  <div class="card"><div class="label">Reinversión sugerida (${pc.reinvPct}%)</div><div class="metric">${pc.reinvEnabled ? money(reinvS) : 'Desactivada'}</div>
+    <div class="note">real invertido: ${money(reinvR)}</div></div>
+</div>
+<div class="note" style="margin-top:8px">Utilidad ${y}: <b>${money(utilY)}</b>. Edita porcentajes en el menú 👑 → Configuración.</div>`;
 }
 function renderGoalsBox() {
   const el = $('goalsBox'); if (!el) return;
@@ -783,8 +772,7 @@ async function loadReports() {
   const rows = await api('/api/orders/reports/pending');
   put('reports', rows.length ?
     '<div class="tablewrap"><table class="adm"><thead><tr><th>Bolsita</th><th>Cliente</th><th>WhatsApp</th><th>Abono</th><th>Reportado</th><th>Acciones</th></tr></thead><tbody>' +
-    rows.map(r => `<tr><td><b>${esc(r.order_number)}</b></td><td>${esc(r.client_name || '')}</td><td>${esc(r.client_whatsapp || '')}</td><td><b>${money(r.amount)}</b></td><td>${new Date(r.reported_at).toLocaleString('es-CO')}</td>
-      <td class="acts"><button class="btn primary" onclick="resolveReport('${r.id}','approve')">Aprobar</button><button class="btn danger" onclick="resolveReport('${r.id}','reject')">Rechazar</button></td></tr>`).join('') +
+    rows.map(r => `<tr><td><b>${esc(r.order_number)}</b></td><td>${esc(r.client_name || '')}</td><td>${esc(r.client_whatsapp || '')}</td><td><b>${money(r.amount)}</b></td><td>${new Date(r.reported_at).toLocaleString('es-CO')}</td><td class="acts"><button class="btn primary" onclick="resolveReport('${r.id}','approve')">Aprobar</button><button class="btn danger" onclick="resolveReport('${r.id}','reject')">Rechazar</button></td></tr>`).join('') +
     '</tbody></table></div>' : '<p class="note">No hay abonos pendientes por confirmar. ✔</p>');
 }
 async function resolveReport(id, decision) {
@@ -803,8 +791,7 @@ function renderInventory() {
   put('invTable', '<div class="tablewrap"><table class="adm"><thead><tr><th>Producto</th><th>Código</th><th>Categoría</th><th>Costo</th><th>Envío</th><th>Stock</th><th>Disponible</th><th>Estado</th><th>Precio</th><th>Margen</th><th>Fecha compra</th><th>Acciones</th></tr></thead><tbody>' +
     (list.length ? list.map(p => {
       const marg = p.price > 0 ? (((Number(p.price) - Number(p.cost) - Number(p.shipping_cost)) / Number(p.price)) * 100).toFixed(1) + '%' : '—';
-      return `<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.code || '—')}</td><td>${esc(p.category || '—')}</td><td>${money(p.cost)}</td><td>${money(p.shipping_cost)}</td><td>${p.stock}</td><td>${p.available}</td><td>${pillStock(p.status)}</td><td>${money(p.price)}</td><td>${marg}</td><td>${esc(p.purchase_date || '—')}</td>
-        <td class="acts"><button class="btn" onclick="openStock('${p.id}')">+ Stock</button><button class="btn" onclick="openProduct('${p.id}')">Editar</button><button class="btn danger" onclick="delProduct('${p.id}')">Eliminar</button></td></tr>`;
+      return `<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.code || '—')}</td><td>${esc(p.category || '—')}</td><td>${money(p.cost)}</td><td>${money(p.shipping_cost)}</td><td>${p.stock}</td><td>${p.available}</td><td>${pillStock(p.status)}</td><td>${money(p.price)}</td><td>${marg}</td><td>${esc(p.purchase_date || '—')}</td><td class="acts"><button class="btn" onclick="openStock('${p.id}')">+ Stock</button><button class="btn" onclick="openProduct('${p.id}')">Editar</button><button class="btn danger" onclick="delProduct('${p.id}')">Eliminar</button></td></tr>`;
     }).join('') : '<tr><td colspan="12" class="empty">Sin productos.</td></tr>') + '</tbody></table></div>');
 }
 function openProduct(id) {
@@ -854,8 +841,7 @@ async function delProduct(id) {
 async function loadKits() { await fetchCaches(); renderKits(); }
 function renderKits() {
   put('kitsTable', KITS.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Kit</th><th>Componentes</th><th>Precio</th><th>Disponibles</th><th>Acciones</th></tr></thead><tbody>' +
-    KITS.map(k => `<tr><td><b>🎁 ${esc(k.name)}</b></td><td>${(k.components || []).map(c => c.quantity + '× ' + esc(c.product_name)).join(' · ')}</td><td>${money(k.price)}</td><td>${k.available}</td>
-      <td class="acts"><button class="btn" onclick="openKit('${k.id}')">Editar</button><button class="btn danger" onclick="delKitDirect('${k.id}')">Eliminar</button></td></tr>`).join('') +
+    KITS.map(k => `<tr><td><b>🎁 ${esc(k.name)}</b></td><td>${(k.components || []).map(c => c.quantity + '× ' + esc(c.product_name)).join(' · ')}</td><td>${money(k.price)}</td><td>${k.available}</td><td class="acts"><button class="btn" onclick="openKit('${k.id}')">Editar</button><button class="btn danger" onclick="delKitDirect('${k.id}')">Eliminar</button></td></tr>`).join('') +
     '</tbody></table></div>' : '<p class="note">Aún no hay kits.</p>');
 }
 function openKit(id) {
@@ -872,9 +858,7 @@ function openKit(id) {
 }
 function addKitRow(productId, qty) {
   const tr = document.createElement('tr');
-  tr.innerHTML = `<td><select class="kcProd">${PRODUCTS.map(p => `<option value="${p.id}" ${p.id === productId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></td>
-    <td style="width:110px"><input class="kcQty" type="number" min="1" value="${qty || 1}"></td>
-    <td style="width:40px"><button class="btn danger" onclick="this.closest('tr').remove()">✕</button></td>`;
+  tr.innerHTML = `<td><select class="kcProd">${PRODUCTS.map(p => `<option value="${p.id}" ${p.id === productId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></td><td style="width:110px"><input class="kcQty" type="number" min="1" value="${qty || 1}"></td><td style="width:40px"><button class="btn danger" onclick="this.closest('tr').remove()">✕</button></td>`;
   $('kComps').appendChild(tr);
 }
 async function saveKit() {
@@ -927,8 +911,7 @@ function renderClients() {
   const q = ($('cliSearch') ? $('cliSearch').value : '').toLowerCase();
   const list = CLIENTS.filter(c => !q || (c.name + ' ' + (c.whatsapp || '')).toLowerCase().includes(q));
   put('clientsTable', '<div class="tablewrap"><table class="adm"><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Ciudad</th><th>Dirección</th><th>Estado</th><th>Pedidos</th><th>Total</th><th>Abonado</th><th>Saldo</th><th>Acciones</th></tr></thead><tbody>' +
-    (list.length ? list.map(c => `<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.whatsapp || '—')}</td><td>${esc(c.city || '—')}</td><td>${esc(c.address || '—')}</td><td>${c.status === 'Activo' ? '<span class="pill ok">Activo</span>' : '<span class="pill danger">Inactivo</span>'}</td><td>${c.orders}</td><td>${money(c.total)}</td><td>${money(c.paid)}</td><td>${money(c.balance)}</td>
-      <td class="acts"><button class="btn" onclick="openClient('${c.id}')">Editar</button></td></tr>`).join('') : '<tr><td colspan="10" class="empty">Sin clientes.</td></tr>') + '</tbody></table></div>');
+    (list.length ? list.map(c => `<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.whatsapp || '—')}</td><td>${esc(c.city || '—')}</td><td>${esc(c.address || '—')}</td><td>${c.status === 'Activo' ? '<span class="pill ok">Activo</span>' : '<span class="pill danger">Inactivo</span>'}</td><td>${c.orders}</td><td>${money(c.total)}</td><td>${money(c.paid)}</td><td>${money(c.balance)}</td><td class="acts"><button class="btn" onclick="openClient('${c.id}')">Editar</button></td></tr>`).join('') : '<tr><td colspan="10" class="empty">Sin clientes.</td></tr>') + '</tbody></table></div>');
 }
 function openClient(id) {
   const c = id ? CLIENTS.find(x => x.id === id) : null;
@@ -959,8 +942,7 @@ async function loadOrders() {
   const rows = await api('/api/admin/orders?' + new URLSearchParams({ q, status: f }));
   ORDERS = rows;
   put('ordersTable', rows.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>N.º</th><th>Cliente</th><th>Fecha</th><th>Estado</th><th>Ítems</th><th>Total</th><th>Abonado</th><th>Saldo</th><th>Acciones</th></tr></thead><tbody>' +
-    rows.map(o => `<tr><td><b>${esc(o.order_number)}</b></td><td>${esc(o.client_name || '—')}</td><td>${String(o.created_at || '').slice(0, 10)}</td><td>${pill(o.status)}</td><td>${o.items_count}</td><td>${money(o.total)}</td><td>${money(o.paid)}</td><td>${money(o.balance)}</td>
-      <td class="acts"><button class="btn primary" onclick="openOrder('${o.id}')">Abrir</button></td></tr>`).join('') +
+    rows.map(o => `<tr><td><b>${esc(o.order_number)}</b></td><td>${esc(o.client_name || '—')}</td><td>${String(o.created_at || '').slice(0, 10)}</td><td>${pill(o.status)}</td><td>${o.items_count}</td><td>${money(o.total)}</td><td>${money(o.paid)}</td><td>${money(o.balance)}</td><td class="acts"><button class="btn primary" onclick="openOrder('${o.id}')">Abrir</button></td></tr>`).join('') +
     '</tbody></table></div>' : '<p class="note">No hay pedidos con ese filtro.</p>');
 }
 function optGroups() {
@@ -980,46 +962,46 @@ async function openOrder(id) {
 function orderModalHtml(o) {
   const wa = o.client_whatsapp ? 'https://wa.me/' + String(o.client_whatsapp).replace(/\D/g, '') : '';
   return `
-  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-    <b style="font-size:18px">${esc(o.order_number)}</b> ${pill(o.status)}
-    <span class="note">${esc(o.client_name || 'Sin cliente')} ${esc(o.client_whatsapp || '')}</span>
-    ${wa ? `<a class="btn wa" target="_blank" rel="noopener" href="${wa}">📲 WhatsApp</a>` : ''}
-  </div>
-  <div class="fgrid" style="margin:12px 0">
-    <div class="field"><label>Estado</label><select onchange="orderStatusChanged(this.value)">
-      ${['draft', 'pending_confirm', 'apartada', 'paid', 'shipped', 'delivered', 'canceled'].map(s => `<option value="${s}" ${s === o.status ? 'selected' : ''}>${STATUS_LABEL[s]}</option>`).join('')}
-    </select></div>
-    <div class="field" style="grid-column:1/-1"><label>Notas</label><input id="oNotes" value="${esc(o.notes || '')}"></div>
-  </div>
-  <div class="actions" style="margin-bottom:10px"><button class="btn" onclick="saveOrderNotes()">Guardar notas</button>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+  <b style="font-size:18px">${esc(o.order_number)}</b> ${pill(o.status)}
+  <span class="note">${esc(o.client_name || 'Sin cliente')} ${esc(o.client_whatsapp || '')}</span>
+  ${wa ? `<a class="btn wa" target="_blank" rel="noopener" href="${wa}">📲 WhatsApp</a>` : ''}
+</div>
+<div class="fgrid" style="margin:12px 0">
+  <div class="field"><label>Estado</label><select onchange="orderStatusChanged(this.value)">
+    ${['draft', 'pending_confirm', 'apartada', 'paid', 'shipped', 'delivered', 'canceled'].map(s => `<option value="${s}" ${s === o.status ? 'selected' : ''}>${STATUS_LABEL[s]}</option>`).join('')}
+  </select></div>
+  <div class="field" style="grid-column:1/-1"><label>Notas</label><input id="oNotes" value="${esc(o.notes || '')}"></div>
+</div>
+<div class="actions" style="margin-bottom:10px"><button class="btn" onclick="saveOrderNotes()">Guardar notas</button>
   <button class="btn primary" onclick="generateInvoice('${o.id}')">📄 Generar factura PDF</button></div>
-  <h3>Productos</h3>
-  <div class="tablewrap"><table class="adm"><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Total</th><th></th></tr></thead><tbody id="omItems">
-  ${o.items.map(i => `<tr><td>${esc(i.kit_name ? i.kit_name : i.product_name)}</td><td>${i.quantity}</td><td>${money(i.price)}</td><td>${money(i.price * i.quantity)}</td><td class="acts"><button class="btn danger" onclick="delOrderItem('${o.id}','${i.id}')">✕</button></td></tr>`).join('') || '<tr><td colspan="5" class="empty">Sin productos</td></tr>'}
-  </tbody></table></div>
-  <h3>Agregar productos (Enter agrega y crea la siguiente fila enfocada)</h3>
-  <div class="tablewrap"><table class="adm"><tbody id="omRows"></tbody></table></div>
-  <div class="actions"><button class="btn" onclick="omAddRow(true)">+ Producto</button></div>
-  <div style="display:flex;gap:18px;justify-content:flex-end;font-weight:800;margin:8px 0" id="omTotals">
-    <span>Total: ${money(o.total)}</span><span>Abonado: ${money(o.paid)}</span><span>Saldo: ${money(o.balance)}</span>
-  </div>
-  <h3>Abonos</h3>
-  ${o.payments.length ? `<div class="tablewrap"><table class="adm"><thead><tr><th>Fecha</th><th>Medio</th><th>Referencia</th><th>Nota</th><th>Valor</th><th></th></tr></thead><tbody>${o.payments.map(p => `<tr><td>${esc(p.payment_date)}</td><td>${esc(p.method || '')}</td><td>${esc(p.reference || '')}</td><td>${esc(p.note || '')}</td><td>${money(p.amount)}</td><td class="acts"><button class="btn danger" onclick="delPayment('${p.id}','${o.id}')">✕</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="note">Sin abonos registrados.</p>'}
-  <div class="fgrid" style="margin-top:10px">
-    <div class="field"><label>Valor del abono</label><input id="pAmount" type="number" min="0"></div>
-    <div class="field"><label>Medio</label><select id="pMethod">${['Bre-b', 'Transferencia', 'Nequi', 'Daviplata', 'Efectivo', 'Tarjeta', 'Otro'].map(m => `<option>${m}</option>`).join('')}</select></div>
-    <div class="field"><label>Referencia</label><input id="pRef"></div>
-    <div class="field"><label>Fecha</label><input id="pDate" type="date" value="${today()}"></div>
-    <div class="field"><label>&nbsp;</label><button class="btn primary" onclick="addOrderPayment('${o.id}')">Registrar abono</button></div>
-  </div>`;
+<h3>Productos</h3>
+<div class="tablewrap"><table class="adm"><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Total</th><th></th></tr></thead><tbody id="omItems">
+${o.items.map(i => `<tr><td>${esc(i.kit_name ? i.kit_name : i.product_name)}</td><td>${i.quantity}</td><td>${money(i.price)}</td><td>${money(i.price * i.quantity)}</td><td class="acts"><button class="btn danger" onclick="delOrderItem('${o.id}','${i.id}')">✕</button></td></tr>`).join('') || '<tr><td colspan="5" class="empty">Sin productos</td></tr>'}
+</tbody></table></div>
+<h3>Agregar productos (Enter agrega y crea la siguiente fila enfocada)</h3>
+<div class="tablewrap"><table class="adm"><tbody id="omRows"></tbody></table></div>
+<div class="actions"><button class="btn" onclick="omAddRow(true)">+ Producto</button></div>
+<div style="display:flex;gap:18px;justify-content:flex-end;font-weight:800;margin:8px 0" id="omTotals">
+  <span>Total: ${money(o.total)}</span><span>Abonado: ${money(o.paid)}</span><span>Saldo: ${money(o.balance)}</span>
+</div>
+<h3>Abonos</h3>
+${o.payments.length ? `<div class="tablewrap"><table class="adm"><thead><tr><th>Fecha</th><th>Medio</th><th>Referencia</th><th>Nota</th><th>Valor</th><th></th></tr></thead><tbody>${o.payments.map(p => `<tr><td>${esc(p.payment_date)}</td><td>${esc(p.method || '')}</td><td>${esc(p.reference || '')}</td><td>${esc(p.note || '')}</td><td>${money(p.amount)}</td><td class="acts"><button class="btn danger" onclick="delPayment('${p.id}','${o.id}')">✕</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="note">Sin abonos registrados.</p>'}
+<div class="fgrid" style="margin-top:10px">
+  <div class="field"><label>Valor del abono</label><input id="pAmount" type="number" min="0"></div>
+  <div class="field"><label>Medio</label><select id="pMethod">${['Bre-b', 'Transferencia', 'Nequi', 'Daviplata', 'Efectivo', 'Tarjeta', 'Otro'].map(m => `<option>${m}</option>`).join('')}</select></div>
+  <div class="field"><label>Referencia</label><input id="pRef"></div>
+  <div class="field"><label>Fecha</label><input id="omPayDate" type="date" value="${today()}"></div>
+  <div class="field"><label>&nbsp;</label><button class="btn primary" onclick="addOrderPayment('${o.id}')">Registrar abono</button></div>
+</div>`;
 }
 function omAddRow(focus) {
   const tb = $('omRows'); if (!tb) return;
   const tr = document.createElement('tr');
   tr.innerHTML = `<td><select class="omProd" onkeydown="omKey(event)"><option value="">Seleccionar…</option>${optGroups()}</select></td>
-    <td style="width:90px"><input class="omQty" type="number" min="1" value="1" onkeydown="omKey(event)"></td>
-    <td style="width:120px"><input class="omPrice" type="number" min="0" value="0" onkeydown="omKey(event)" title="Precio (se llena al elegir; editable)"></td>
-    <td class="acts"><button class="btn primary" onclick="omCommit(this.closest('tr'))">Agregar</button> <button class="btn danger" onclick="this.closest('tr').remove()">✕</button></td>`;
+  <td style="width:90px"><input class="omQty" type="number" min="1" value="1" onkeydown="omKey(event)"></td>
+  <td style="width:120px"><input class="omPrice" type="number" min="0" value="0" onkeydown="omKey(event)" title="Precio (se llena al elegir; editable)"></td>
+  <td class="acts"><button class="btn primary" onclick="omCommit(this.closest('tr'))">Agregar</button> <button class="btn danger" onclick="this.closest('tr').remove()">✕</button></td>`;
   tb.appendChild(tr);
   tr.querySelector('.omProd').onchange = (ev) => omPriceAuto(ev.target);
   if (focus) tr.querySelector('.omProd').focus();
@@ -1069,7 +1051,7 @@ async function addOrderPayment(orderId) {
   const amount = Number($('pAmount').value) || 0;
   if (amount <= 0) return toast('⚠ Indica un valor mayor a 0');
   try {
-    await api('/api/admin/orders/' + orderId + '/payments', { method: 'POST', body: { amount, method: $('pMethod').value, reference: $('pRef').value.trim(), payment_date: $('pDate').value || null } });
+    await api('/api/admin/orders/' + orderId + '/payments', { method: 'POST', body: { amount, method: $('pMethod').value, reference: $('pRef').value.trim(), payment_date: $('omPayDate').value || null } });
     toast('✔ Abono registrado'); openOrder(orderId); loadOrders();
   } catch (e) { toast('⚠ ' + e.message); }
 }
@@ -1084,8 +1066,7 @@ async function loadLogistics() {
   LOGIS = await api('/api/admin/logistics');
   const pend = LOGIS.filter(s => s.status !== 'enviado'), sent = LOGIS.filter(s => s.status === 'enviado');
   put('logisPending', pend.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Pedido</th><th>Cliente</th><th>Ciudad</th><th>Estado</th><th>Pago</th><th>Transportadora</th><th>Monto</th><th>Acciones</th></tr></thead><tbody>' +
-    pend.map(s => `<tr><td><b>${esc(s.order_number)}</b></td><td>${esc(s.client_name || '')}</td><td>${esc(s.city || '—')}</td><td>${s.status === 'guardado' ? '<span class="pill warn">Guardado</span>' : '<span class="pill">Por enviar</span>'}</td><td>${s.pay_mode === 'adelantado' ? 'Adelantado' : 'Por cobrar'}</td><td>${esc(s.carrier)}${s.carrier_other ? ' (' + esc(s.carrier_other) + ')' : ''}</td><td>${money(s.amount)}</td>
-      <td class="acts"><button class="btn primary" onclick="openShip('${s.id}')">Preparar envío</button><button class="btn" onclick="openOrder('${s.order_id}')">Ver pedido</button></td></tr>`).join('') + '</tbody></table></div>'
+    pend.map(s => `<tr><td><b>${esc(s.order_number)}</b></td><td>${esc(s.client_name || '')}</td><td>${esc(s.city || '—')}</td><td>${s.status === 'guardado' ? '<span class="pill warn">Guardado</span>' : '<span class="pill">Por enviar</span>'}</td><td>${s.pay_mode === 'adelantado' ? 'Adelantado' : 'Por cobrar'}</td><td>${esc(s.carrier)}${s.carrier_other ? ' (' + esc(s.carrier_other) + ')' : ''}</td><td>${money(s.amount)}</td><td class="acts"><button class="btn primary" onclick="openShip('${s.id}')">Preparar envío</button><button class="btn" onclick="openOrder('${s.order_id}')">Ver pedido</button></td></tr>`).join('') + '</tbody></table></div>'
     : '<p class="note">No hay pedidos por enviar. Los pedidos que pasan a Pagado entran aquí automáticamente.</p>');
   put('logisSent', sent.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Pedido</th><th>Cliente</th><th>Enviado</th><th>Transportadora</th><th>Pago</th><th>Monto</th><th>Dirección de envío</th></tr></thead><tbody>' +
     sent.map(s => `<tr><td><b>${esc(s.order_number)}</b></td><td>${esc(s.client_name || '')}</td><td>${String(s.shipped_at || '').slice(0, 10)}</td><td>${esc(s.carrier)}${s.carrier_other ? ' (' + esc(s.carrier_other) + ')' : ''}</td><td>${s.pay_mode === 'adelantado' ? 'Adelantado' : 'Por cobrar'}</td><td>${money(s.amount)}</td><td>${esc(s.city || '')} — ${esc(s.address || '')}</td></tr>`).join('') + '</tbody></table></div>'
@@ -1185,8 +1166,7 @@ async function saveProfitCfg() {
 }
 function renderGoalsCfg() {
   put('goalsCfg', GOALS.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Objetivo</th><th>Meta</th><th>Aportado</th><th>Activo</th><th>Acciones</th></tr></thead><tbody>' +
-    GOALS.map(g => `<tr><td><b>${esc(g.name)}</b></td><td>${money(g.target)}</td><td>${money(g.contributed)}</td><td>${g.active ? '<span class="pill ok">Sí</span>' : '<span class="pill">No</span>'}</td>
-      <td class="acts"><button class="btn" onclick="toggleGoal('${g.id}',${!g.active})">${g.active ? 'Inactivar' : 'Activar'}</button><button class="btn" onclick="editGoal('${g.id}')">Editar</button><button class="btn danger" onclick="delGoal('${g.id}')">Eliminar</button></td></tr>`).join('') + '</tbody></table></div>'
+    GOALS.map(g => `<tr><td><b>${esc(g.name)}</b></td><td>${money(g.target)}</td><td>${money(g.contributed)}</td><td>${g.active ? '<span class="pill ok">Sí</span>' : '<span class="pill">No</span>'}</td><td class="acts"><button class="btn" onclick="toggleGoal('${g.id}',${!g.active})">${g.active ? 'Inactivar' : 'Activar'}</button><button class="btn" onclick="editGoal('${g.id}')">Editar</button><button class="btn danger" onclick="delGoal('${g.id}')">Eliminar</button></td></tr>`).join('') + '</tbody></table></div>'
     : '<p class="note">Sin objetivos aún (máximo 3).</p>');
 }
 async function saveGoal() {
@@ -1398,6 +1378,7 @@ async function generateInvoice(orderId) {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
 /* =====================================================================
    PANDALA · BORRADO TOTAL DE LA TIENDA (ZONA DE PELIGRO)
    ===================================================================== */
@@ -1410,32 +1391,25 @@ function openWipeModal() {
   if (btn) { btn.disabled = true; btn.textContent = 'Borrar todo permanentemente'; }
   openModal('wipeModal');
 }
-
-// Habilitar botón solo si el texto coincide exactamente
 const wipeInput = $('wipeConfirmText');
 if (wipeInput) {
-  wipeInput.addEventListener('input', function() {
+  wipeInput.addEventListener('input', function () {
     const btn = $('wipeExecuteBtn');
     if (btn) btn.disabled = this.value.trim() !== 'Estoy seguro de hacer el borrado';
   });
 }
-
 async function executeWipe() {
   const txt = $('wipeConfirmText');
   const btn = $('wipeExecuteBtn');
   const err = $('wipeErr');
-  
   if (!txt || txt.value.trim() !== 'Estoy seguro de hacer el borrado') return;
-  
   btn.disabled = true;
   btn.textContent = 'Borrando... (no cierres esta pestaña)';
   err.textContent = '';
-  
   try {
     await api('/api/admin/wipe', { method: 'POST', body: { confirmText: txt.value.trim() } });
     closeModal('wipeModal');
     toast('✔ Tienda borrada exitosamente. Recargando...');
-    // Limpiar caché local y recargar
     localStorage.removeItem('pk_seen');
     setTimeout(() => location.reload(), 1500);
   } catch (e) {
@@ -1444,18 +1418,15 @@ async function executeWipe() {
     btn.textContent = 'Borrar todo permanentemente';
   }
 }
+
 /* =====================================================================
    PANDALA KAWAI · NAVEGACIÓN RESPONSIVE (celular / tablet)
-   Bloque autónomo: pegar AL FINAL de admin.js. No requiere editar nada más.
    ===================================================================== */
 (function () {
   'use strict';
-  var MQ = window.matchMedia('(max-width: 1024px)'); // celular + tablet
+  var MQ = window.matchMedia('(max-width: 1024px)');
   function isMobile() { return MQ.matches; }
-
-  var ICONS = { dash:'📊', abonos:'💰', inv:'📦', kits:'🎁', cats:'🏷️', clients:'👥', orders:'🧾', logis:'🚚', import:'📥', config:'⚙️', legal:'📜' };
-
-  /* ---------- Estilos propios (toman la paleta del panel) ---------- */
+  var ICONS = { dash: '📊', abonos: '💰', inv: '📦', kits: '🎁', cats: '🏷️', clients: '👥', orders: '🧾', logis: '🚚', import: '📥', config: '⚙️', legal: '📜' };
   function injectCss() {
     if (document.getElementById('pkMobileNavCss')) return;
     var s = document.createElement('style');
@@ -1478,11 +1449,8 @@ async function executeWipe() {
     ].join('\n');
     document.head.appendChild(s);
   }
-
-  /* ---------- Crea el desplegable debajo de las opciones de tema ---------- */
   function ensureNav() {
     injectCss();
-    // Oculta "Ubicación del menú (PC)" en Configuración cuando es móvil
     var ls = document.getElementById('uiLayoutSel');
     if (ls) { var f = ls.closest('.field') || ls.parentElement; if (f) f.classList.add('pk-pc-only'); }
     if (document.getElementById('pkMobileNav')) return;
@@ -1498,54 +1466,41 @@ async function executeWipe() {
     document.getElementById('pkMobileNavSel').addEventListener('change', function () { showTab(this.value); });
     sync();
   }
-
   function sync() {
     var sel = document.getElementById('pkMobileNavSel'); if (!sel) return;
     if (sel.value !== currentTab) sel.value = currentTab;
     var ico = document.getElementById('pkMnavIco'); if (ico) ico.textContent = ICONS[currentTab] || '🧭';
   }
-
   function apply() {
     document.body.classList.toggle('pk-mobile', isMobile());
-    // En móvil/tablet siempre menú superior (desplegable); nunca barra lateral
     var side = !isMobile() && (localStorage.getItem('uiLayout') || 'top') === 'side';
     document.body.classList.toggle('layout-side', side);
     sync();
   }
-
-  /* ---------- Se engancha sin modificar el resto del archivo ---------- */
   var _setLayout = setLayout;
   setLayout = function (mode) { _setLayout(mode); apply(); };
-
   var _renderTabs = renderTabs;
   renderTabs = function () { _renderTabs(); sync(); };
-
   var _enterPanel = enterPanel;
   enterPanel = function () { _enterPanel(); ensureNav(); apply(); };
-
   if (MQ.addEventListener) MQ.addEventListener('change', function () { ensureNav(); apply(); });
   else if (MQ.addListener) MQ.addListener(function () { ensureNav(); apply(); });
   window.addEventListener('orientationchange', function () { setTimeout(function () { ensureNav(); apply(); }, 150); });
   window.addEventListener('resize', (function () { var t; return function () { clearTimeout(t); t = setTimeout(apply, 120); }; })());
-
-  // Estado inicial (por si ya hay sesión activa o se carga directamente en móvil)
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply);
   else apply();
-  /* =====================================================================
+})();
+
+/* =====================================================================
    PANDALA KAWAI · PERFORMANCE PACK
-   Pegar AL FINAL de admin.js. Autónomo: no editar nada más del archivo.
    ===================================================================== */
 (function () {
   'use strict';
   if (window.__pkPerf) return; window.__pkPerf = true;
-
-  /* ---------- 1) Caché + deduplicación de peticiones GET ---------- */
-  var TTL = 30000; // 30 s de datos "frescos"; luego refresca en segundo plano
-  var NO_CACHE = ['/api/orders/reports/pending']; // abonos por confirmar: siempre en vivo
+  var TTL = 30000;
+  var NO_CACHE = ['/api/orders/reports/pending'];
   var cache = new Map(), inflight = new Map(), gen = 0;
   var _api = api;
-
-  /* Barra de progreso superior (feedback visible de carga) */
   var bar = document.createElement('div'); bar.id = 'pkLoadBar';
   var st = document.createElement('style');
   st.textContent = '#pkLoadBar{position:fixed;top:0;left:0;height:3px;width:0;z-index:99999;background:linear-gradient(90deg,#7c5cff,#f59e0b,#ff4d8d);box-shadow:0 0 10px rgba(124,92,255,.55);transition:width .25s ease,opacity .35s ease;opacity:0;pointer-events:none}';
@@ -1565,19 +1520,18 @@ async function executeWipe() {
       setTimeout(function () { bar.style.opacity = '0'; setTimeout(function () { bar.style.width = '0'; }, 380); }, 160);
     }
   }
-
   api = function (path, opts) {
     opts = opts || {};
     var method = (opts.method || 'GET').toUpperCase();
-    if (method !== 'GET') { // escritura: invalida la caché al confirmar
+    if (method !== 'GET') {
       barStart();
       return _api(path, opts).then(function (r) { gen++; cache.clear(); barEnd(); return r; })
         .catch(function (e) { barEnd(); throw e; });
     }
     var cacheable = !NO_CACHE.some(function (p) { return path.indexOf(p) === 0; });
     var k = 'GET ' + path, hit = cache.get(k), now = Date.now();
-    if (cacheable && hit && now - hit.t < TTL) return Promise.resolve(hit.data); // instantáneo
-    if (inflight.has(k)) return inflight.get(k); // no duplicar la misma petición
+    if (cacheable && hit && now - hit.t < TTL) return Promise.resolve(hit.data);
+    if (inflight.has(k)) return inflight.get(k);
     var g = gen;
     barStart();
     var slowT = setTimeout(function () {
@@ -1588,11 +1542,9 @@ async function executeWipe() {
       inflight.delete(k); clearTimeout(slowT); barEnd(); return data;
     }).catch(function (e) { inflight.delete(k); clearTimeout(slowT); barEnd(); throw e; });
     inflight.set(k, p);
-    if (cacheable && hit) { p.catch(function () {}); return Promise.resolve(hit.data); } // muestra lo anterior y refresca detrás
+    if (cacheable && hit) { p.catch(function () {}); return Promise.resolve(hit.data); }
     return p;
   };
-
-  /* ---------- 2) Configuración y Dashboard sin esperas en cadena ---------- */
   var _loadConfig = loadConfig;
   loadConfig = function () {
     ['settings', 'goals', 'donations'].forEach(function (r) { api('/api/admin/' + r).catch(function () {}); });
@@ -1600,8 +1552,6 @@ async function executeWipe() {
   };
   var _loadDash = loadDash;
   loadDash = function () { api('/api/admin/settings').catch(function () {}); return _loadDash(); };
-
-  /* ---------- 3) PDF bajo demanda (ya no bloquea el inicio) ---------- */
   function loadScript(src) {
     return new Promise(function (res, rej) {
       var s = document.createElement('script'); s.src = src;
@@ -1619,27 +1569,22 @@ async function executeWipe() {
     toast('📄 Preparando factura…');
     return ensurePDF().then(function () { return _generateInvoice(id); }).catch(function (e) { toast('⚠ ' + e.message); });
   };
-
-  /* ---------- 4) Mantiene despiertos Render y Neon mientras usas el panel ---------- */
   function ping() { try { fetch('/health', { cache: 'no-store' }).catch(function () {}); } catch (e) {} }
   ping();
-  setInterval(ping, 4 * 60 * 1000); // cada 4 min: Render (15 min) y Neon (5 min) no se duermen
+  setInterval(ping, 4 * 60 * 1000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) ping(); });
 })();
-  /* =====================================================================
+
+/* =====================================================================
    PANDALA KAWAI · DATA RESILIENCE PACK + DIAGNÓSTICO
-   Pegar AL FINAL de admin.js. Autónomo.
    ===================================================================== */
 (function () {
   'use strict';
   if (window.__pkDataFix) return; window.__pkDataFix = true;
-
-  var DIAG = {};            // path -> {state, ms, message, attempts, count, at}
-  var TIMEOUT = 25000;      // 25 s por intento
-  var RETRIES = 2;          // hasta 3 intentos total
+  var DIAG = {};
+  var TIMEOUT = 25000;
+  var RETRIES = 2;
   var renderTimer = null;
-
-  /* ---------- UI: botón flotante + panel de diagnóstico ---------- */
   function injectCss() {
     if (document.getElementById('pkDataFixCss')) return;
     var s = document.createElement('style'); s.id = 'pkDataFixCss';
@@ -1677,7 +1622,6 @@ async function executeWipe() {
     ].join('\n');
     document.head.appendChild(s);
   }
-
   function ensureUi() {
     injectCss();
     if (!document.getElementById('pkDiagFab')) {
@@ -1703,7 +1647,6 @@ async function executeWipe() {
       });
     }
   }
-
   function togglePanel(open) {
     ensureUi();
     var p = document.getElementById('pkDiagPanel');
@@ -1712,9 +1655,7 @@ async function executeWipe() {
   }
   window.pkOpenDiag = function () { togglePanel(true); };
   window.pkCloseDiag = function () { togglePanel(false); };
-
   function fails() { return Object.keys(DIAG).filter(function (k) { return DIAG[k].state === 'error' || DIAG[k].state === 'timeout'; }); }
-
   function updateFab() {
     ensureUi();
     var fab = document.getElementById('pkDiagFab'); if (!fab) return;
@@ -1725,12 +1666,10 @@ async function executeWipe() {
     var panel = document.getElementById('pkDiagPanel');
     if (panel && panel.classList.contains('open')) renderPanel();
   }
-
   function record(path, state, ms, message, attempts, count) {
     DIAG[path] = { state: state, ms: ms, message: message || '', attempts: attempts || 1, count: count, at: new Date() };
     updateFab();
   }
-
   function renderPanel() {
     var list = document.getElementById('pkDiagList'); if (!list) return;
     var keys = Object.keys(DIAG).sort(function (a, b) {
@@ -1749,7 +1688,6 @@ async function executeWipe() {
         '<button data-path="' + esc(k) + '">↻ Reintentar esta ruta</button></div>';
     }).join('');
   }
-
   function copyDiag() {
     var lines = ['Diagnóstico Pandala Kawaii · ' + new Date().toLocaleString('es-CO')];
     Object.keys(DIAG).sort().forEach(function (k) {
@@ -1760,20 +1698,17 @@ async function executeWipe() {
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function () { toast('✔ Diagnóstico copiado'); });
     else { var ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast('✔ Diagnóstico copiado'); }
   }
-
   function retryPath(path) {
     toast('↻ Reintentando ' + path);
     api(path).then(function () { toast('✔ Ruta responde OK'); loadTab(currentTab); })
       .catch(function (e) { toast('⚠ ' + e.message); });
   }
   window.pkRetryPath = retryPath;
-
-  /* ---------- Capa resiliente sobre api(): timeout + reintentos + registro ---------- */
   var _apiBase = api;
   api = function (path, opts) {
     opts = opts || {};
     var method = (opts.method || 'GET').toUpperCase();
-    if (method !== 'GET') return _apiBase(path, opts); // escrituras (import, login) sin timeout
+    if (method !== 'GET') return _apiBase(path, opts);
     var attempt = 0;
     function run() {
       attempt++;
@@ -1800,8 +1735,6 @@ async function executeWipe() {
     }
     return run();
   };
-
-  /* ---------- Render seguro del dashboard (nunca se bloquea en 0) ---------- */
   function normAnalytics(a) {
     a = a || {};
     return {
@@ -1817,7 +1750,6 @@ async function executeWipe() {
       .forEach(function (fn) { try { fn(); } catch (e) { console.warn('Render parcial:', e); } });
   }
   function scheduleRender() { if (!renderTimer) renderTimer = setTimeout(function () { renderTimer = null; safeRender(); }, 90); }
-
   function banner(view, html) {
     var v = document.getElementById('view-' + view); if (!v) return;
     var b = document.getElementById('pkBanner-' + view);
@@ -1834,8 +1766,6 @@ async function executeWipe() {
       ? '⚠ No se pudo cargar: <b>' + fails.map(esc).join(', ') + '</b>. Se muestra lo que sí llegó. <button class="btn" onclick="pkOpenDiag()">Ver diagnóstico</button> <button class="btn" onclick="loadTab(currentTab)">↻ Reintentar</button>'
       : null);
   }
-
-  /* ---------- loadDash: cada fuente independiente, render progresivo ---------- */
   loadDash = async function () {
     var fails = [], dashOk = false;
     ANALYTICS = normAnalytics(ANALYTICS);
@@ -1867,8 +1797,6 @@ async function executeWipe() {
     safeRender();
     failBanner('dash', fails);
   };
-
-  /* ---------- fetchCaches / inventario / kits: ya no se cae todo por un fallo ---------- */
   fetchCaches = async function () {
     var r = await Promise.all([
       api('/api/admin/products').then(function (p) { PRODUCTS = Array.isArray(p) ? p : []; return true; }).catch(function () { return false; }),
@@ -1886,8 +1814,6 @@ async function executeWipe() {
     var r = await fetchCaches(); renderKits();
     failBanner('kits', !r.kits ? ['kits'] : (!r.products ? ['products'] : []));
   };
-
-  /* ---------- Configuración: fuentes independientes ---------- */
   loadConfig = async function () {
     var f = [];
     await Promise.all([
@@ -1916,8 +1842,6 @@ async function executeWipe() {
     try { renderGoalsCfg(); } catch (e) {} try { renderDonations(); } catch (e) {}
     failBanner('config', f);
   };
-
-  /* ---------- Resto de vistas: timeout/retry ya viene de api(); aquí solo error visible ---------- */
   [['clients', 'loadClients'], ['orders', 'loadOrders'], ['logis', 'loadLogistics'], ['abonos', 'loadReports'], ['cats', 'loadCats']].forEach(function (pair) {
     var view = pair[0], name = pair[1], orig = window[name];
     if (typeof orig !== 'function') return;
@@ -1929,27 +1853,23 @@ async function executeWipe() {
     window[name] = wrapped;
     if (typeof LOADERS !== 'undefined' && LOADERS[view]) LOADERS[view] = wrapped;
   });
-
-  /* ---------- LOADERS captura referencias viejas: actualizarlas ---------- */
   if (typeof LOADERS !== 'undefined') {
     LOADERS.dash = loadDash; LOADERS.inv = loadInventory; LOADERS.kits = loadKits; LOADERS.config = loadConfig;
   }
-
   ensureUi();
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ensureUi);
 })();
-  /* ===== PANDALA · ADMIN EXTRA (recuperación, import en config, notificación abonos) ===== */
+
+/* =====================================================================
+   PANDALA · ADMIN EXTRA (recuperación, import en config, notificación abonos)
+   ===================================================================== */
 (function () {
   'use strict';
   if (window.__pkAdminExtra) return; window.__pkAdminExtra = true;
-  var $ = function (id) { return document.getElementById(id); };
-
-  /* CSS con contraste fijo (no depende del tema) */
   var st = document.createElement('style');
   st.textContent = [
     '.pk-link{display:inline-block;margin-top:10px;color:#7c5cff;font-weight:700;font-size:13px;cursor:pointer;text-decoration:underline}',
-    '#pkAbonoBubble{position:fixed;left:16px;bottom:16px;z-index:9600;max-width:320px;display:none;gap:10px;align-items:flex-start;',
-    '  background:#241f31;color:#ffffff;border:2px solid #f59e0b;border-radius:14px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.4);font-size:13px}',
+    '#pkAbonoBubble{position:fixed;left:16px;bottom:16px;z-index:9600;max-width:320px;display:none;gap:10px;align-items:flex-start;background:#241f31;color:#ffffff;border:2px solid #f59e0b;border-radius:14px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.4);font-size:13px}',
     '[data-theme="dark"] #pkAbonoBubble{background:#fff8e7;color:#241f31;border-color:#7c5cff}',
     '#pkAbonoBubble b{color:#f59e0b}[data-theme="dark"] #pkAbonoBubble b{color:#7c5cff}',
     '#pkAbonoBubble .pk-b-actions{display:flex;gap:8px;margin-top:8px}',
@@ -1963,7 +1883,6 @@ async function executeWipe() {
     '.pk-modal .pk-err{color:#ef4444;font-size:12px;min-height:14px}'
   ].join('\n');
   document.head.appendChild(st);
-
   function modal(id, title, fields, btnText, onSubmit) {
     var back = document.createElement('div'); back.className = 'pk-modal-back'; back.id = id;
     back.innerHTML = '<div class="pk-modal"><h3 style="margin:0">' + title + '</h3>' +
@@ -1975,8 +1894,6 @@ async function executeWipe() {
     $(id + 'Go').onclick = function () { onSubmit(back); };
     return back;
   }
-
-  /* ── ¿Olvidaste contraseña? (admin) ── */
   var fp = modal('pkForgotPwd', 'Recuperar contraseña', [{ id: 'pkFpEmail', type: 'email', ph: 'Tu correo de administrador' }], 'Enviar contraseña temporal',
     function (back) {
       api('/api/auth/admin/forgot-password', { method: 'POST', body: { email: $('pkFpEmail').value.trim() } })
@@ -1986,29 +1903,12 @@ async function executeWipe() {
   var loginForm = document.querySelector('#view-login form');
   if (loginForm) loginForm.insertAdjacentHTML('beforeend', '<span class="pk-link" id="pkForgotLink">¿Olvidaste tu contraseña?</span>');
   $('pkForgotLink').onclick = function () { fp.classList.add('open'); };
-
-  /* ── Cambio obligatorio de contraseña + login envuelto ── */
   var cp = modal('pkChangePwd', 'Crea una nueva contraseña', [{ id: 'pkCpNew', type: 'password', ph: 'Nueva contraseña (mín. 6)' }], 'Guardar contraseña',
     function (back) {
       api('/api/auth/admin/change-password', { method: 'POST', body: { new_password: $('pkCpNew').value } })
         .then(function () { toast('✔ Contraseña actualizada'); back.classList.remove('open'); })
         .catch(function (e) { $('pkChangePwdErr').textContent = e.message; });
     });
-  var _adminLogin = adminLogin;
-  adminLogin = async function (ev) {
-    ev.preventDefault(); $('aErr').textContent = '';
-    try {
-      var d = await api('/api/auth/admin/login', { method: 'POST', body: { email: $('aEmail').value.trim(), password: $('aPass').value } });
-      token = d.token; user = d.user;
-      localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user));
-      if (d.portfolio) localStorage.setItem('portfolio', JSON.stringify(d.portfolio));
-      if (user.role === 'super_admin') { location.href = '/super.html'; return; }
-      enterPanel();
-      if (d.must_change_password) cp.classList.add('open');
-    } catch (e) { $('aErr').textContent = e.message; }
-  };
-
-  /* ── Importar JSON dentro de Configuración ── */
   function moveImport() {
     var impPanel = document.querySelector('#view-import .panel');
     var cfg = $('view-config');
@@ -2020,8 +1920,6 @@ async function executeWipe() {
     for (var i = TABS.length - 1; i >= 0; i--) if (TABS[i][0] === 'import') TABS.splice(i, 1);
     renderTabs();
   }
-
-  /* ── Burbuja de abonos (abajo-izquierda, todos los temas) ── */
   var bubble = document.createElement('div'); bubble.id = 'pkAbonoBubble';
   bubble.innerHTML = '<div style="flex:1"><b>💰 Nuevo abono reportado</b><div id="pkAbonoTxt" style="margin-top:4px"></div>' +
     '<div class="pk-b-actions"><button class="pk-see" id="pkAbonoSee">Ver abonos</button><button class="pk-x" id="pkAbonoX">✕</button></div></div>';
@@ -2042,9 +1940,7 @@ async function executeWipe() {
     }).catch(function () {});
   }
   setInterval(checkReports, 20000);
-
   var _enter = enterPanel;
   enterPanel = function () { _enter(); moveImport(); checkReports(); };
   if (document.readyState !== 'loading' && user && user.role === 'admin') { moveImport(); checkReports(); }
-})();
 })();

@@ -1273,18 +1273,71 @@ async function saveGeneral() {
 }
 
 /* ---------- Importar JSON ---------- */
+/* ---------- Importar JSON con Modal y Temporizador ---------- */
+function openImportModal() { 
+  const modal = $('importModal'); 
+  if (modal) modal.classList.add('open'); 
+}
+function closeImportModal() { 
+  const modal = $('importModal'); 
+  if (modal) modal.classList.remove('open'); 
+}
+
 function onImportFile(ev) {
-  const f = ev.target.files && ev.target.files[0]; ev.target.value = ''; if (!f) return;
+  const f = ev.target.files && ev.target.files[0]; 
+  ev.target.value = ''; // Resetear input para permitir subir el mismo archivo de nuevo
+  if (!f) return;
+  
   const r = new FileReader();
   r.onload = async () => {
-    let d; try { d = JSON.parse(r.result); } catch (e) { $('importResult').textContent = '⚠ El archivo no es un JSON válido.'; return; }
-    $('importResult').textContent = 'Importando… (puede tardar unos segundos)';
+    let d; 
+    try { 
+      d = JSON.parse(r.result); 
+    } catch (e) { 
+      $('importResult').textContent = '⚠ El archivo no es un JSON válido.'; 
+      return; 
+    }
+    
+    // 1. Mostrar modal e iniciar temporizador
+    openImportModal();
+    let seconds = 0;
+    const timerEl = $('importTimer');
+    const timerInterval = setInterval(() => {
+      seconds++;
+      if (timerEl) timerEl.textContent = `Tiempo: ${seconds}s`;
+    }, 1000);
+    
     try {
+      // 2. Llamar a la API
       const res = await api('/api/admin/import-json', { method: 'POST', body: d });
-      $('importResult').innerHTML = '✅ Importación completada → ' + Object.entries(res.counts).map(([k, v]) => `${k}: <b>${v}</b>`).join(' · ') + '. Revisa Inventario, Clientes, Pedidos y Logística.';
-      toast('✔ JSON importado');
-    } catch (e) { $('importResult').textContent = '⚠ ' + e.message; }
+      
+      // 3. Éxito: detener timer, cerrar modal y mostrar resumen
+      clearInterval(timerInterval);
+      closeImportModal();
+      
+      const summary = Object.entries(res.counts || {})
+        .map(([k, v]) => `${k}: <b>${v}</b>`)
+        .join(' · ');
+        
+      $('importResult').innerHTML = `✅ Importación completada en <b>${seconds}s</b><br>${summary}.<br><span class="note">Revisa Inventario, Clientes, Pedidos y Logística.</span>`;
+      
+      toast('✔ JSON importado exitosamente');
+      
+      // Refrescar cachés locales para que los datos nuevos se vean al instante
+      await fetchCaches();
+      if (currentTab === 'inv') renderInventory();
+      if (currentTab === 'clients') renderClients();
+      if (currentTab === 'orders') loadOrders();
+      
+    } catch (e) {
+      // 4. Error: detener timer, cerrar modal y mostrar error
+      clearInterval(timerInterval);
+      closeImportModal();
+      $('importResult').textContent = '⚠ ' + (e.message || 'Error desconocido al importar');
+      toast('⚠ Error al importar JSON');
+    }
   };
+  
   r.readAsText(f);
 }
 

@@ -6,6 +6,7 @@ import nodemailer from 'nodemailer';
 import { pool } from '../db.js';
 import { validate } from '../middleware/validate.js';
 import { adminLoginSchema, clientLoginSchema, clientRegisterSchema } from '../validations/auth.js';
+import { encrypt } from '../utils/encryption.js';
 
 const router = Router();
 const sign = (u: any) => jwt.sign({ id: u.id, role: u.role, portfolio_id: u.portfolio_id },
@@ -144,7 +145,7 @@ router.post('/client/register', validate(clientRegisterSchema), async (req, res)
     const { rows: [user] } = await pool.query(
       `INSERT INTO users (portfolio_id, role, whatsapp, pin_hash, name, city, address, email, status)
        VALUES ($1,'client',$2,$3,$4,$5,$6,$7,'Activo') RETURNING id,name,whatsapp,city,address,email`,
-      [pf.id, tel, pinHash, String(name).trim(), city || null, address || null, em]);
+      [pf.id, telEnc, pinHash, String(name).trim(), city || null, address || null, emailEnc]);
     res.cookie('token', token, {
      httpOnly: true, // JavaScript no puede leerla
      secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción (Render)

@@ -114,7 +114,20 @@ function showTab(id) {
   const v = $('view-' + id); if (v) v.classList.add('active');
   loadTab(id);
 }
-const LOADERS = { dash: loadDash, abonos: loadReports, inv: loadInventory, kits: loadKits, cats: loadCats, clients: loadClients, orders: loadOrders, logis: loadLogistics, config: loadConfig, legal: loadLegal };
+const LOADERS = { 
+  dash: loadDash, 
+  ventas: loadVentaView, 
+  'ventas-prod': loadVpView, 
+  abonos: loadReports, 
+  inv: loadInventory, 
+  kits: loadKits, 
+  clients: loadClients, 
+  orders: loadOrders,
+  cats: loadCats,
+  logis: loadLogistics, 
+  config: loadConfig, 
+  legal: loadLegal 
+};
 async function loadTab(id) {
   if (id === 'import') return;
   try { await LOADERS[id](); } catch (e) { toast('⚠ ' + e.message); }
@@ -1955,3 +1968,205 @@ async function executeWipe() {
   enterPanel = function () { _enter(); moveImport(); checkReports(); };
   if (document.readyState !== 'loading' && user && user.role === 'admin') { moveImport(); checkReports(); }
 })();
+/* =====================================================================
+   PANDALA · VENTAS RÁPIDAS Y ASIGNACIÓN POR PRODUCTO
+   ===================================================================== */
+
+// --- VENTA RÁPIDA (LIVE) ---
+async function loadVentaView() {
+  $('vDate').value = today();
+  $('vPayDate').value = today();
+  
+  // Cargar clientes
+  const clients = await api('/api/admin/clients');
+  const cSelect = $('vClient');
+  cSelect.innerHTML = '<option value="new">+ Nuevo cliente</option>' + 
+    clients.filter(c => c.status === 'Activo').map(c => `<option value="${c.id}">${esc(c.name)} (${esc(c.whatsapp || 'Sin tel')})</option>`).join('');
+  
+  // Si el usuario selecciona "Nuevo cliente", abrimos el modal
+  cSelect.onchange = function() {
+    if (this.value === 'new') {
+      openClient();
+      this.value = ''; // Resetear para que elija el nuevo después
+    }
+  };
+
+  // Cargar productos
+  await fetchCaches();
+  const pSelect = $('vProd');
+  pSelect.innerHTML = '<option value="">Seleccionar…</option>' + 
+    PRODUCTS.filter(p => p.available > 0).map(p => `<option value="${p.id}" data-price="${p.price}">${esc(p.name)} (Disp: ${p.available})</option>`).join('');
+  
+  pSelect.onchange = function() {
+    const opt = this.options[this.selectedIndex];
+    if (opt.value) $('vPrice').value = opt.dataset.price;
+  };
+}
+
+function addVentaRow() {
+  const prodId = $('vProd').value;
+  if (!prodId) return toast('⚠ Selecciona un producto');
+  
+  const opt = $('vProd').options[$('vProd').selectedIndex];
+  const name = opt.text.split(' (Disp:')[0];
+  const qty = Math.max(1, parseInt($('vQty').value) || 1);
+  const price = Number($('vPrice').value) || 0;
+  const total = qty * price;
+
+  const tbody = $('vItems');
+  const tr = document.createElement('tr');
+  tr.dataset.productId = prodId;
+  tr.dataset.qty = qty;
+  tr.innerHTML = `
+    <td>${esc(name)}</td>
+    <td>${qty}</td>
+    <td>${money(price)}</td>
+    <td>${money(total)}</td>
+    <td class="acts"><button class="btn danger" style="padding:4px 8px" onclick="this.closest('tr').remove(); calcVentaTotal()">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+  calcVentaTotal();
+  
+  // Resetear campos de producto
+  $('vProd').value = '';
+  $('vQty').value = '1';
+  $('vPrice').value = '';
+  $('vProd').focus();
+}
+
+function calcVentaTotal() {
+  let total = 0;
+  $('vItems').querySelectorAll('tr').forEach(tr => {
+    const qty = parseInt(tr.dataset.qty);
+    const price = Number(tr.children[2].textContent.replace(/[^0-9.-]+/g,""));
+    total += qty * price;
+  });
+  $('vTotal').textContent = money(total);
+}
+
+function clearVenta() {
+  $('vClient').value = 'new';
+  $('vItems').innerHTML = '';
+  $('vPayAmount').value = '0';
+  $('vPayRef').value = '';
+  calcVentaTotal();
+  loadVentaView();
+}
+
+async function saveVenta() {
+  const clientId = $('vClient').value;
+  if (!clientId) return toast('⚠ Selecciona o crea un cliente');
+  
+  const rows = $('vItems').querySelectorAll('tr');
+  if (!rows.length) return toast('⚠ Agrega al menos un producto');
+
+  try {
+    // 1. Crear pedido
+    const orderRes = await api('/api/admin/orders', { 
+      method: 'POST', 
+      body: { client_id: clientId, status: $('vStatus').value } 
+    });
+    const orderId = orderRes.id;
+
+    // 2. Agregar items
+    for (const row of rows) {
+      const pid = row.dataset.productId;
+      const qty = parseInt(row.dataset.qty);
+      await api(`/api/admin/orders/${orderId}/items`, { method: 'POST', body: { product_id: pid, quantity: qty } });
+    }
+
+    // 3. Agregar abono si aplica
+    const payAmount = Number($('vPayAmount').value) || 0;
+    if (payAmount > 0) {
+      await api(`/api/admin/orders/${orderId}/payments`, { 
+        method: 'POST', 
+        body: { 
+          amount: payAmount, 
+          method: $('vPayMethod').value, 
+          reference: $('vPayRef').value, 
+          payment_date: $('vPayDate').value || today() 
+        } 
+      });
+    }
+
+    toast('✔ Pedido guardado exitosamente');
+    clearVenta();
+    loadOrders(); // Refrescar la lista de pedidos
+  } catch (e) {
+    toast('⚠ ' + e.message);
+  }
+}
+
+// --- VENTAS POR PRODUCTO (ASIGNACIÓN MASIVA) ---
+async function loadVpView() {
+  await fetchCaches();
+  const pSelect = $('vpProd');
+  const availProds = PRODUCTS.filter(p => p.available > 0);
+  pSelect.innerHTML = '<option value="">Seleccionar producto…</option>' + 
+    availProds.map(p => `<option value="${p.id}" data-avail="${p.available}">${esc(p.name)} (Disp: ${p.available})</option>`).join('');
+  
+  pSelect.onchange = function() {
+    const opt = this.options[this.selectedIndex];
+    $('vpAvail').value = opt.value ? opt.dataset.avail + ' unidades' : '';
+    renderVpClients();
+  };
+}
+
+function renderVpClients() {
+  const tbody = $('vpClients');
+  if (!$('vpProd').value) {
+    tbody.innerHTML = '<tr><td colspan="3" class="empty">Selecciona un producto primero</td></tr>';
+    return;
+  }
+  
+  // Mostramos clientes activos
+  tbody.innerHTML = CLIENTS.filter(c => c.status === 'Activo').map(c => {
+    const openOrder = ORDERS.find(o => o.client_id === c.id && ['draft', 'pending_confirm', 'apartada'].includes(o.status));
+    const orderNum = openOrder ? openOrder.order_number : 'Ninguno';
+    return `<tr>
+      <td><b>${esc(c.name)}</b><br><small class="note">${esc(c.whatsapp || '')}</small></td>
+      <td>${orderNum}</td>
+      <td><input type="number" min="0" value="0" class="vp-assign-input" data-client-id="${c.id}" style="width:80px"></td>
+    </tr>`;
+  }).join('');
+}
+
+async function saveVpAssignments() {
+  const prodId = $('vpProd').value;
+  if (!prodId) return toast('⚠ Selecciona un producto');
+  
+  const inputs = document.querySelectorAll('.vp-assign-input');
+  const assignments = [];
+  for (const input of inputs) {
+    const qty = parseInt(input.value) || 0;
+    if (qty > 0) {
+      assignments.push({ clientId: input.dataset.clientId, qty });
+    }
+  }
+
+  if (!assignments.length) return toast('⚠ Asigna al menos 1 unidad a un cliente');
+
+  try {
+    for (const assign of assignments) {
+      // Buscar pedido abierto del cliente
+      const openOrder = ORDERS.find(o => o.client_id === assign.clientId && ['draft', 'pending_confirm', 'apartada'].includes(o.status));
+      let orderId = openOrder ? openOrder.id : null;
+
+      if (!orderId) {
+        // Crear nuevo pedido si no tiene uno abierto
+        const newOrder = await api('/api/admin/orders', { method: 'POST', body: { client_id: assign.clientId, status: 'draft' } });
+        orderId = newOrder.id;
+      }
+
+      // Agregar item al pedido
+      await api(`/api/admin/orders/${orderId}/items`, { method: 'POST', body: { product_id: prodId, quantity: assign.qty } });
+    }
+    toast(`✔ Asignación completada para ${assignments.length} cliente(s)`);
+    // Limpiar inputs y recargar
+    inputs.forEach(i => i.value = '0');
+    loadOrders();
+    loadVpView(); // Recargar para actualizar stocks disponibles
+  } catch (e) {
+    toast('⚠ ' + e.message);
+  }
+}

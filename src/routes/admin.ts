@@ -1,4 +1,5 @@
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
+import type { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { pool } from '../db.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
@@ -16,7 +17,6 @@ const pfOf = (req: AuthRequest) => req.user!.portfolio_id as string;
 const stockStatus = (available: number, minStock: number) =>
   available <= 0 ? 'AGOTADO' : available <= Math.max(2, Number(minStock) || 0) ? 'REPOSICIÓN' : 'EN STOCK';
 
-// Disponible de TODOS los productos del portafolio en 3 consultas (sin N+1).
 async function availabilityMap(pf: string): Promise<Map<string, number>> {
   const { rows: prods } = await pool.query(`SELECT id, stock::int AS stock FROM products WHERE portfolio_id=$1`, [pf]);
   const { rows: resD } = await pool.query(`SELECT oi.product_id AS pid, SUM(oi.quantity)::int AS q FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE o.portfolio_id=$1 AND o.status NOT IN ('canceled','expired') AND oi.product_id IS NOT NULL GROUP BY 1`, [pf]);
@@ -37,12 +37,10 @@ router.get('/dashboard', async (req: AuthRequest, res: Response) => {
     const { rows: [ab] } = await pool.query(`SELECT COUNT(*)::int AS n FROM orders WHERE portfolio_id=$1 AND status IN ('draft','pending_confirm','apartada','shipped')`, [pf]);
     const { rows: [rep] } = await pool.query(`SELECT COUNT(*)::int AS n FROM payment_reports WHERE portfolio_id=$1 AND status='pending'`, [pf]);
     const { rows: [lg] } = await pool.query(`SELECT COUNT(*) FILTER (WHERE status IN ('por_enviar','guardado'))::int AS por_enviar, COUNT(*) FILTER (WHERE status = 'enviado')::int AS enviados FROM shipments WHERE portfolio_id=$1`, [pf]);
-    
     const avail = await availabilityMap(pf);
     const { rows: prods } = await pool.query(`SELECT id, min_stock FROM products WHERE portfolio_id=$1`, [pf]);
     let low = 0;
     for (const pr of prods) if ((avail.get(pr.id) ?? 0) <= Math.max(2, Number(pr.min_stock) || 0)) low++;
-
     res.json({ ventas: Number(v.ventas), abonos: Number(p.abonos), saldo: Math.max(0, Number(v.ventas) - Number(p.abonos)), abiertos: ab.n, pendientes: rep.n, stockBajo: low, logistica: lg });
   } catch (e: any) { console.error('Dashboard error:', e); res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
 });
@@ -53,27 +51,22 @@ router.get('/analytics', async (req: AuthRequest, res: Response) => {
     const pf = pfOf(req);
     const { rows: items } = await pool.query(`SELECT oi.price, oi.quantity, COALESCE(oi.added_at, o.created_at) AS fecha, p.name AS product_name, p.cost AS p_cost, p.shipping_cost AS p_ship, k.name AS kit_name FROM order_items oi JOIN orders o ON o.id = oi.order_id LEFT JOIN products p ON p.id = oi.product_id LEFT JOIN kits k ON k.id = oi.kit_id WHERE o.portfolio_id = $1 AND o.status <> 'canceled'`, [pf]);
     const { rows: comps } = await pool.query(`SELECT k.name AS kit_name, kc.quantity::float AS cq, p.cost::float AS c, p.shipping_cost::float AS s FROM kit_components kc JOIN kits k ON k.id = kc.kit_id JOIN products p ON p.id = kc.product_id WHERE k.portfolio_id = $1`, [pf]);
-    
     const kitCost = new Map<string, { c: number; s: number }>();
     comps.forEach(c => { const o = kitCost.get(c.kit_name) || { c: 0, s: 0 }; o.c += c.cq * c.c; o.s += c.cq * c.s; kitCost.set(c.kit_name, o); });
-    
     const salesLines = items.map(it => {
       const qty = Number(it.quantity); let cost = 0, ship = 0;
       if (it.product_name != null) { cost = Number(it.p_cost || 0); ship = Number(it.p_ship || 0); }
       else if (it.kit_name) { const kc = kitCost.get(it.kit_name); if (kc) { cost = kc.c; ship = kc.s; } }
       return { fecha: new Date(it.fecha).toISOString().slice(0, 10), producto: it.product_name || it.kit_name, qty, venta: Number(it.price) * qty, costo: cost * qty, envio: ship * qty };
     });
-
     const { rows: paysMonth } = await pool.query(`SELECT to_char(pa.payment_date, 'YYYY-MM') AS month, SUM(pa.amount)::float AS amount FROM payments pa JOIN orders o ON o.id = pa.order_id WHERE o.portfolio_id = $1 GROUP BY 1 ORDER BY 1`, [pf]);
     const { rows: prods } = await pool.query(`SELECT id, name, cost::float AS cost, shipping_cost::float AS ship, stock::int AS stock, min_stock::int AS min_stock, purchase_date FROM products WHERE portfolio_id = $1`, [pf]);
     const { rows: resD } = await pool.query(`SELECT oi.product_id AS pid, SUM(oi.quantity)::int AS q FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE o.portfolio_id = $1 AND o.status NOT IN ('canceled','expired') AND oi.product_id IS NOT NULL GROUP BY 1`, [pf]);
     const { rows: resK } = await pool.query(`SELECT kc.product_id AS pid, SUM(oi.quantity * kc.quantity)::int AS q FROM order_items oi JOIN orders o ON o.id = oi.order_id JOIN kit_components kc ON kc.kit_id = oi.kit_id WHERE o.portfolio_id = $1 AND o.status NOT IN ('canceled','expired') GROUP BY 1`, [pf]);
-    
     const rd = new Map(resD.map(r => [r.pid, Number(r.q)]));
     const rk = new Map(resK.map(r => [r.pid, Number(r.q)]));
     let totalCosto = 0, totalEnvio = 0, over90 = 0;
     const lowStock: any[] = [], stockRows: any[] = [];
-    
     for (const p of prods) {
       const avail = Math.max(0, p.stock - (rd.get(p.id) || 0) - (rk.get(p.id) || 0));
       totalCosto += p.cost * avail; totalEnvio += p.ship * avail;
@@ -83,11 +76,9 @@ router.get('/analytics', async (req: AuthRequest, res: Response) => {
       if (status !== 'EN STOCK') lowStock.push({ name: p.name, available: avail, status });
       stockRows.push({ id: p.id, name: p.name, available: avail, status, cost: p.cost, ship: p.ship, days });
     }
-
     const { rows: recent } = await pool.query(`SELECT o.id, o.order_number, o.status, o.created_at, u.name AS client_name FROM orders o LEFT JOIN users u ON u.id = o.client_id WHERE o.portfolio_id = $1 ORDER BY o.created_at DESC LIMIT 10`, [pf]);
     const recentOrders = []; for (const o of recent) recentOrders.push({ ...o, ...(await getOrderTotals(o.id)) });
     const { rows: [lg] } = await pool.query(`SELECT COUNT(*) FILTER (WHERE status IN ('por_enviar','guardado'))::int AS por_enviar, COUNT(*) FILTER (WHERE status = 'enviado')::int AS enviados FROM shipments WHERE portfolio_id = $1`, [pf]);
-
     res.json({ salesLines, paysMonth, inventory: { totalCosto, totalEnvio, over90, over90Pct: totalCosto > 0 ? (over90 / totalCosto) * 100 : 0 }, lowStock, stockRows, recentOrders, logistica: lg });
   } catch (e: any) { console.error('Analytics error:', e); res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
 });
@@ -276,7 +267,6 @@ router.get('/clients', async (req: AuthRequest, res: Response) => {
        ) o ON true
        WHERE u.role='client' AND u.portfolio_id=$1
        GROUP BY u.id ORDER BY u.name`, [pf]);
-    
     res.json(rows.map(r => ({
       ...r,
       whatsapp: decrypt(String(r.whatsapp || '')),
@@ -424,10 +414,8 @@ router.post('/orders/:id/payments', async (req: AuthRequest, res: Response) => {
     if (amount <= 0) return res.status(400).json({ error: 'Valor inválido' });
     const { rows: [order] } = await pool.query(`SELECT * FROM orders WHERE id=$1 AND portfolio_id=$2`, [req.params.id, pf]);
     if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
-    
     await pool.query(`INSERT INTO payments (portfolio_id, order_id, amount, method, reference, note, payment_date) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
       [pf, order.id, amount, req.body.method || 'Transferencia', req.body.reference || null, req.body.note || null, req.body.payment_date || new Date().toISOString().slice(0, 10)]);
-    
     const totals = await getOrderTotals(order.id);
     let newStatus = order.status;
     if (totals.balance <= 0 && ['draft', 'pending_confirm', 'apartada'].includes(order.status)) {
@@ -473,7 +461,6 @@ router.put('/logistics/:id', async (req: AuthRequest, res: Response) => {
     const action = b.action === 'send' ? 'send' : 'save';
     const { rows: [s] } = await pool.query(`SELECT * FROM shipments WHERE id=$1 AND portfolio_id=$2`, [req.params.id, pf]);
     if (!s) return res.status(404).json({ error: 'Envío no encontrado' });
-
     const CARRIERS = ['Interrapidísimo', 'Envía', 'Coordinadora', 'Servientrega', 'envío local', 'otra'];
     const carrier = CARRIERS.includes(b.carrier) ? b.carrier : s.carrier;
     const carrierOther = b.carrier_other !== undefined ? String(b.carrier_other).trim() : s.carrier_other;
@@ -483,22 +470,18 @@ router.put('/logistics/:id', async (req: AuthRequest, res: Response) => {
     const city = b.city !== undefined ? String(b.city).trim() : s.city;
     const address = b.address !== undefined ? String(b.address).trim() : s.address;
     const addressKind = ['principal', 'temporal'].includes(b.address_kind) ? b.address_kind : s.address_kind;
-
     if (action === 'send') {
       const needOther = carrier === 'envío local' || carrier === 'otra';
       if (!(amount > 0) || !city || !address || (needOther && !carrierOther))
         return res.status(400).json({ error: 'Para Enviar completa: pago, monto, transportadora (con nombre si es local/otra), ciudad y dirección' });
     }
-
     if (addressKind === 'principal' && b.city !== undefined && b.address !== undefined) {
       const { rows: [o] } = await pool.query(`SELECT client_id FROM orders WHERE id=$1`, [s.order_id]);
       if (o?.client_id && city && address) await pool.query(`UPDATE users SET city=$2, address=$3 WHERE id=$1`, [o.client_id, city, address]);
     }
-
     const status = action === 'send' ? 'enviado' : 'guardado';
     const { rows: [up] } = await pool.query(`UPDATE shipments SET pay_mode=$3, amount=$4, carrier=$5, carrier_other=$6, dimensions=$7, city=$8, address=$9, address_kind=$10, status=$11, shipped_at=CASE WHEN $11='enviado' THEN NOW() ELSE shipped_at END, updated_at=NOW() WHERE id=$1 RETURNING *`,
       [s.id, pf, payMode, amount, carrier, carrierOther || null, dimensions || null, city || null, address || null, addressKind, status]);
-
     if (action === 'send') {
       await pool.query(`UPDATE orders SET status='shipped', updated_at=NOW() WHERE id=$1 AND status IN ('paid','apartada','pending_confirm','draft')`, [s.order_id]);
       emitAll('stock-updated', {});
@@ -631,7 +614,6 @@ router.post('/import-json', async (req: AuthRequest, res: Response) => {
   try {
     await client.query('BEGIN');
     const counts = { categories: 0, products: 0, kits: 0, clients: 0, orders: 0, payments: 0, paymentsOmitidos: 0 };
-
     const cats = new Set<string>();
     (st.categories || []).forEach((c: any) => { if (c) cats.add(String(c).toUpperCase()); });
     (st.inventory || []).forEach((p: any) => { if (p.categoria) cats.add(String(p.categoria).toUpperCase()); });
@@ -644,7 +626,6 @@ router.post('/import-json', async (req: AuthRequest, res: Response) => {
       const r = await client.query(`SELECT id FROM categories WHERE portfolio_id=$1 AND name=$2`, [pf, String(name || '').toUpperCase()]);
       return r.rows[0]?.id || null;
     };
-
     const prodIdByName = new Map<string, string>();
     for (const p of st.inventory || []) {
       const name = String(p.producto || '').trim(); if (!name) continue;
@@ -654,7 +635,6 @@ router.post('/import-json', async (req: AuthRequest, res: Response) => {
         [pf, await catId(p.categoria), name, p.codigo ? String(p.codigo).trim() : null, Number(p.costo) || 0, Number(p.envio) || 0, Number(p.precio) || 0, Math.max(0, Math.floor(Number(p.stock) || 0)), Math.max(0, Math.floor(Number(p.minimo) || 0)), p.fechaCompra || null]);
       prodIdByName.set(name, r.rows[0].id); counts.products++;
     }
-
     const kitIdByName = new Map<string, string>();
     for (const k of st.kits || []) {
       const name = String(k.nombre || '').trim(); if (!name) continue;
@@ -673,7 +653,6 @@ router.post('/import-json', async (req: AuthRequest, res: Response) => {
         if (pid) await client.query(`INSERT INTO kit_components (kit_id, product_id, quantity) VALUES ($1,$2,$3)`, [kitId, pid, Math.max(1, Math.floor(Number(c.cantidad) || 1))]);
       }
     }
-
     const clientIdByName = new Map<string, string>();
     for (const c of st.clients || []) {
       const name = String(c.nombre || '').trim(); if (!name) continue;
@@ -695,7 +674,6 @@ router.post('/import-json', async (req: AuthRequest, res: Response) => {
       }
       clientIdByName.set(name, uid);
     }
-
     const STATUS_MAP: Record<string, string> = { 'Pendiente': 'draft', 'Apartado': 'apartada', 'Pagado': 'paid', 'Enviado': 'shipped', 'Entregado': 'delivered', 'Cancelado': 'canceled' };
     const orderIdByNumber = new Map<string, string>();
     for (const o of st.orders || []) {
@@ -714,7 +692,6 @@ router.post('/import-json', async (req: AuthRequest, res: Response) => {
           [r.rows[0].id, pid, kid, Math.max(1, Math.floor(Number(l.cantidad) || 1)), Number(l.precio) || 0, l.fecha ? new Date(l.fecha + 'T12:00:00') : (o.fecha ? new Date(o.fecha + 'T12:00:00') : new Date())]);
       }
     }
-
     for (const p of st.payments || []) {
       const oid = orderIdByNumber.get(String(p.pedido || '').trim());
       if (!oid) continue;
@@ -724,17 +701,14 @@ router.post('/import-json', async (req: AuthRequest, res: Response) => {
       await client.query(`INSERT INTO payments (portfolio_id, order_id, amount, method, reference, note, payment_date) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [pf, oid, Number(p.valor) || 0, p.medio || 'Transferencia', p.referencia || null, p.nota || null, fecha]);
       counts.payments++;
     }
-
     await client.query(`UPDATE orders o SET status='paid', expires_at=NULL WHERE o.portfolio_id=$1 AND o.status IN ('draft','apartada') AND (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id=o.id) > 0 AND (SELECT COALESCE(SUM(pa.amount),0) FROM payments pa WHERE pa.order_id=o.id) >= (SELECT COALESCE(SUM(oi.price*oi.quantity),0) FROM order_items oi WHERE oi.order_id=o.id)`, [pf]);
     await client.query(`INSERT INTO shipments (portfolio_id, order_id, status) SELECT o.portfolio_id, o.id, CASE WHEN o.status IN ('shipped','delivered') THEN 'enviado' ELSE 'por_enviar' END FROM orders o WHERE o.portfolio_id=$1 AND o.status IN ('paid','shipped','delivered') AND NOT EXISTS (SELECT 1 FROM shipments s WHERE s.order_id=o.id)`, [pf]);
-
     if (st.orderNumbering) {
       await client.query(`UPDATE portfolios SET order_prefix=$2, order_start=$3, order_digits=$4 WHERE id=$1`, [pf, String(st.orderNumbering.prefix || 'BOL').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) || 'BOL', Math.max(1, Number(st.orderNumbering.start) || 1), Math.min(8, Math.max(3, Number(st.orderNumbering.digits) || 5))]);
     }
     if (st.invoiceConfig) {
       await client.query(`INSERT INTO settings (portfolio_id, key, value) VALUES ($1,'invoice_config',$2) ON CONFLICT (portfolio_id, key) DO UPDATE SET value=EXCLUDED.value`, [pf, JSON.stringify(st.invoiceConfig)]);
     }
-
     await client.query('COMMIT');
     res.json({ ok: true, counts });
   } catch (e: any) {
@@ -752,7 +726,6 @@ router.post('/wipe', async (req: AuthRequest, res: Response) => {
     const pf = pfOf(req);
     const { confirmText } = req.body;
     if (confirmText !== 'Estoy seguro de hacer el borrado') return res.status(400).json({ error: 'Texto de confirmación incorrecto' });
-
     const client = await pool.connect();
     try {
       await client.query('BEGIN');

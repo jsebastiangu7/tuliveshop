@@ -7,9 +7,30 @@ import { pool } from '../db.js';
 import { validate } from '../middleware/validate.js';
 import { adminLoginSchema, clientLoginSchema, clientRegisterSchema } from '../validations/auth.js';
 import { encrypt } from '../utils/encryption.js';
+import crypto from 'crypto'; 
 
 const router = Router();
 
+// Función auxiliar para generar el hash de búsqueda
+const getWhatsappHash = (tel: string) => crypto.createHash('sha256').update(tel).digest('hex');
+
+// En el registro (client/register):
+const telHash = getWhatsappHash(tel);
+const telEnc = tel ? encrypt(tel) : null; // Para mostrar
+// ... en el INSERT:
+`INSERT INTO users (..., whatsapp, whatsapp_lookup, ...) VALUES (..., $2, $3, ...)`
+// Usando [pf, telEnc, telHash, ...]
+
+// En el login (client/login):
+const telHash = getWhatsappHash(tel);
+const { rows: [user] } = await pool.query(
+  `SELECT * FROM users WHERE whatsapp_lookup = $1 AND portfolio_id = $2 AND role = 'client' AND status = 'Activo'`, 
+  [telHash, pf.id]
+);
+// Si existe, desencriptamos el whatsapp para enviarlo al frontend:
+if (user) {
+  user.whatsapp = decrypt(user.whatsapp); 
+}
 const sign = (u: any) => jwt.sign(
   { id: u.id, role: u.role, portfolio_id: u.portfolio_id },
   process.env.JWT_SECRET!,

@@ -832,7 +832,7 @@ router.post('/import-json', async (req: AuthRequest, res) => {
     const clientIdByName = new Map<string, string>();
     for (const c of st.clients || []) {
       const name = String(c.nombre || '').trim(); if (!name) continue;
-      const tel = c.telefono ? String(c.telefono).replace(/\D/g, '') : null;
+      const tel = String(c.telefono || c.whatsapp || c.celular || '').replace(/\D/g, '') || null;
       let uid: string | null = null;
       if (tel) {
         const r = await client.query(`SELECT id FROM users WHERE portfolio_id=$1 AND whatsapp=$2`, [pf, tel]);

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="X-Frame-Options" content="DENY">
-<title>Tu Live Shop · Acceso</title>
+<title>Tu Live Shop · Panel Administrador</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -21,7 +21,7 @@
   --text: #f8fafc;
   --text-muted: #94a3b8;
   --shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  --danger: #ef4444;
+  --ok: #22c55e; --warn: #f59e0b; --danger: #ef4444;
 }
 [data-theme="light"] {
   --bg: #f0f9ff;
@@ -36,16 +36,15 @@
   --text-muted: #475569;
   --shadow: 0 8px 32px rgba(2, 132, 199, 0.1);
 }
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; }
 body {
   font-family: 'Inter', system-ui, sans-serif;
   background: var(--bg);
   background-image: var(--bg-gradient);
   background-attachment: fixed;
   color: var(--text);
+  margin: 0;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
 }
 .glass {
   background: var(--surface);
@@ -55,251 +54,576 @@ body {
   box-shadow: var(--shadow);
 }
 header {
-  padding: 16px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+  padding: 14px 24px;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
 }
-.brand {
-  font-size: 20px;
-  font-weight: 800;
-  text-decoration: none;
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+.brand { font-size: 20px; font-weight: 800; text-decoration: none; color: var(--text); cursor: pointer; display: flex; align-items: center; gap: 8px; }
 .brand span { color: var(--brand); }
+nav#tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-right: auto; }
+.chip {
+  padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); font: inherit; font-weight: 600; font-size: 13px;
+  cursor: pointer; transition: 0.15s;
+}
+.chip:hover { border-color: var(--brand); color: var(--brand); }
+.chip.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+.header-right { display: flex; gap: 8px; align-items: center; }
 .theme-toggle {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  cursor: pointer;
-  font-size: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
+  width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface); cursor: pointer; font-size: 15px;
+  display: flex; align-items: center; justify-content: center;
 }
-.theme-toggle:hover { background: var(--surface-hover); }
-main {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
+.who-wrap { position: relative; }
+.who-btn {
+  padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); font: inherit; font-weight: 600; font-size: 13px;
+  cursor: pointer; display: flex; align-items: center; gap: 6px;
 }
-.login-container {
-  width: 100%;
-  max-width: 440px;
-  padding: 32px;
-  border-radius: 24px;
+.who-btn span { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#userMenu {
+  display: none; position: absolute; top: 100%; right: 0; margin-top: 8px;
+  min-width: 200px; border-radius: 12px; padding: 8px; z-index: 200;
+  flex-direction: column; gap: 4px;
 }
-.login-header { text-align: center; margin-bottom: 24px; }
-.login-header h1 { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
-.login-header p { color: var(--text-muted); font-size: 14px; }
-.profile-selector {
-  display: flex;
-  background: var(--bg);
-  border-radius: 12px;
-  padding: 4px;
-  margin-bottom: 24px;
+#userMenu.hidden { display: none !important; }
+#userMenu button {
+  padding: 10px 12px; border-radius: 8px; border: none; background: transparent;
+  color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  text-align: left; display: flex; align-items: center; gap: 8px;
 }
-.profile-btn {
-  flex: 1;
-  padding: 10px;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  font-weight: 600;
-  font-size: 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.profile-btn.active {
-  background: var(--brand);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-.form-group { margin-bottom: 16px; }
-.form-group label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 6px;
-  color: var(--text-muted);
-}
-.form-group input, .form-group select {
-  width: 100%;
-  padding: 12px 14px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  font-size: 14px;
-  font-family: inherit;
-}
-.form-group input:focus, .form-group select:focus {
-  outline: none;
-  border-color: var(--brand);
-}
+#userMenu button:hover { background: var(--surface-hover); }
 .btn {
-  width: 100%;
-  padding: 12px;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 15px;
-  text-decoration: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 14px;
+  cursor: pointer; transition: 0.15s; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); font-family: inherit;
+  display: inline-flex; align-items: center; gap: 6px;
 }
-.btn-primary {
-  background: var(--brand);
-  color: #fff;
-  box-shadow: 0 4px 14px var(--brand-glow);
+.btn:hover { background: var(--surface-hover); }
+.btn.primary { background: var(--brand); color: #fff; border-color: var(--brand); box-shadow: 0 4px 14px var(--brand-glow); }
+.btn.primary:hover { background: var(--brand-hover); }
+.btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+.btn.danger:hover { opacity: 0.9; }
+.btn.wa { background: #25d366; color: #fff; border-color: #25d366; }
+main { max-width: 1400px; margin: 0 auto; padding: 24px; }
+.view { display: none; animation: fade 0.3s ease; }
+.view.active { display: block; }
+@keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+h1 { font-size: 26px; font-weight: 800; margin: 0 0 8px; }
+h2 { font-size: 18px; font-weight: 700; margin: 0 0 12px; }
+h3 { font-size: 15px; font-weight: 700; margin: 14px 0 6px; }
+.note { color: var(--text-muted); font-size: 13px; }
+.panel { padding: 22px; border-radius: 18px; margin-bottom: 20px; }
+.fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+input, select, textarea {
+  padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); font: inherit; font-size: 14px;
 }
-.btn-primary:hover {
-  background: var(--brand-hover);
-  transform: translateY(-1px);
+input:focus, select:focus { outline: none; border-color: var(--brand); }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.tablewrap { overflow: auto; max-height: 70vh; border-radius: 12px; border: 1px solid var(--border); }
+table.adm { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.adm th, table.adm td { padding: 9px 10px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+table.adm th { background: var(--surface-hover); font-size: 11px; text-transform: uppercase; color: var(--text-muted); position: sticky; top: 0; cursor: pointer; }
+table.adm th:hover { color: var(--brand); }
+.acts { white-space: nowrap; }
+.acts .btn { margin-right: 4px; padding: 5px 10px; font-size: 12px; }
+.empty { color: var(--text-muted); text-align: center; padding: 28px; }
+.grid { display: grid; gap: 16px; }
+.grid.cards3 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.card { padding: 20px; border-radius: 16px; }
+.card .label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+.card .metric { font-size: 26px; font-weight: 800; color: var(--brand); }
+.dashboard-grid { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); }
+.pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.pill.ok { background: rgba(34, 197, 94, 0.15); color: var(--ok); }
+.pill.warn { background: rgba(245, 158, 11, 0.15); color: var(--warn); }
+.pill.danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  display: none; align-items: center; justify-content: center; z-index: 200; padding: 16px;
 }
-.form-error {
-  color: var(--danger);
-  font-size: 13px;
-  min-height: 18px;
-  margin-top: 8px;
-  text-align: center;
-}
-.form-footer {
-  text-align: center;
-  margin-top: 16px;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-.form-footer a {
-  color: var(--brand);
-  text-decoration: none;
-  font-weight: 600;
-}
-.form-footer a:hover { text-decoration: underline; }
-.hidden { display: none; }
-
-/* Modal de selección de tienda */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(4px);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 200;
-  padding: 16px;
-}
-.modal-overlay.open { display: flex; }
-.modal-box {
-  background: var(--surface);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 32px;
-  width: min(420px, 100%);
+.modal-backdrop.open { display: flex; }
+.modal {
+  background: var(--surface); backdrop-filter: blur(20px);
+  border: 1px solid var(--border); border-radius: 18px;
+  padding: 24px; width: min(760px, 100%); max-height: 90vh; overflow: auto;
   box-shadow: var(--shadow);
 }
-.modal-box h3 { font-size: 20px; margin-bottom: 16px; text-align: center; }
-.store-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-.store-btn {
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  cursor: pointer;
-  transition: all 0.2s;
-  font-weight: 600;
-  text-align: left;
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.err { color: var(--danger); font-size: 13px; min-height: 18px; }
+.hidden { display: none !important; }
+#toast {
+  position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+  background: var(--surface); color: var(--text); padding: 12px 20px;
+  border-radius: 12px; font-weight: 700; font-size: 14px; z-index: 400;
+  box-shadow: var(--shadow); border: 1px solid var(--border);
+  opacity: 0; pointer-events: none; transition: opacity 0.3s;
 }
-.store-btn:hover {
-  background: var(--brand);
-  color: #fff;
-  border-color: var(--brand);
+#toast.show { opacity: 1; }
+@media (max-width: 900px) {
+  header { padding: 10px 14px; }
+  nav#tabs { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: thin; }
+  .dashboard-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  main { padding: 16px; }
+  .toolbar { gap: 6px; }
+  .toolbar input, .toolbar select { flex: 1 1 46%; min-width: 0; }
+  .modal { padding: 16px; }
+  .fgrid { grid-template-columns: 1fr 1fr; }
+  .card .metric { font-size: 22px; }
 }
 </style>
 </head>
 <body>
 
-<header>
-  <a href="/landing.html" class="brand">🎥 Tu <span>Live Shop</span></a>
-  <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn">🌙</button>
+<header id="hdr" class="hidden glass">
+  <div class="brand" onclick="location.href='/'" title="Ir a la tienda">Tu <span>Live Shop</span> · Admin</div>
+  <nav id="tabs" class="chips"></nav>
+  <div class="header-right">
+    <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn">🌙</button>
+    <div class="who-wrap">
+      <button class="who-btn" onclick="toggleUserMenu()">👑 <span id="whoName">Admin</span> ▾</button>
+      <div id="userMenu" class="glass hidden">
+        <button onclick="menuGo('config')">⚙️ Configuración</button>
+        <button onclick="menuGo('legal')">📜 Legal</button>
+        <div style="height:1px; background:var(--border); margin:4px 0;"></div>
+        <button onclick="logout()" style="color:var(--danger)">🚪 Salir</button>
+      </div>
+    </div>
+  </div>
 </header>
 
 <main>
-  <div class="login-container glass">
-    <div class="login-header">
-      <h1>Bienvenido</h1>
-      <p>Selecciona tu perfil para continuar</p>
+  <!-- LOGIN -->
+  <section id="view-login" class="view active">
+    <div style="max-width:440px; margin:60px auto">
+      <h1 style="text-align:center">🏪 Acceso Administrador</h1>
+      <p class="note" style="text-align:center; margin-bottom:24px">Gestiona tu tienda: inventario, pedidos, logística, utilidad y facturación.</p>
+      <form class="panel glass" onsubmit="adminLogin(event)" style="display:grid; gap:12px">
+        <div class="field"><label>Correo</label><input id="aEmail" type="email" required autocomplete="username"></div>
+        <div class="field"><label>Contraseña</label><input id="aPass" type="password" required autocomplete="current-password"></div>
+        <button class="btn primary" type="submit" style="width:100%; justify-content:center">Ingresar al panel</button>
+        <div id="aErr" class="err" style="text-align:center"></div>
+      </form>
     </div>
+  </section>
 
-    <div class="profile-selector">
-      <button class="profile-btn active" onclick="switchProfile('client')">Soy Cliente</button>
-      <button class="profile-btn" onclick="switchProfile('admin')">Soy Tienda</button>
+  <!-- DASHBOARD -->
+  <section id="view-dash" class="view">
+    <h1>Dashboard</h1>
+    <p class="note">Control rápido de ventas, pedidos, pagos, logística e inventario.</p>
+    <div id="dashSummary" class="grid cards3"></div>
+    <div class="grid dashboard-grid" style="margin-top:14px">
+      <div class="panel glass"><h2>Ventas vs abonos (últimos 6 meses)</h2><div id="chResumen"></div></div>
+      <div class="panel glass"><h2>Cobrado vs pendiente</h2><div id="chCobro"></div></div>
     </div>
+    <div class="panel glass" style="margin-top:14px">
+      <h2>Utilidad bruta</h2>
+      <div class="toolbar">
+        <select id="utilView"><option value="mes">Mensual</option><option value="semana">Semanal</option><option value="dia">Diaria</option><option value="semestre">Semestral</option><option value="anio">Anual</option><option value="total">Total</option></select>
+        <select id="utilYear"></select>
+        <select id="utilMonth"></select>
+        <select id="utilSem"><option value="1">Semestre 1 (ene–jun)</option><option value="2">Semestre 2 (jul–dic)</option></select>
+        <input id="utilFrom" type="date"><input id="utilTo" type="date"><input id="utilWeek" type="date">
+        <label class="note" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="utilShip"> Incluir envío en el costo</label>
+      </div>
+      <div id="utilRange" class="note" style="margin-bottom:10px"></div>
+      <div class="grid cards3">
+        <div class="card"><div class="label">Ventas del periodo</div><div class="metric" id="uVentas">$0</div></div>
+        <div class="card"><div class="label">Costo de lo vendido</div><div class="metric" id="uCosto">$0</div></div>
+        <div class="card"><div class="label">Utilidad bruta</div><div class="metric" id="uUtil">$0</div></div>
+        <div class="card"><div class="label">Margen bruto</div><div class="metric" id="uMargen">0%</div></div>
+      </div>
+      <div id="chUtil" style="margin-top:16px"></div>
+      <div id="utilTop" style="margin-top:16px"></div>
+    </div>
+    <div class="grid dashboard-grid" style="margin-top:14px">
+      <div class="panel glass"><h2>Inversión del mes</h2>
+        <div class="toolbar"><select id="invYear"></select><select id="invMonth"></select></div>
+        <div class="grid cards3">
+          <div class="card"><div class="label">Inversión del mes</div><div class="metric" id="invMes">$0</div></div>
+          <div class="card"><div class="label">Unidades ingresadas</div><div class="metric" id="invUnid">0</div></div>
+          <div class="card"><div class="label">Compras registradas</div><div class="metric" id="invCompras">0</div></div>
+          <div class="card"><div class="label">Ventas del mes</div><div class="metric" id="invVentas">$0</div></div>
+        </div>
+        <div id="chInv" style="margin-top:16px"></div>
+      </div>
+      <div class="panel glass"><h2>Impuesto de renta estimado</h2>
+        <div class="fgrid">
+          <div class="field"><label>Año</label><select id="taxYear"></select></div>
+          <div class="field"><label>UVT</label><input id="taxUvt" type="number"></div>
+          <div class="field"><label>Gastos deducibles</label><input id="taxExp" type="number"></div>
+        </div>
+        <div class="grid cards3" style="margin-top:14px">
+          <div class="card"><div class="label">Ingresos brutos</div><div class="metric" id="tIngresos">$0</div></div>
+          <div class="card"><div class="label">Utilidad bruta</div><div class="metric" id="tUtil">$0</div></div>
+          <div class="card"><div class="label">Renta líquida</div><div class="metric" id="tBase">$0</div></div>
+          <div class="card"><div class="label">Base en UVT</div><div class="metric" id="tUvt">0</div></div>
+          <div class="card"><div class="label">Impuesto estimado</div><div class="metric" id="tImpuesto">$0</div></div>
+          <div class="card"><div class="label">Tarifa efectiva</div><div class="metric" id="tEfectiva">0%</div></div>
+        </div>
+        <div id="chTax" style="margin-top:16px"></div>
+        <div id="taxObligation" class="note" style="margin-top:10px"></div>
+      </div>
+    </div>
+    <div class="panel glass" style="margin-top:14px">
+      <h2>Valor de inventario</h2>
+      <div class="grid cards3">
+        <div class="card"><div class="label">Monto total (costo)</div><div class="metric" id="mInvTotal">$0</div></div>
+        <div class="card"><div class="label">Costo de envío total</div><div class="metric" id="mInvEnvio">$0</div></div>
+        <div class="card"><div class="label">Inventario > 90 días</div><div class="metric" id="mInv90">$0</div></div>
+        <div class="card"><div class="label">% inventario > 90 días</div><div class="metric" id="mInv90Pct">0%</div></div>
+      </div>
+      <div class="grid dashboard-grid" style="margin-top:14px">
+        <div><h3>Inventario por categoría</h3><div id="chInvCat"></div></div>
+        <div><h3>Antigüedad del inventario</h3><div id="chInvAge"></div></div>
+      </div>
+    </div>
+    <div class="panel glass" style="margin-top:14px">
+      <h2>Categorías: inventario y ventas</h2>
+      <div id="catPeriod" class="note"></div>
+      <div class="tablewrap" style="margin-top:10px"><table class="adm"><thead id="catHead"></thead><tbody id="catBody"></tbody></table></div>
+      <div class="grid dashboard-grid" style="margin-top:14px">
+        <div><h3>Participación en inventario</h3><div id="chCatInv"></div></div>
+        <div><h3>Participación en ventas</h3><div id="chCatVen"></div></div>
+      </div>
+    </div>
+    <div class="grid dashboard-grid" style="margin-top:14px">
+      <div class="panel glass"><h2>Logística (vista rápida)</h2><div id="dashLogis"></div></div>
+      <div class="panel glass"><h2>Pedidos por cliente</h2>
+        <select id="dashboardClient" style="width:100%; margin-bottom:10px"><option value="">Seleccionar cliente…</option></select>
+        <div id="clientOrders"><div class="empty">Selecciona un cliente para ver sus pedidos.</div></div>
+      </div>
+    </div>
+    <div class="grid dashboard-grid" style="margin-top:14px">
+      <div class="panel glass"><h2>Pedidos recientes</h2><div id="recentOrders"></div><div id="chRecent" style="margin-top:10px"></div></div>
+      <div class="panel glass"><h2>Productos con stock bajo</h2><div id="lowStock"></div><div id="chLow" style="margin-top:10px"></div></div>
+    </div>
+  </section>
 
-    <!-- Formulario Cliente -->
-    <form id="clientForm" onsubmit="handleClientLogin(event)">
-      <div class="form-group">
-        <label>WhatsApp</label>
-        <input type="text" id="cliWa" inputmode="numeric" placeholder="3001234567" required>
+  <!-- VENTAS RÁPIDAS -->
+  <section id="view-ventas" class="view">
+    <h1>🛒 Venta rápida (Live)</h1>
+    <p class="note">Captura el pedido mientras haces el LIVE. El botón Guardar registra todo en un solo paso.</p>
+    <div class="panel glass">
+      <div class="fgrid">
+        <div class="field"><label>Cliente</label><select id="vClient"><option value="new">+ Nuevo cliente</option></select></div>
+        <div class="field"><label>Fecha</label><input id="vDate" type="date"></div>
+        <div class="field"><label>Estado inicial</label><select id="vStatus"><option value="apartada">Apartada</option><option value="draft">Borrador</option><option value="pending_confirm">Por confirmar</option><option value="paid">Pagada</option></select></div>
       </div>
-      <div class="form-group">
-        <label>PIN</label>
-        <input type="password" id="cliPin" inputmode="numeric" placeholder="••••" minlength="4" required>
+      <h3>Productos</h3>
+      <div class="fgrid" style="align-items:end">
+        <div class="field" style="flex:2"><label>Producto</label><select id="vProd"></select></div>
+        <div class="field" style="flex:0.5"><label>Cant.</label><input id="vQty" type="number" min="1" value="1"></div>
+        <div class="field" style="flex:0.5"><label>Precio</label><input id="vPrice" type="number" min="0"></div>
+        <div class="field" style="flex:0.5"><label>&nbsp;</label><button class="btn primary" onclick="addVentaRow()">+ Agregar</button></div>
       </div>
-      <div class="form-error" id="cliErr"></div>
-      <button type="submit" class="btn btn-primary">Ingresar como Cliente</button>
-      <div class="form-footer">
-        ¿No tienes cuenta? <a href="#" onclick="alert('El registro se realiza directamente desde la tienda de tu vendedor.')">Regístrate en la tienda</a>
+      <div class="tablewrap" style="margin-top:12px"><table class="adm"><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Total</th><th></th></tr></thead><tbody id="vItems"></tbody></table></div>
+      <div style="margin-top:16px; display:flex; gap:18px; justify-content:flex-end; font-weight:800"><span>Total: <b id="vTotal">$0</b></span></div>
+      <h3>Abono inicial (opcional)</h3>
+      <div class="fgrid">
+        <div class="field"><label>Valor</label><input id="vPayAmount" type="number" min="0" value="0"></div>
+        <div class="field"><label>Medio</label><select id="vPayMethod"><option>Transferencia</option><option>Nequi</option><option>Daviplata</option><option>Efectivo</option><option>Bre-b</option><option>Otro</option></select></div>
+        <div class="field"><label>Referencia</label><input id="vPayRef"></div>
+        <div class="field"><label>Fecha</label><input id="vPayDate" type="date"></div>
       </div>
-    </form>
+      <div class="actions" style="margin-top:20px; justify-content:flex-end">
+        <button class="btn" onclick="clearVenta()">Limpiar</button>
+        <button class="btn primary" onclick="saveVenta()">💾 Guardar pedido</button>
+      </div>
+    </div>
+  </section>
 
-    <!-- Formulario Administrador -->
-    <form id="adminForm" class="hidden" onsubmit="handleAdminLogin(event)">
-      <div class="form-group">
-        <label>Correo electrónico</label>
-        <input type="email" id="admEmail" placeholder="tu@correo.com" required>
+  <!-- VENTAS POR PRODUCTO -->
+  <section id="view-ventas-prod" class="view">
+    <h1>📦 Ventas por producto</h1>
+    <p class="note">Elige un producto y asigna sus unidades disponibles a los clientes activos.</p>
+    <div class="panel glass">
+      <div class="fgrid" style="align-items:end">
+        <div class="field" style="flex:2"><label>Producto</label><select id="vpProd"></select></div>
+        <div class="field" style="flex:1"><label>Disponibles</label><input id="vpAvail" type="text" readonly style="background:var(--surface-hover); font-weight:800; color:var(--brand)"></div>
+        <div class="field" style="flex:1"><label>Buscar cliente</label><input id="vpClientSearch" type="text" placeholder="Escribe el nombre..." oninput="filterVpClients()"></div>
       </div>
-      <div class="form-group">
-        <label>Contraseña</label>
-        <input type="password" id="admPass" placeholder="••••••••" required>
+      <div class="tablewrap" style="margin-top:16px"><table class="adm"><thead><tr><th>Cliente</th><th>Pedido actual</th><th>Asignar cantidad</th></tr></thead><tbody id="vpClients"></tbody></table></div>
+      <div class="actions" style="margin-top:20px; justify-content:flex-end"><button class="btn primary" onclick="saveVpAssignments()">✅ Asignar a pedidos</button></div>
+    </div>
+  </section>
+
+  <!-- ABONOS -->
+  <section id="view-abonos" class="view">
+    <h1>Abonos por confirmar</h1>
+    <p class="note">Reportes de pago Bre-b enviados por los clientes (llegan en tiempo real).</p>
+    <div id="reports"></div>
+  </section>
+
+  <!-- INVENTARIO -->
+  <section id="view-inv" class="view">
+    <h1>Inventario</h1>
+    <p class="note">El stock disponible descuenta bolsitas activas y ventas.</p>
+    <div class="toolbar">
+      <button class="btn primary" onclick="openProduct()">+ Agregar producto</button>
+      <input id="invSearch" placeholder="Buscar producto o código" oninput="renderInventory()">
+      <select id="invFilter" onchange="renderInventory()"><option value="">Todos</option><option>EN STOCK</option><option>REPOSICIÓN</option><option>AGOTADO</option></select>
+      <button class="btn" onclick="loadTab('inv')">🔄</button>
+    </div>
+    <div id="invTable"></div>
+  </section>
+
+  <!-- KITS -->
+  <section id="view-kits" class="view">
+    <h1>Kits</h1>
+    <p class="note">Combos armados con productos del inventario.</p>
+    <div class="toolbar"><button class="btn primary" onclick="openKit()">+ Nuevo kit</button><button class="btn" onclick="loadTab('kits')">🔄</button></div>
+    <div id="kitsTable"></div>
+  </section>
+
+  <!-- CATEGORÍAS -->
+  <section id="view-cats" class="view">
+    <h1>Categorías</h1>
+    <p class="note">Renombrar o eliminar categorías del inventario.</p>
+    <div class="toolbar"><input id="catNew" placeholder="Nueva categoría" style="max-width:260px"><button class="btn primary" onclick="addCategory()">Agregar</button></div>
+    <div id="catsBox"></div>
+  </section>
+
+  <!-- CLIENTES -->
+  <section id="view-clients" class="view">
+    <h1>Clientes</h1>
+    <p class="note">Base de clientes con su historial de compras y saldos.</p>
+    <div class="toolbar"><button class="btn primary" onclick="openClient()">+ Nuevo cliente</button><input id="cliSearch" placeholder="Buscar cliente" oninput="renderClients()"><button class="btn" onclick="loadTab('clients')">🔄</button></div>
+    <div id="clientsTable"></div>
+  </section>
+
+  <!-- PEDIDOS -->
+  <section id="view-orders" class="view">
+    <h1>Pedidos y bolsitas</h1>
+    <p class="note">Gestiona estados, productos y abonos de cada bolsita.</p>
+    <div class="toolbar">
+      <input id="ordSearch" placeholder="Buscar número o cliente" oninput="loadOrders()">
+      <select id="ordFilter" onchange="loadOrders()">
+        <option value="">Todos</option><option value="draft">Borrador</option><option value="pending_confirm">Por confirmar</option>
+        <option value="apartada">Apartada</option><option value="paid">Pagada</option><option value="shipped">Enviada</option>
+        <option value="delivered">Entregada</option><option value="canceled">Cancelada</option><option value="expired">Vencida</option>
+      </select>
+      <button class="btn" onclick="loadTab('orders')">🔄</button>
+    </div>
+    <div id="ordersTable"></div>
+  </section>
+
+  <!-- LOGÍSTICA -->
+  <section id="view-logis" class="view">
+    <h1>Logística</h1>
+    <p class="note">Pedidos pagados por despachar y envíos registrados.</p>
+    <div class="toolbar"><button class="btn" onclick="exportShipmentsExcel()">⬇ Excel envíos</button></div>
+    <h3>📦 Por enviar</h3><div id="logisPending"></div>
+    <h3 style="margin-top:20px">🚚 Enviados</h3><div id="logisSent"></div>
+  </section>
+
+  <!-- CONFIGURACIÓN -->
+  <section id="view-config" class="view">
+    <h1>Configuración</h1>
+    <p class="note">Apariencia, utilidad, objetivos, donaciones, factura, pagos y numeración.</p>
+    <div class="panel glass">
+      <h2>Apariencia</h2>
+      <div class="fgrid">
+        <div class="field"><label>Tema de color</label><select id="uiThemeSel" onchange="setTheme(this.value)"><option value="light">Claro</option><option value="dark">Oscuro</option></select></div>
+        <div class="field pk-pc-only"><label>Ubicación del menú (PC)</label><select id="uiLayoutSel" onchange="setLayout(this.value)"><option value="top">Barra superior</option><option value="side">Barra lateral</option></select></div>
       </div>
-      <div class="form-error" id="admErr"></div>
-      <button type="submit" class="btn btn-primary">Ingresar al Panel</button>
-      <div class="form-footer">
-        <a href="#" onclick="alert('Contacta al soporte para recuperar tu acceso.')">¿Olvidaste tu contraseña?</a>
+    </div>
+    <div class="panel glass">
+      <h2>Utilidad: diezmo, ofrenda y reinversión</h2>
+      <div class="fgrid">
+        <div class="field"><label>Diezmo (% de la utilidad)</label><input id="gDiezmo" type="number" min="0" max="100"></div>
+        <div class="field"><label>Ofrenda (% de la utilidad)</label><input id="gOfrenda" type="number" min="0" max="100"></div>
+        <div class="field"><label>Reinversión sugerida</label><select id="gReinv"><option value="1">Habilitado</option><option value="0">Deshabilitado</option></select></div>
+        <div class="field"><label>% sugerido de reinversión</label><input id="gReinvPct" type="number" min="0" max="100"></div>
       </div>
-    </form>
-  </div>
+      <div class="actions" style="margin-top:12px"><button class="btn primary" onclick="saveProfitCfg()">Guardar utilidad</button></div>
+    </div>
+    <div class="panel glass">
+      <h2>Objetivos (máximo 3)</h2>
+      <div class="fgrid" style="align-items:end">
+        <div class="field" style="flex:2"><label>Nombre del objetivo</label><input id="gcName"></div>
+        <div class="field" style="flex:1"><label>Monto meta</label><input id="gcTarget" type="number" min="0"></div>
+        <div class="field"><label>&nbsp;</label><button class="btn primary" onclick="saveGoal()">Agregar objetivo</button></div>
+      </div>
+      <div id="goalsCfg" style="margin-top:14px"></div>
+    </div>
+    <div class="panel glass">
+      <h2>Donaciones certificadas</h2>
+      <div class="fgrid">
+        <div class="field"><label>Entidad / destinatario</label><input id="dnEntity"></div>
+        <div class="field"><label>Valor</label><input id="dnAmount" type="number" min="0"></div>
+        <div class="field"><label>Certificado / comprobante</label><input id="dnCert"></div>
+        <div class="field"><label>Fecha</label><input id="dnDate" type="date"></div>
+        <div class="field"><label>Nota</label><input id="dnNote"></div>
+        <div class="field"><label>&nbsp;</label><button class="btn primary" onclick="saveDonation()">Registrar donación</button></div>
+      </div>
+      <div id="donList" style="margin-top:14px"></div>
+    </div>
+    <div class="panel glass">
+      <h2>Datos de la factura</h2>
+      <div class="fgrid">
+        <div class="field"><label>Nombre de la empresa</label><input id="iEmpresa"></div>
+        <div class="field"><label>NIT / Documento</label><input id="iNit"></div>
+        <div class="field"><label>Teléfono</label><input id="iTel"></div>
+        <div class="field"><label>Email</label><input id="iEmail"></div>
+        <div class="field" style="grid-column:1/-1"><label>Dirección</label><input id="iDir"></div>
+        <div class="field" style="grid-column:1/-1"><label>Mensaje al pie de la factura</label><input id="iMsg"></div>
+        <div class="field"><label>Fuente Títulos</label><select id="iFontTitulos"><option>Arial</option><option>Nunito</option><option>Montserrat</option><option>Perfect Lemonade</option><option>Sweetbliss Personal Use</option><option>Shortcake Strawberry</option><option>Mochibop</option></select></div>
+        <div class="field"><label>Fuente Cuerpo</label><select id="iFontCuerpo"><option>Arial</option><option>Nunito</option><option>Montserrat</option><option>Perfect Lemonade</option><option>Sweetbliss Personal Use</option><option>Shortcake Strawberry</option><option>Mochibop</option></select></div>
+        <div class="field"><label>Logo (PNG/JPG)</label><input id="iLogo" type="file" accept="image/*" onchange="readImg(this,'logo')"></div>
+        <div class="field"><label>Vista previa logo</label><div style="border:1px solid var(--border); border-radius:10px; padding:6px; min-height:56px; display:flex; align-items:center; justify-content:center"><img id="iLogoPrev" style="max-height:52px; display:none"></div></div>
+        <div class="field"><label>Marca de agua</label><input id="iWm" type="file" accept="image/*" onchange="readImg(this,'wm')"></div>
+        <div class="field"><label>Vista previa marca de agua</label><div style="border:1px solid var(--border); border-radius:10px; padding:6px; min-height:56px; display:flex; align-items:center; justify-content:center"><img id="iWmPrev" style="max-height:52px; display:none"></div></div>
+      </div>
+      <div class="actions" style="margin-top:12px">
+        <button class="btn primary" onclick="saveInvoiceCfg()">Guardar datos de factura</button>
+        <button class="btn danger" onclick="clearLogo()">Quitar logo</button>
+        <button class="btn danger" onclick="clearWm()">Quitar marca de agua</button>
+      </div>
+    </div>
+    <div class="panel glass">
+      <h2>Pagos, WhatsApp y numeración</h2>
+      <div class="fgrid">
+        <div class="field"><label>Llave Bre-b</label><input id="gBreb"></div>
+        <div class="field"><label>WhatsApp (con código de país)</label><input id="gWa"></div>
+        <div class="field"><label>Abono mínimo (COP)</label><input id="gMin" type="number" min="0"></div>
+        <div class="field"><label>Iniciales numeración</label><input id="gPrefix" maxlength="6" style="text-transform:uppercase"></div>
+        <div class="field"><label>Número de inicio</label><input id="gStart" type="number" min="1"></div>
+        <div class="field"><label>Dígitos</label><input id="gDigits" type="number" min="3" max="8"></div>
+        <div class="field" style="grid-column:1/-1"><label>Plantilla mensaje WhatsApp ({ORDER_NUMBER}, {TOTAL}, {AMOUNT})</label><input id="gTpl"></div>
+      </div>
+      <div class="actions" style="margin-top:12px"><button class="btn primary" onclick="saveGeneral()">Guardar configuración</button></div>
+    </div>
+    <div class="panel glass" style="border: 2px solid var(--danger) !important; background: rgba(239, 68, 68, 0.05) !important;">
+      <h2 style="color:var(--danger)">⚠️ Zona de peligro: Borrar toda la tienda</h2>
+      <p class="note" style="color:var(--danger)">Esta acción eliminará <b>permanentemente</b> todo el inventario, categorías, kits, clientes, pedidos, abonos, logística, objetivos, donaciones y la configuración personalizada. <b>No se puede deshacer.</b></p>
+      <button class="btn danger" onclick="openWipeModal()">Borrar toda la información de la tienda</button>
+    </div>
+  </section>
+
+  <!-- LEGAL -->
+  <section id="view-legal" class="view">
+    <h1>Legal</h1>
+    <p class="note">Política de privacidad y términos de servicio de la Aplicación.</p>
+    <div class="panel glass">
+      <div class="toolbar">
+        <button class="btn" id="legalBtnPrivacy" onclick="setLegalDoc('privacy')">Política de privacidad</button>
+        <button class="btn" id="legalBtnTerms" onclick="setLegalDoc('terms')">Términos de servicio</button>
+        <select id="legalLang"><option value="es">Español</option><option value="en">English</option></select>
+      </div>
+      <div id="legalContent"></div>
+    </div>
+  </section>
 </main>
 
-<!-- Modal de selección de tienda -->
-<div class="modal-overlay" id="storeModal">
-  <div class="modal-box">
-    <h3>🏪 Selecciona tu tienda</h3>
-    <p style="color: var(--text-muted); text-align: center; margin-bottom: 16px; font-size: 14px;">
-      Tu número está registrado en varias tiendas. Elige a cuál quieres ingresar:
-    </p>
-    <div id="storeList" class="store-list"></div>
-    <button class="btn" style="background: transparent; border: 1px solid var(--border); color: var(--text-muted);" onclick="closeStoreModal()">Cancelar</button>
+<!-- MODAL: Producto -->
+<div id="productModal" class="modal-backdrop"><div class="modal">
+  <h2 id="prodTitle">Producto</h2>
+  <input type="hidden" id="pId">
+  <div class="fgrid">
+    <div class="field"><label>Nombre</label><input id="pName"></div>
+    <div class="field"><label>Código de barras</label><input id="pCode"></div>
+    <div class="field"><label>Categoría</label><select id="pCat"></select></div>
+    <div class="field"><label>Fecha de compra</label><input id="pDate" type="date"></div>
+    <div class="field"><label>Costo</label><input id="pCost" type="number" min="0"></div>
+    <div class="field"><label>Envío / costo adicional</label><input id="pShip" type="number" min="0"></div>
+    <div class="field"><label>Precio de venta</label><input id="pPrice" type="number" min="0"></div>
+    <div class="field"><label>Stock</label><input id="pStock" type="number" min="0"></div>
+    <div class="field"><label>Mínimo de reposición</label><input id="pMin" type="number" min="0"></div>
   </div>
-</div>
+  <div class="modal-actions"><button class="btn" onclick="closeModal('productModal')">Cancelar</button><button class="btn primary" onclick="saveProduct()">Guardar</button></div>
+</div></div>
 
+<!-- MODAL: Kit -->
+<div id="kitModal" class="modal-backdrop"><div class="modal">
+  <h2 id="kitTitle">Kit</h2><input type="hidden" id="kId">
+  <div class="fgrid">
+    <div class="field"><label>Nombre del kit</label><input id="kName"></div>
+    <div class="field"><label>Precio de venta del kit</label><input id="kPrice" type="number" min="0"></div>
+  </div>
+  <h3>Componentes</h3>
+  <div class="tablewrap" style="max-height:240px"><table class="adm"><thead><tr><th>Producto</th><th>Cantidad</th><th></th></tr></thead><tbody id="kComps"></tbody></table></div>
+  <div class="actions" style="margin-top:10px"><button class="btn" onclick="addKitRow()">+ Agregar producto al kit</button></div>
+  <div class="modal-actions"><button class="btn danger" id="kDel" onclick="delKit()" style="display:none">Eliminar kit</button><button class="btn" onclick="closeModal('kitModal')">Cancelar</button><button class="btn primary" onclick="saveKit()">Guardar kit</button></div>
+</div></div>
+
+<!-- MODAL: Cliente -->
+<div id="clientModal" class="modal-backdrop"><div class="modal">
+  <h2 id="cliTitle">Cliente</h2><input type="hidden" id="cId">
+  <div class="fgrid">
+    <div class="field"><label>Nombre</label><input id="cName"></div>
+    <div class="field"><label>WhatsApp</label><input id="cWa" inputmode="numeric"></div>
+    <div class="field"><label>Ciudad</label><input id="cCity"></div>
+    <div class="field"><label>Dirección</label><input id="cAddr"></div>
+    <div class="field"><label>Estado</label><select id="cStatus"><option>Activo</option><option>Inactivo</option></select></div>
+    <div class="field" id="cPinField"><label>PIN inicial (opcional)</label><input id="cPin" inputmode="numeric"></div>
+  </div>
+  <div class="modal-actions"><button class="btn" onclick="closeModal('clientModal')">Cancelar</button><button class="btn primary" onclick="saveClient()">Guardar</button></div>
+</div></div>
+
+<!-- MODAL: Pedido -->
+<div id="orderModal" class="modal-backdrop"><div class="modal"><div id="orderBody"></div><div class="modal-actions"><button class="btn" onclick="closeModal('orderModal')">Cerrar</button></div></div></div>
+
+<!-- MODAL: Envío -->
+<div id="shipModal" class="modal-backdrop"><div class="modal">
+  <h2 id="shTitle">Preparar envío</h2><input type="hidden" id="shId">
+  <div class="fgrid">
+    <div class="field"><label>Pago del envío</label><select id="shPay"><option value="adelantado">Adelantado</option><option value="por_cobrar">Por cobrar</option></select></div>
+    <div class="field"><label>Monto</label><input id="shAmount" type="number" min="0"></div>
+    <div class="field"><label>Transportadora</label><select id="shCarrier" onchange="carrierChanged()"><option>Interrapidísimo</option><option>Envía</option><option>Coordinadora</option><option>Servientrega</option><option value="envío local">envío local</option><option value="otra">otra</option></select></div>
+    <div class="field" id="shCarrierOtherField" style="display:none"><label>Nombre de la transportadora</label><input id="shCarrierOther"></div>
+    <div class="field"><label>Medidas del paquete (opcional)</label><input id="shDims"></div>
+    <div class="field"><label>Ciudad</label><input id="shCity"></div>
+    <div class="field"><label>Dirección</label><input id="shAddress"></div>
+    <div class="field"><label>Dirección de este envío</label><select id="shAddrKind"><option value="temporal">Temporal (no modifica la ficha del cliente)</option><option value="principal">Principal (actualiza la ficha del cliente)</option></select></div>
+  </div>
+  <div id="shHint" class="note" style="margin:10px 0"></div>
+  <div class="modal-actions"><button class="btn" onclick="closeModal('shipModal')">Cancelar</button><button class="btn" onclick="saveShipment('save')">Guardar</button><button class="btn primary" id="shSendBtn" onclick="saveShipment('send')">Enviar</button></div>
+</div></div>
+
+<!-- MODAL: Aporte a objetivo -->
+<div id="goalPayModal" class="modal-backdrop"><div class="modal">
+  <h2>Registrar aporte a objetivo</h2>
+  <div class="fgrid">
+    <div class="field"><label>Objetivo</label><select id="gpGoal"></select></div>
+    <div class="field"><label>Monto del aporte</label><input id="gpAmount" type="number" min="0"></div>
+    <div class="field"><label>Fecha del ingreso</label><input id="gpDate" type="date"></div>
+  </div>
+  <div class="modal-actions"><button class="btn" onclick="closeModal('goalPayModal')">Cancelar</button><button class="btn primary" onclick="saveGoalPayment()">Registrar aporte</button></div>
+</div></div>
+
+<!-- MODAL: Importar inventario -->
+<div id="invImportModal" class="modal-backdrop"><div class="modal" style="width:min(1080px,100%)">
+  <h2>Revisar archivo de inventario</h2>
+  <p class="note">Nada se guarda hasta confirmar. En <b>existentes</b> la cantidad se suma al stock y se actualizan costo/envío/categoría/fecha; en <b>nuevos</b> define el stock inicial.</p>
+  <div id="impSummary" class="note" style="margin:8px 0"></div>
+  <div class="tablewrap" style="max-height:52vh"><table class="adm"><thead><tr><th>Estado</th><th>Producto</th><th>Código</th><th>Categoría</th><th>Costo</th><th>Envío</th><th>Cant.</th><th>Precio</th><th>Fecha compra</th><th>Avisos</th></tr></thead><tbody id="impBody"></tbody></table></div>
+  <div class="modal-actions"><button class="btn" onclick="closeInvImport()">Cerrar</button><button class="btn" onclick="closeInvImport()">Cancelar</button><button class="btn primary" id="impSaveBtn" onclick="confirmInventoryImport()">Guardar</button></div>
+</div></div>
+
+<!-- MODAL: Borrado total -->
+<div id="wipeModal" class="modal-backdrop"><div class="modal" style="border: 2px solid var(--danger) !important; max-width: 480px;">
+  <h3 style="color:var(--danger); margin-top:0">⚠️ Confirmar borrado total</h3>
+  <p class="note">Para confirmar, escribe <b>exactamente</b> la siguiente frase:</p>
+  <p style="font-weight:800; color:var(--danger); background:var(--surface-hover); padding:12px; border-radius:10px; text-align:center; font-size:14px;">Estoy seguro de hacer el borrado</p>
+  <div class="field"><label>Escribe la frase exacta para confirmar</label><input id="wipeConfirmText" type="text" placeholder="Estoy seguro de hacer el borrado" autocomplete="off"></div>
+  <div class="err" id="wipeErr" style="min-height:18px; color:var(--danger); font-weight:700;"></div>
+  <div class="modal-actions">
+    <button class="btn" onclick="closeModal('wipeModal')">Cancelar</button>
+    <button class="btn danger" id="wipeExecuteBtn" onclick="executeWipe()" disabled>Borrar todo permanentemente</button>
+  </div>
+</div></div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="/admin.js"></script>
 <script>
 // Toggle de tema
 function toggleTheme() {
@@ -307,120 +631,17 @@ function toggleTheme() {
   const current = html.getAttribute('data-theme');
   const next = current === 'dark' ? 'light' : 'dark';
   html.setAttribute('data-theme', next);
-  localStorage.setItem('theme', next);
+  localStorage.setItem('uiTheme', next);
   document.getElementById('themeBtn').textContent = next === 'dark' ? '🌙' : '☀️';
+  if (document.getElementById('uiThemeSel')) document.getElementById('uiThemeSel').value = next;
 }
-
-// Inicializar tema
 (function() {
-  const saved = localStorage.getItem('theme');
-  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const theme = saved || (prefersDark ? 'dark' : 'light');
-  document.documentElement.setAttribute('data-theme', theme);
-  document.getElementById('themeBtn').textContent = theme === 'dark' ? '🌙' : '☀️';
+  const saved = localStorage.getItem('uiTheme');
+  if (saved) {
+    document.documentElement.setAttribute('data-theme', saved);
+    document.getElementById('themeBtn').textContent = saved === 'dark' ? '🌙' : '☀️';
+  }
 })();
-
-// Cambiar entre perfiles
-function switchProfile(profile) {
-  const btns = document.querySelectorAll('.profile-btn');
-  btns.forEach(b => b.classList.remove('active'));
-  
-  if (profile === 'client') {
-    btns[0].classList.add('active');
-    document.getElementById('clientForm').classList.remove('hidden');
-    document.getElementById('adminForm').classList.add('hidden');
-  } else {
-    btns[1].classList.add('active');
-    document.getElementById('clientForm').classList.add('hidden');
-    document.getElementById('adminForm').classList.remove('hidden');
-  }
-}
-
-// Login de cliente (paso 1: credenciales)
-async function handleClientLogin(e) {
-  e.preventDefault();
-  const err = document.getElementById('cliErr');
-  err.textContent = 'Verificando...';
-  
-  try {
-    const res = await fetch('/api/auth/client/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        whatsapp: document.getElementById('cliWa').value,
-        pin: document.getElementById('cliPin').value
-      })
-    });
-    
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Error al ingresar');
-
-    // Si el cliente está en múltiples tiendas, mostrar modal de selección
-    if (data.multiple_stores) {
-      showStoreModal(data.multiple_stores, data);
-    } else {
-      // Login directo a una sola tienda
-      finalizeClientLogin(data.portfolio.slug, data);
-    }
-  } catch (e) {
-    err.textContent = e.message;
-  }
-}
-
-// Mostrar modal de selección de tienda
-function showStoreModal(stores, clientData) {
-  const list = document.getElementById('storeList');
-  list.innerHTML = stores.map(store => 
-    `<button class="store-btn" onclick="finalizeClientLogin('${store.slug}', ${JSON.stringify(clientData).replace(/"/g, '&quot;')})">
-      🏪 ${store.name}
-    </button>`
-  ).join('');
-  document.getElementById('storeModal').classList.add('open');
-}
-
-// Cerrar modal
-function closeStoreModal() {
-  document.getElementById('storeModal').classList.remove('open');
-}
-
-// Finalizar login de cliente (paso 2: seleccionar tienda)
-function finalizeClientLogin(slug, data) {
-  localStorage.setItem('pk_token', data.token);
-  localStorage.setItem('pk_user', JSON.stringify(data.user));
-  localStorage.setItem('pk_slug', slug);
-  
-  closeStoreModal();
-  window.location.href = '/?t=' + slug;
-}
-
-// Login de administrador
-async function handleAdminLogin(e) {
-  e.preventDefault();
-  const err = document.getElementById('admErr');
-  err.textContent = 'Verificando...';
-  
-  try {
-    const res = await fetch('/api/auth/admin/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: document.getElementById('admEmail').value,
-        password: document.getElementById('admPass').value
-      })
-    });
-    
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Credenciales inválidas');
-    
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    if (data.portfolio) localStorage.setItem('portfolio', JSON.stringify(data.portfolio));
-    
-    window.location.href = '/admin.html';
-  } catch (e) {
-    err.textContent = e.message;
-  }
-}
 </script>
 </body>
 </html>

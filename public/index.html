@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="es" data-theme="dark">
 <head>
@@ -5,171 +6,638 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="X-Frame-Options" content="DENY">
-<title>Tu Live Shop · Acceso</title>
+<meta http-equiv="X-XSS-Protection" content="1; mode=block">
+<meta name="description" content="Tu Live Shop: El sistema de ventas, inventario y logística diseñado para emprendedores que venden en vivo.">
+<meta name="theme-color" content="#0A1430">
+<title>Tu Live Shop · Vende en vivo, cuadra la caja sin perder la voz</title>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96;700;12..96;800&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
 <style>
 :root {
-  --bg: #0f172a;
-  --bg-gradient: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.15) 0%, transparent 40%);
-  --surface: rgba(30, 41, 59, 0.65);
-  --surface-hover: rgba(51, 65, 85, 0.8);
-  --border: rgba(255, 255, 255, 0.08);
-  --brand: #3b82f6;
-  --brand-hover: #2563eb;
-  --brand-glow: rgba(59, 130, 246, 0.4);
-  --text: #f8fafc;
-  --text-muted: #94a3b8;
-  --shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  --danger: #ef4444;
+  color-scheme: dark;
+  --bg: #0A1430;
+  --bg-gradient:
+    radial-gradient(circle at 8% 10%, rgba(31,95,224,.22), transparent 38%),
+    radial-gradient(circle at 92% 80%, rgba(43,159,216,.15), transparent 38%);
+  --surface: rgba(22, 39, 75, .62);
+  --surface-hover: rgba(35, 58, 103, .78);
+  --border: rgba(255,255,255,.13);
+  --brand: #5B9BFF;
+  --brand-solid: #1F5FE0;
+  --brand-hover: #3479F5;
+  --brand-glow: rgba(31,95,224,.34);
+  --orange: #FFB020;
+  --cyan: #5FC3F0;
+  --text: #F5F8FF;
+  --text-muted: #AAB8D2;
+  --shadow: 0 16px 48px rgba(0,0,0,.28);
+  --ok: #45D483;
+  --warn: #FFB020;
+  --danger: #FF647C;
+  --radius: 22px;
 }
+
 [data-theme="light"] {
-  --bg: #f0f9ff;
-  --bg-gradient: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.1) 0%, transparent 40%);
-  --surface: rgba(255, 255, 255, 0.7);
-  --surface-hover: rgba(255, 255, 255, 0.9);
-  --border: rgba(0, 0, 0, 0.08);
-  --brand: #0284c7;
-  --brand-hover: #0369a1;
-  --brand-glow: rgba(2, 132, 199, 0.3);
-  --text: #0f172a;
-  --text-muted: #475569;
-  --shadow: 0 8px 32px rgba(2, 132, 199, 0.1);
+  color-scheme: light;
+  --bg: #EEF4FF;
+  --bg-gradient:
+    radial-gradient(circle at 8% 10%, rgba(31,95,224,.12), transparent 38%),
+    radial-gradient(circle at 92% 80%, rgba(43,159,216,.12), transparent 38%);
+  --surface: rgba(255,255,255,.68);
+  --surface-hover: rgba(255,255,255,.88);
+  --border: rgba(31,55,100,.12);
+  --brand: #1F5FE0;
+  --brand-solid: #1F5FE0;
+  --brand-hover: #174FC0;
+  --brand-glow: rgba(31,95,224,.20);
+  --orange: #F08A00;
+  --cyan: #168DBF;
+  --text: #142344;
+  --text-muted: #5D6D8B;
+  --shadow: 0 16px 44px rgba(31,65,125,.12);
+  --ok: #168B50;
+  --warn: #B86A00;
+  --danger: #C8324D;
 }
-* { box-sizing: border-box; margin: 0; padding: 0; }
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'DM Sans', system-ui, sans-serif;
   background: var(--bg);
   background-image: var(--bg-gradient);
   background-attachment: fixed;
   color: var(--text);
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  line-height: 1.6;
+  transition: background .25s, color .25s;
 }
+
+button, input, select, textarea {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
 .glass {
   background: var(--surface);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(22px) saturate(1.7);
+  -webkit-backdrop-filter: blur(22px) saturate(1.7);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
 }
+
 header {
-  padding: 16px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 15px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: var(--surface);
+  backdrop-filter: blur(22px) saturate(1.7);
+  -webkit-backdrop-filter: blur(22px) saturate(1.7);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 8px 30px rgba(0,0,0,.10);
 }
+
 .brand {
-  font-size: 20px;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 22px;
   font-weight: 800;
   text-decoration: none;
   color: var(--text);
   display: flex;
   align-items: center;
   gap: 8px;
+  letter-spacing: -.7px;
 }
-.brand span { color: var(--brand); }
-.theme-toggle {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  cursor: pointer;
-  font-size: 16px;
+
+.brand span {
+  color: var(--brand);
+}
+
+.nav-actions {
   display: flex;
+  gap: 10px;
   align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
+  flex-wrap: wrap;
 }
-.theme-toggle:hover { background: var(--surface-hover); }
-main {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-}
-.login-container {
-  width: 100%;
-  max-width: 440px;
-  padding: 32px;
-  border-radius: 24px;
-}
-.login-header { text-align: center; margin-bottom: 24px; }
-.login-header h1 { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
-.login-header p { color: var(--text-muted); font-size: 14px; }
-.profile-selector {
-  display: flex;
-  background: var(--bg);
-  border-radius: 12px;
-  padding: 4px;
-  margin-bottom: 24px;
-}
-.profile-btn {
-  flex: 1;
-  padding: 10px;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  font-weight: 600;
-  font-size: 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.profile-btn.active {
-  background: var(--brand);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-.form-group { margin-bottom: 16px; }
-.form-group label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 6px;
-  color: var(--text-muted);
-}
-.form-group input, .form-group select {
-  width: 100%;
-  padding: 12px 14px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  font-size: 14px;
-  font-family: inherit;
-}
-.form-group input:focus, .form-group select:focus {
-  outline: none;
-  border-color: var(--brand);
-}
+
 .btn {
-  width: 100%;
-  padding: 12px;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 15px;
+  padding: 11px 20px;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 14px;
   text-decoration: none;
   cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
-  display: flex;
+  transition: all .2s ease;
+  border: 1px solid transparent;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
 }
-.btn-primary {
-  background: var(--brand);
-  color: #fff;
-  box-shadow: 0 4px 14px var(--brand-glow);
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: transparent;
 }
+
+.btn-ghost:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+  border-color: var(--border);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--brand-solid), var(--brand-hover));
+  color: #fff;
+  box-shadow: 0 5px 18px var(--brand-glow);
+}
+
 .btn-primary:hover {
-  background: var(--brand-hover);
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--brand-glow);
+}
+
+.btn-outline {
+  background: var(--surface);
+  color: var(--brand);
+  border: 1px solid var(--brand);
+  backdrop-filter: blur(12px);
+}
+
+.btn-outline:hover {
+  background: var(--brand-solid);
+  color: #fff;
   transform: translateY(-1px);
 }
+
+.theme-toggle {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .2s;
+  backdrop-filter: blur(12px);
+}
+
+.theme-toggle:hover {
+  background: var(--surface-hover);
+  transform: translateY(-1px);
+}
+
+main {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+
+section {
+  margin-bottom: 88px;
+  scroll-margin-top: 110px;
+}
+
+.hero {
+  text-align: center;
+  padding: 76px 0 44px;
+}
+
+.hero .tag {
+  display: inline-block;
+  background: rgba(31,95,224,.15);
+  color: var(--brand);
+  padding: 7px 17px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 22px;
+  border: 1px solid rgba(91,155,255,.25);
+}
+
+.hero h1 {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: clamp(38px, 6vw, 66px);
+  font-weight: 800;
+  line-height: 1.06;
+  margin-bottom: 22px;
+  letter-spacing: -2px;
+}
+
+.hero h1 .highlight {
+  background: linear-gradient(120deg, var(--brand), var(--cyan), var(--orange));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero p {
+  font-size: 18px;
+  color: var(--text-muted);
+  max-width: 650px;
+  margin: 0 auto 34px;
+  line-height: 1.7;
+}
+
+.hero .cta {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 18px;
+  margin-top: 64px;
+}
+
+.stat-card {
+  padding: 26px;
+  text-align: center;
+  border-radius: var(--radius);
+}
+
+.stat-card b {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--brand);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.stat-card span {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.section-title {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  text-align: center;
+  font-size: clamp(29px, 4vw, 40px);
+  font-weight: 800;
+  margin-bottom: 12px;
+  letter-spacing: -.8px;
+}
+
+.section-sub {
+  text-align: center;
+  color: var(--text-muted);
+  max-width: 620px;
+  margin: 0 auto 48px;
+  font-size: 16px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 22px;
+}
+
+.card {
+  padding: 30px;
+  border-radius: var(--radius);
+  transition: transform .25s, background .25s, border-color .25s;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  background: var(--surface-hover);
+  border-color: rgba(91,155,255,.35);
+}
+
+.card .icon {
+  font-size: 32px;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.card h3 {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.card p {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.demo-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.demo-tab {
+  padding: 11px 21px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  transition: .2s;
+  backdrop-filter: blur(12px);
+}
+
+.demo-tab.active,
+.demo-tab:hover {
+  background: var(--brand-solid);
+  color: #fff;
+  border-color: var(--brand-solid);
+}
+
+.demo-screen {
+  padding: 32px;
+  border-radius: var(--radius);
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mock-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.mock-row:last-child {
+  border-bottom: none;
+}
+
+.mock-badge {
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badge-ok {
+  background: rgba(69,212,131,.15);
+  color: var(--ok);
+}
+
+.badge-warn {
+  background: rgba(255,176,32,.15);
+  color: var(--warn);
+}
+
+.badge-muted {
+  background: rgba(148,163,184,.15);
+  color: var(--text-muted);
+}
+
+.faq details {
+  padding: 21px 24px;
+  border-radius: 18px;
+  margin-bottom: 13px;
+  cursor: pointer;
+  transition: background .2s;
+}
+
+.faq details:hover {
+  background: var(--surface-hover);
+}
+
+.faq summary {
+  font-weight: 700;
+  font-size: 16px;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq summary::after {
+  content: '+';
+  font-size: 22px;
+  color: var(--brand);
+}
+
+.faq details[open] summary::after {
+  content: '−';
+}
+
+.faq p {
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.pricing-card {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 42px 34px;
+  border-radius: 28px;
+  text-align: center;
+  border: 1px solid rgba(91,155,255,.45);
+  position: relative;
+  overflow: hidden;
+}
+
+.pricing-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--brand), var(--cyan), var(--orange));
+}
+
+.price-tag {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 52px;
+  font-weight: 800;
+  color: var(--brand);
+  margin: 18px 0 8px;
+}
+
+.price-tag span {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.features-list {
+  list-style: none;
+  text-align: left;
+  margin: 32px 0;
+}
+
+.features-list li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.features-list li::before {
+  content: '✓';
+  color: var(--ok);
+  font-weight: 800;
+}
+
+footer {
+  text-align: center;
+  padding: 40px 24px;
+  color: var(--text-muted);
+  font-size: 14px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+}
+
+footer a {
+  color: var(--brand);
+  text-decoration: none;
+}
+
+/* Modales */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2,8,24,.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 16px;
+}
+
+.modal-overlay.open {
+  display: flex;
+}
+
+.modal-box {
+  background: var(--surface);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 32px;
+  width: min(440px, 100%);
+  box-shadow: var(--shadow);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+.modal-box h3 {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 24px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.modal-box .subtitle {
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text-muted);
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 13px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(5,15,38,.35);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+[data-theme="light"] .form-group input,
+[data-theme="light"] .form-group select {
+  background: rgba(255,255,255,.75);
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-glow);
+}
+
+.form-group input::placeholder {
+  color: var(--text-muted);
+  opacity: .7;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.modal-actions .btn {
+  flex: 1;
+  justify-content: center;
+}
+
 .form-error {
   color: var(--danger);
   font-size: 13px;
@@ -177,126 +645,301 @@ main {
   margin-top: 8px;
   text-align: center;
 }
-.form-footer {
-  text-align: center;
-  margin-top: 16px;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-.form-footer a {
-  color: var(--brand);
-  text-decoration: none;
-  font-weight: 600;
-}
-.form-footer a:hover { text-decoration: underline; }
-.hidden { display: none; }
 
-/* Modal de selección de tienda */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(4px);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 200;
-  padding: 16px;
+.form-error.success {
+  color: var(--ok);
 }
-.modal-overlay.open { display: flex; }
-.modal-box {
-  background: var(--surface);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 32px;
-  width: min(420px, 100%);
-  box-shadow: var(--shadow);
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 3px;
 }
-.modal-box h3 { font-size: 20px; margin-bottom: 16px; text-align: center; }
-.store-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-.store-btn {
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  cursor: pointer;
-  transition: all 0.2s;
-  font-weight: 600;
-  text-align: left;
+
+@media (max-width: 640px) {
+  header {
+    padding: 12px 16px;
+  }
+
+  .brand {
+    font-size: 20px;
+  }
+
+  .nav-actions {
+    width: 100%;
+    justify-content: center;
+    margin-top: 5px;
+  }
+
+  .nav-actions .btn {
+    padding: 10px 13px;
+    font-size: 13px;
+  }
+
+  .hero {
+    padding: 44px 0 22px;
+  }
+
+  .hero h1 {
+    letter-spacing: -1.2px;
+  }
+
+  .hero p {
+    font-size: 16px;
+  }
+
+  main {
+    padding: 24px 16px 60px;
+  }
+
+  section {
+    margin-bottom: 65px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 24px;
+  }
+
+  .demo-screen {
+    padding: 20px;
+    overflow-x: auto;
+  }
+
+  .mock-row {
+    flex-wrap: wrap;
+    font-size: 13px;
+  }
+
+  .pricing-card {
+    padding: 34px 22px;
+  }
+
+  .price-tag {
+    font-size: 42px;
+  }
+
+  .modal-box {
+    padding: 25px 20px;
+  }
 }
-.store-btn:hover {
-  background: var(--brand);
-  color: #fff;
-  border-color: var(--brand);
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+  }
 }
 </style>
 </head>
+
 <body>
 
-<header>
-  <a href="/landing.html" class="brand">🎥 Tu <span>Live Shop</span></a>
-  <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn">🌙</button>
+<header class="glass">
+  <a href="#" class="brand">🎥 Tu <span>Live Shop</span></a>
+  <div class="nav-actions">
+    <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn" aria-label="Cambiar tema">🌙</button>
+    <button class="btn btn-ghost" onclick="openClientLogin()">🛍️ Ingreso Cliente</button>
+    <a href="/admin.html" class="btn btn-primary">🏪 Ingreso Tienda</a>
+  </div>
 </header>
 
 <main>
-  <div class="login-container glass">
-    <div class="login-header">
-      <h1>Bienvenido</h1>
-      <p>Selecciona tu perfil para continuar</p>
+  <section class="hero">
+    <span class="tag">Hecho para vendedores de lives</span>
+    <h1>Vende en vivo. Cuadra la caja <span class="highlight">sin perder la voz.</span></h1>
+    <p>Tu Live Shop registra los pedidos mientras transmites, controla inventario y abonos, y te muestra cuánto ganaste de verdad al terminar el live.</p>
+    <div class="cta">
+      <a href="#precio" class="btn btn-primary">Quiero Tu Live Shop</a>
+      <a href="#demo" class="btn btn-outline">Ver cómo funciona</a>
+    </div>
+    <div class="stats">
+      <div class="stat-card glass"><b>$21.000</b><span>COP al mes</span></div>
+      <div class="stat-card glass"><b>100%</b><span>Tu marca</span></div>
+      <div class="stat-card glass"><b>24/7</b><span>Tienda en línea</span></div>
+    </div>
+  </section>
+
+  <section id="problema">
+    <h2 class="section-title">El problema real</h2>
+    <p class="section-sub">Vendes bien en el live, pero pierdes plata por el desorden.</p>
+    <div class="grid">
+      <div class="card glass">
+        <span class="icon">❌</span>
+        <h3>Como vendes hoy</h3>
+        <p>Anotas pedidos a mano mientras hablas con la cámara. No sabes cuántas unidades quedan, los abonos viven en la memoria y al final del mes no sabes cuánto ganaste.</p>
+      </div>
+      <div class="card glass">
+        <span class="icon">✅</span>
+        <h3>Con Tu Live Shop</h3>
+        <p>Capturas cada pedido en segundos. El inventario baja solo con cada venta. Cada abono queda registrado con saldo y factura en PDF.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="funciones">
+    <h2 class="section-title">Lo que incluye</h2>
+    <p class="section-sub">Todo lo que necesita una tienda que vende en vivo.</p>
+    <div class="grid">
+      <div class="card glass"><span class="icon">🛒</span><h3>Pedidos del live</h3><p>Registra cliente, producto y valor mientras transmites. Estado: pendiente, abonado o pagado.</p></div>
+      <div class="card glass"><span class="icon">📦</span><h3>Inventario con código de barras</h3><p>Escanea, cuenta y deja de vender lo que ya no tienes.</p></div>
+      <div class="card glass"><span class="icon">💰</span><h3>Abonos y saldos</h3><p>Cuánto pagó, cuánto debe y desde cuándo. Sin discusiones.</p></div>
+      <div class="card glass"><span class="icon">🧾</span><h3>Facturas en PDF</h3><p>Genera el comprobante de cada cliente y envíalo en un clic.</p></div>
+      <div class="card glass"><span class="icon">🚚</span><h3>Logística y envíos</h3><p>Qué se empaca, qué se despacha y qué falta por cobrar.</p></div>
+      <div class="card glass"><span class="icon">🎁</span><h3>Kits y combos</h3><p>Arma paquetes de varios productos y vende el combo como una sola unidad.</p></div>
+    </div>
+  </section>
+
+  <section id="demo">
+    <h2 class="section-title">Mira cómo se ve</h2>
+    <p class="section-sub">Tres pantallas que usarás en cada live.</p>
+    <div class="demo-tabs">
+      <button class="demo-tab active" onclick="showDemo('pedidos', this)">Pedidos</button>
+      <button class="demo-tab" onclick="showDemo('inventario', this)">Inventario</button>
+      <button class="demo-tab" onclick="showDemo('panel', this)">Panel de Ganancia</button>
+    </div>
+    <div id="demo-pedidos" class="demo-screen glass">
+      <h3 style="font-size:18px; margin-bottom:8px;">Captura rápida durante el live</h3>
+      <div class="mock-row"><span><b>Mariana R.</b> <span style="color:var(--text-muted)">· Blusa lino ×2</span></span> <span>$78.000</span> <span class="mock-badge badge-ok">Pagado</span></div>
+      <div class="mock-row"><span><b>Johana P.</b> <span style="color:var(--text-muted)">· Bolso mini ×1</span></span> <span>$45.000</span> <span class="mock-badge badge-warn">Abono $20.000</span></div>
+      <div class="mock-row"><span><b>Camila V.</b> <span style="color:var(--text-muted)">· Kit 3 aretes</span></span> <span>$36.000</span> <span class="mock-badge badge-muted">Pendiente</span></div>
+    </div>
+    <div id="demo-inventario" class="demo-screen glass" style="display:none;">
+      <h3 style="font-size:18px; margin-bottom:8px;">Sabes qué tienes antes de ofrecerlo</h3>
+      <div class="mock-row"><span><b>Blusa lino</b></span> <span>Stock: 14</span> <span>$39.000</span></div>
+      <div class="mock-row"><span><b>Bolso mini</b></span> <span style="color:#f59e0b">Stock: 2 ⚠️</span> <span>$45.000</span></div>
+      <div class="mock-row"><span><b>Aretes dorados</b></span> <span>Stock: 31</span> <span>$12.000</span></div>
+    </div>
+    <div id="demo-panel" class="demo-screen glass" style="display:none;">
+      <h3 style="font-size:18px; margin-bottom:8px;">Tu ganancia real, sin adivinar</h3>
+      <div class="mock-row"><span>Ventas del mes</span> <b>$2.480.000</b></div>
+      <div class="mock-row"><span>Ganancia neta</span> <b style="color:var(--ok)">$930.000</b></div>
+      <div class="mock-row"><span>Meta del mes</span> <span style="color:var(--brand)">68% ████████░░</span></div>
+    </div>
+  </section>
+
+  <section id="precio">
+    <h2 class="section-title">Un solo plan. Un solo precio.</h2>
+    <div class="pricing-card glass">
+      <span class="tag" style="background:rgba(240,138,0,.14); color:var(--orange); border-color:rgba(240,138,0,.3);">LANZAMIENTO</span>
+      <div class="price-tag">$21.000 <span>COP / mes</span></div>
+      <ul class="features-list">
+        <li>Pedidos, inventario, abonos y facturas</li>
+        <li>Logística, kits y panel de ganancias</li>
+        <li>Importación de Excel</li>
+        <li>Tema claro y oscuro</li>
+        <li>Cancelas cuando quieras</li>
+      </ul>
+      <a href="https://wa.me/573052889858?text=Hola%2C%20quiero%20suscribirme%20a%20Tu%20Live%20Shop" target="_blank" rel="noopener" class="btn btn-primary" style="width:100%; padding:14px; font-size:16px;">📲 Suscribirme por WhatsApp</a>
+    </div>
+  </section>
+
+  <section id="faq" class="faq">
+    <h2 class="section-title">Preguntas frecuentes</h2>
+    <details class="glass"><summary>¿Cómo pago y cómo se activa?</summary><p>Haces clic en el botón de WhatsApp, coordinamos el pago y activamos tu acceso.</p></details>
+    <details class="glass"><summary>¿Funciona con TikTok, Instagram y Facebook?</summary><p>Sí. Tú registras los pedidos del live en la aplicación.</p></details>
+    <details class="glass"><summary>¿Necesito instalar algo?</summary><p>Se usa desde el navegador de tu celular o computador.</p></details>
+    <details class="glass"><summary>¿Puedo traer mi inventario de Excel?</summary><p>Sí. Puedes importar tu archivo y empezar con tus productos ya cargados.</p></details>
+  </section>
+</main>
+
+<footer class="glass">
+  <p>© 2026 Tu Live Shop · Hecho para vendedores de lives en Colombia.</p>
+</footer>
+
+<!-- MODAL LOGIN CLIENTE (2 PASOS) -->
+<div class="modal-overlay" id="clientLoginModal">
+  <div class="modal-box">
+    <h3>🛍️ Acceso a tu Bolsita</h3>
+    <p class="subtitle">Ingresa con tu WhatsApp y PIN</p>
+
+    <div id="clientLoginStep1">
+      <form onsubmit="handleClientLoginStep1(event)">
+        <div class="form-group">
+          <label>WhatsApp</label>
+          <input type="text" id="cliWa" inputmode="numeric" placeholder="3001234567" required>
+        </div>
+        <div class="form-group">
+          <label>PIN</label>
+          <input type="password" id="cliPin" inputmode="numeric" placeholder="••••" minlength="4" required>
+        </div>
+        <div class="form-error" id="cliErr"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="closeClientModals()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Ingresar</button>
+        </div>
+      </form>
+      <div style="text-align:center; margin-top:16px; display:flex; flex-direction:column; gap:8px;">
+        <button class="btn btn-ghost" style="font-size:13px; padding:8px;" onclick="showClientRegister()">¿No tienes cuenta? Regístrate aquí</button>
+        <button class="btn btn-ghost" style="font-size:13px; padding:8px; color:var(--brand);" onclick="showClientRecover()">¿Olvidaste tu PIN?</button>
+      </div>
     </div>
 
-    <div class="profile-selector">
-      <button class="profile-btn active" onclick="switchProfile('client')">Soy Cliente</button>
-      <button class="profile-btn" onclick="switchProfile('admin')">Soy Tienda</button>
+    <div id="clientLoginStep2" style="display:none;">
+      <p class="subtitle">Tu número está registrado en varias tiendas. Selecciona una:</p>
+      <div id="storeSelectionList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;"></div>
+      <button class="btn btn-ghost" style="width:100%;" onclick="backToClientStep1()">← Volver</button>
     </div>
+  </div>
+</div>
 
-    <!-- Formulario Cliente -->
-    <form id="clientForm" onsubmit="handleClientLogin(event)">
+<!-- MODAL REGISTRO CLIENTE -->
+<div class="modal-overlay" id="clientRegisterModal">
+  <div class="modal-box">
+    <h3>📝 Crear cuenta de Cliente</h3>
+    <form onsubmit="handleClientRegister(event)">
+      <div class="form-group">
+        <label>Nombre completo</label>
+        <input id="regName" required>
+      </div>
       <div class="form-group">
         <label>WhatsApp</label>
-        <input type="text" id="cliWa" inputmode="numeric" placeholder="3001234567" required>
+        <input type="text" id="regWa" inputmode="numeric" placeholder="3001234567" required>
       </div>
       <div class="form-group">
-        <label>PIN</label>
-        <input type="password" id="cliPin" inputmode="numeric" placeholder="••••" minlength="4" required>
-      </div>
-      <div class="form-error" id="cliErr"></div>
-      <button type="submit" class="btn btn-primary">Ingresar como Cliente</button>
-      <div class="form-footer">
-        ¿No tienes cuenta? <a href="#" onclick="alert('El registro se realiza directamente desde la tienda de tu vendedor.')">Regístrate en la tienda</a>
-      </div>
-    </form>
-
-    <!-- Formulario Administrador -->
-    <form id="adminForm" class="hidden" onsubmit="handleAdminLogin(event)">
-      <div class="form-group">
-        <label>Correo electrónico</label>
-        <input type="email" id="admEmail" placeholder="tu@correo.com" required>
+        <label>Correo (para recuperar tu PIN)</label>
+        <input type="email" id="regEmail" required>
       </div>
       <div class="form-group">
-        <label>Contraseña</label>
-        <input type="password" id="admPass" placeholder="••••••••" required>
+        <label>Crea tu PIN (4 a 8 dígitos)</label>
+        <input type="password" id="regPin" inputmode="numeric" minlength="4" maxlength="8" required>
       </div>
-      <div class="form-error" id="admErr"></div>
-      <button type="submit" class="btn btn-primary">Ingresar al Panel</button>
-      <div class="form-footer">
-        <a href="#" onclick="alert('Contacta al soporte para recuperar tu acceso.')">¿Olvidaste tu contraseña?</a>
+      <div class="form-error" id="regErr"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeClientModals()">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Registrarme</button>
       </div>
     </form>
   </div>
-</main>
+</div>
 
-<!-- Modal de selección de tienda -->
-<div class="modal-overlay" id="storeModal">
+<!-- MODAL RECUPERAR PIN -->
+<div class="modal-overlay" id="clientRecoverModal">
   <div class="modal-box">
-    <h3>🏪 Selecciona tu tienda</h3>
-    <p style="color: var(--text-muted); text-align: center; margin-bottom: 16px; font-size: 14px;">
-      Tu número está registrado en varias tiendas. Elige a cuál quieres ingresar:
-    </p>
-    <div id="storeList" class="store-list"></div>
-    <button class="btn" style="background: transparent; border: 1px solid var(--border); color: var(--text-muted);" onclick="closeStoreModal()">Cancelar</button>
+    <h3>🔑 Recuperar PIN</h3>
+    <p class="subtitle">Te enviaremos un PIN temporal a tu correo registrado.</p>
+    <form onsubmit="handleClientRecover(event)">
+      <div class="form-group">
+        <label>WhatsApp registrado</label>
+        <input type="text" id="recWa" inputmode="numeric" placeholder="3001234567" required>
+      </div>
+      <div class="form-group">
+        <label>Correo registrado</label>
+        <input type="email" id="recEmail" required>
+      </div>
+      <div class="form-error" id="recErr"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeClientModals()">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Enviar PIN temporal</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -311,7 +954,6 @@ function toggleTheme() {
   document.getElementById('themeBtn').textContent = next === 'dark' ? '🌙' : '☀️';
 }
 
-// Inicializar tema
 (function() {
   const saved = localStorage.getItem('theme');
   const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -320,28 +962,53 @@ function toggleTheme() {
   document.getElementById('themeBtn').textContent = theme === 'dark' ? '🌙' : '☀️';
 })();
 
-// Cambiar entre perfiles
-function switchProfile(profile) {
-  const btns = document.querySelectorAll('.profile-btn');
-  btns.forEach(b => b.classList.remove('active'));
-  
-  if (profile === 'client') {
-    btns[0].classList.add('active');
-    document.getElementById('clientForm').classList.remove('hidden');
-    document.getElementById('adminForm').classList.add('hidden');
-  } else {
-    btns[1].classList.add('active');
-    document.getElementById('clientForm').classList.add('hidden');
-    document.getElementById('adminForm').classList.remove('hidden');
-  }
+// Tabs del demo
+function showDemo(id, btn) {
+  document.querySelectorAll('.demo-screen').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.demo-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('demo-' + id).style.display = 'flex';
+  if (btn) btn.classList.add('active');
 }
 
-// Login de cliente (paso 1: credenciales)
-async function handleClientLogin(e) {
+// Modales cliente
+let pendingClientData = null;
+
+function closeClientModals() {
+  ['clientLoginModal', 'clientRegisterModal', 'clientRecoverModal'].forEach(id => {
+    document.getElementById(id).classList.remove('open');
+  });
+  document.getElementById('cliErr').textContent = '';
+  document.getElementById('regErr').textContent = '';
+  document.getElementById('recErr').textContent = '';
+  backToClientStep1();
+}
+
+function showClientRegister() {
+  document.getElementById('clientLoginModal').classList.remove('open');
+  document.getElementById('clientRegisterModal').classList.add('open');
+}
+
+function showClientRecover() {
+  document.getElementById('clientLoginModal').classList.remove('open');
+  document.getElementById('clientRecoverModal').classList.add('open');
+}
+
+function backToClientStep1() {
+  document.getElementById('clientLoginStep1').style.display = 'block';
+  document.getElementById('clientLoginStep2').style.display = 'none';
+  pendingClientData = null;
+}
+
+function openClientLogin() {
+  document.getElementById('clientLoginModal').classList.add('open');
+}
+
+async function handleClientLoginStep1(e) {
   e.preventDefault();
   const err = document.getElementById('cliErr');
   err.textContent = 'Verificando...';
-  
+  err.className = 'form-error';
+
   try {
     const res = await fetch('/api/auth/client/login', {
       method: 'POST',
@@ -351,15 +1018,27 @@ async function handleClientLogin(e) {
         pin: document.getElementById('cliPin').value
       })
     });
-    
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Error al ingresar');
 
-    // Si el cliente está en múltiples tiendas, mostrar modal de selección
+    const data = await res.json();
+    if (!res.ok) {
+      if (data.error && data.error.includes('no encontrada')) {
+        throw new Error('WhatsApp o PIN incorrectos.');
+      }
+      throw new Error(data.error || 'Error al ingresar');
+    }
+
     if (data.multiple_stores) {
-      showStoreModal(data.multiple_stores, data);
+      pendingClientData = data;
+      const list = document.getElementById('storeSelectionList');
+      list.innerHTML = data.multiple_stores.map(store =>
+        `<button class="btn btn-outline" style="width:100%;" onclick="finalizeClientLogin('${store.slug}')">
+          🏪 ${store.name}
+        </button>`
+      ).join('');
+      document.getElementById('clientLoginStep1').style.display = 'none';
+      document.getElementById('clientLoginStep2').style.display = 'block';
+      err.textContent = '';
     } else {
-      // Login directo a una sola tienda
       finalizeClientLogin(data.portfolio.slug, data);
     }
   } catch (e) {
@@ -367,57 +1046,74 @@ async function handleClientLogin(e) {
   }
 }
 
-// Mostrar modal de selección de tienda
-function showStoreModal(stores, clientData) {
-  const list = document.getElementById('storeList');
-  list.innerHTML = stores.map(store => 
-    `<button class="store-btn" onclick="finalizeClientLogin('${store.slug}', ${JSON.stringify(clientData).replace(/"/g, '&quot;')})">
-      🏪 ${store.name}
-    </button>`
-  ).join('');
-  document.getElementById('storeModal').classList.add('open');
-}
-
-// Cerrar modal
-function closeStoreModal() {
-  document.getElementById('storeModal').classList.remove('open');
-}
-
-// Finalizar login de cliente (paso 2: seleccionar tienda)
-function finalizeClientLogin(slug, data) {
-  localStorage.setItem('pk_token', data.token);
-  localStorage.setItem('pk_user', JSON.stringify(data.user));
-  localStorage.setItem('pk_slug', slug);
-  
-  closeStoreModal();
-  window.location.href = '/?t=' + slug;
-}
-
-// Login de administrador
-async function handleAdminLogin(e) {
-  e.preventDefault();
-  const err = document.getElementById('admErr');
-  err.textContent = 'Verificando...';
-  
+async function finalizeClientLogin(slug, dataOverride = null) {
   try {
-    const res = await fetch('/api/auth/admin/login', {
+    const data = dataOverride || pendingClientData;
+    localStorage.setItem('pk_token', data.token);
+    localStorage.setItem('pk_user', JSON.stringify(data.user));
+    localStorage.setItem('pk_slug', slug);
+
+    closeClientModals();
+    window.location.href = '/?t=' + slug;
+  } catch (e) {
+    document.getElementById('cliErr').textContent = 'Error al seleccionar la tienda.';
+  }
+}
+
+async function handleClientRegister(e) {
+  e.preventDefault();
+  const err = document.getElementById('regErr');
+  err.textContent = 'Registrando...';
+  err.className = 'form-error';
+
+  try {
+    const res = await fetch('/api/auth/client/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: document.getElementById('admEmail').value,
-        password: document.getElementById('admPass').value
+        name: document.getElementById('regName').value,
+        whatsapp: document.getElementById('regWa').value,
+        email: document.getElementById('regEmail').value,
+        pin: document.getElementById('regPin').value,
+        portfolio_slug: 'ttshop'
       })
     });
-    
+
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Credenciales inválidas');
-    
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    if (data.portfolio) localStorage.setItem('portfolio', JSON.stringify(data.portfolio));
-    
-    window.location.href = '/admin.html';
+    if (!res.ok) throw new Error(data.error || 'Error al registrarse');
+
+    localStorage.setItem('pk_token', data.token);
+    localStorage.setItem('pk_user', JSON.stringify(data.user));
+    localStorage.setItem('pk_slug', data.portfolio.slug);
+
+    closeClientModals();
+    window.location.href = '/?t=' + data.portfolio.slug;
   } catch (e) {
+    err.textContent = e.message;
+  }
+}
+
+async function handleClientRecover(e) {
+  e.preventDefault();
+  const err = document.getElementById('recErr');
+  err.textContent = 'Enviando...';
+  err.className = 'form-error';
+
+  try {
+    const res = await fetch('/api/auth/client/forgot-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        whatsapp: document.getElementById('recWa').value,
+        email: document.getElementById('recEmail').value
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'No se pudo enviar el PIN.');
+    err.className = 'form-error success';
+    err.textContent = '✔ Si los datos coinciden, recibirás un PIN temporal en tu correo.';
+  } catch (e) {
+    err.className = 'form-error';
     err.textContent = e.message;
   }
 }

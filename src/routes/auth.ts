@@ -6,6 +6,7 @@ import nodemailer from 'nodemailer';
 import { pool } from '../db.js';
 import { validate } from '../middleware/validate.js';
 import { adminLoginSchema, clientLoginSchema, clientRegisterSchema } from '../validations/auth.js';
+import { encrypt } from '../utils/encryption.js';
 
 const router = Router();
 
@@ -44,31 +45,17 @@ router.post('/admin/login', validate(adminLoginSchema), async (req: Request, res
     const { rows: [user] } = await pool.query(
       `SELECT * FROM users WHERE email=$1 AND role IN ('admin','super_admin') AND status='Activo'`,
       [String(email).toLowerCase().trim()]);
-    
     if (!user || !(await bcrypt.compare(password, user.password_hash)))
       return res.status(401).json({ error: 'Credenciales inválidas' });
-    
     let portfolio = null;
     if (user.portfolio_id) {
       const { rows: [pf] } = await pool.query(`SELECT id,name,slug FROM portfolios WHERE id=$1`, [user.portfolio_id]);
       portfolio = pf;
     }
-    
     const token = sign(user);
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
-
-    res.json({
-      token,
-      user: { id: user.id, role: user.role, name: user.name, email: user.email },
-      portfolio,
-      must_change_password: !!user.must_change_password
-    });
-  } catch (e: any) { console.error(e); res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
+    res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 7 * 24 * 60 * 60 * 1000 });
+    res.json({ token, user: { id: user.id, role: user.role, name: user.name, email: user.email }, portfolio, must_change_password: !!user.must_change_password });
+  } catch (e: any) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 
 /* ── Admin: cambiar contraseña ── */
@@ -77,8 +64,7 @@ router.post('/admin/change-password', async (req: Request, res: Response) => {
     const u = authUser(req);
     const np = String(req.body.new_password || '');
     if (np.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
-    await pool.query(`UPDATE users SET password_hash=$2, must_change_password=FALSE WHERE id=$1`,
-      [u.id, await bcrypt.hash(np, 10)]);
+    await pool.query(`UPDATE users SET password_hash=$2, must_change_password=FALSE WHERE id=$1`, [u.id, await bcrypt.hash(np, 10)]);
     res.json({ ok: true });
   } catch (e: any) { res.status(401).json({ error: e.message || 'No autenticado' }); }
 });
@@ -87,15 +73,11 @@ router.post('/admin/change-password', async (req: Request, res: Response) => {
 router.post('/admin/forgot-password', async (req: Request, res: Response) => {
   try {
     const email = String(req.body.email || '').toLowerCase().trim();
-    const { rows: [user] } = await pool.query(
-      `SELECT * FROM users WHERE email=$1 AND role IN ('admin','super_admin')`, [email]);
-    
+    const { rows: [user] } = await pool.query(`SELECT * FROM users WHERE email=$1 AND role IN ('admin','super_admin')`, [email]);
     if (user && user.email) {
       const temp = 'Pk' + Math.random().toString(36).slice(2, 8) + Math.floor(Math.random() * 90 + 10);
-      await pool.query(`UPDATE users SET password_hash=$2, must_change_password=TRUE WHERE id=$1`,
-        [user.id, await bcrypt.hash(temp, 10)]);
-      await sendMail(user.email, 'Tu Live Shop · Contraseña temporal',
-        `<p>Tu contraseña temporal es: <b>${temp}</b></p><p>Ingresa al panel y cámbiala cuando se te solicite.</p>`);
+      await pool.query(`UPDATE users SET password_hash=$2, must_change_password=TRUE WHERE id=$1`, [user.id, await bcrypt.hash(temp, 10)]);
+      await sendMail(user.email, 'Pandala Kawaii · Contraseña temporal', `<p>Tu contraseña temporal es: <b>${temp}</b></p><p>Ingresa al panel y cámbiala cuando se te solicite.</p>`);
     }
     res.json({ ok: true, message: 'Si el correo existe, enviaremos una contraseña temporal.' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -105,107 +87,71 @@ router.post('/admin/forgot-password', async (req: Request, res: Response) => {
 router.post('/client/login', validate(clientLoginSchema), async (req: Request, res: Response) => {
   try {
     const { whatsapp, pin, portfolio_slug } = req.body;
+    const { rows: [pf] } = await pool.query(`SELECT id FROM portfolios WHERE slug=$1`, [portfolio_slug]);
+    if (!pf) return res.status(404).json({ error: 'Tienda no encontrada' });
     const tel = String(whatsapp).replace(/\D/g, '');
-    
-    let query = `SELECT * FROM users WHERE whatsapp=$1 AND role='client' AND status='Activo'`;
-    let params: any[] = [tel];
-    
-    if (portfolio_slug) {
-      const { rows: [pf] } = await pool.query(`SELECT id FROM portfolios WHERE slug=$1`, [portfolio_slug]);
-      if (!pf) return res.status(404).json({ error: 'Tienda no encontrada' });
-      query += ` AND portfolio_id=$2`;
-      params.push(pf.id);
-    }
-
-    const { rows: users } = await pool.query(query, params);
-    
-    const validUsers = users.filter((u: any) => {
-      if (!u.pin_hash) return String(pin) === '1234';
-      return true;
-    });
-
-    if (validUsers.length === 0) {
-      return res.status(401).json({ error: 'WhatsApp o PIN incorrectos.' });
-    }
-
-    if (validUsers.length > 1 && !portfolio_slug) {
-      const { rows: portfolios } = await pool.query(
-        `SELECT id, name, slug FROM portfolios WHERE id IN (${validUsers.map((_: any, i: number) => `$${i+1}`).join(',')})`,
-        validUsers.map((u: any) => u.portfolio_id)
-      );
-      return res.json({ 
-        multiple_stores: portfolios.map((p: any) => ({ slug: p.slug, name: p.name })),
-        message: 'Selecciona una tienda'
-      });
-    }
-
-    const user = validUsers[0];
-
+    let { rows: [user] } = await pool.query(`SELECT * FROM users WHERE whatsapp=$1 AND portfolio_id=$2 AND role='client' AND status='Activo'`, [tel, pf.id]);
+    if (!user) return res.status(401).json({ error: 'WhatsApp o PIN incorrectos' });
     if (!user.pin_hash) {
-      await pool.query(`UPDATE users SET pin_hash=$2, must_change_pin=TRUE WHERE id=$1`, 
-        [user.id, await bcrypt.hash('1234', 10)]);
-      user.pin_hash = await bcrypt.hash('1234', 10);
+      if (String(pin) !== '1234') return res.status(401).json({ error: 'Tu PIN inicial es 1234. Ingresa con él y cámbialo.' });
+      await pool.query(`UPDATE users SET pin_hash=$2, must_change_pin=TRUE WHERE id=$1`, [user.id, await bcrypt.hash('1234', 10)]);
       user.must_change_pin = true;
+      user.pin_hash = await bcrypt.hash('1234', 10);
     }
-    
-    if (!(await bcrypt.compare(String(pin), user.pin_hash))) {
-      return res.status(401).json({ error: 'WhatsApp o PIN incorrectos.' });
-    }
-
-    const { rows: [pf] } = await pool.query(`SELECT id, name, slug FROM portfolios WHERE id=$1`, [user.portfolio_id]);
-    
+    if (!(await bcrypt.compare(String(pin), user.pin_hash)))
+      return res.status(401).json({ error: 'WhatsApp o PIN incorrectos' });
     const token = sign(user);
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 30 * 24 * 60 * 60 * 1000
-    });
+    res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 30 * 24 * 60 * 60 * 1000 });
+    res.json({ token, user: { id: user.id, role: 'client', name: user.name, whatsapp: user.whatsapp, city: user.city, address: user.address, email: user.email }, portfolio: { id: pf.id, slug: portfolio_slug }, must_change_pin: !!user.must_change_pin });
+  } catch (e: any) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
+});
 
-    res.json({
-      token,
-      user: { id: user.id, role: 'client', name: user.name, whatsapp: user.whatsapp, city: user.city, address: user.address, email: user.email },
-      portfolio: { id: pf.id, slug: pf.slug, name: pf.name },
-      must_change_pin: !!user.must_change_pin
-    });
+/* ── Cliente: registro (SIN tienda obligatoria) ── */
+router.post('/client/register', async (req: Request, res: Response) => {
+  try {
+    const { whatsapp, pin, name, city, address, email } = req.body;
+    if (!whatsapp || !pin || !name) return res.status(400).json({ error: 'WhatsApp, PIN y nombre son obligatorios' });
+    if (String(pin).length < 4) return res.status(400).json({ error: 'El PIN debe tener al menos 4 dígitos' });
+    const tel = String(whatsapp).replace(/\D/g, '');
+    const em = email ? String(email).toLowerCase().trim() : null;
+    const pinHash = await bcrypt.hash(String(pin), 10);
+    const { rows: [existing] } = await pool.query(`SELECT * FROM users WHERE whatsapp=$1 AND role='client'`, [tel]);
+    if (existing) {
+      return res.status(400).json({ error: 'Este WhatsApp ya está registrado. Inicia sesión o recupera tu PIN.' });
+    }
+    const { rows: [user] } = await pool.query(
+      `INSERT INTO users (portfolio_id, role, whatsapp, pin_hash, name, city, address, email, status)
+       VALUES (NULL,'client',$1,$2,$3,$4,$5,$6,'Activo')
+       RETURNING id,name,whatsapp,city,address,email`,
+      [tel, pinHash, String(name).trim(), city || null, address || null, em]);
+    const token = sign(user);
+    res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 30 * 24 * 60 * 60 * 1000 });
+    res.json({ token, user: { ...user, role: 'client' }, message: 'Registro exitoso. Ahora selecciona una tienda.' });
   } catch (e: any) { console.error(e); res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
 });
 
-/* ── Cliente: registro ── */
-router.post('/client/register', validate(clientRegisterSchema), async (req: Request, res: Response) => {
+/* ── Cliente: listar tiendas disponibles ── */
+router.get('/client/portfolios', async (req: Request, res: Response) => {
   try {
-    const { whatsapp, pin, name, city, address, email, portfolio_slug } = req.body;
+    const { rows } = await pool.query(`SELECT id, name, slug FROM portfolios ORDER BY name`);
+    res.json(rows);
+  } catch (e: any) { res.status(500).json({ error: 'Error del servidor' }); }
+});
+
+/* ── Cliente: asociarse a una tienda ── */
+router.post('/client/join-portfolio', async (req: Request, res: Response) => {
+  try {
+    const u = authUser(req);
+    const { portfolio_slug } = req.body;
+    if (!portfolio_slug) return res.status(400).json({ error: 'Selecciona una tienda' });
     const { rows: [pf] } = await pool.query(`SELECT id FROM portfolios WHERE slug=$1`, [portfolio_slug]);
     if (!pf) return res.status(404).json({ error: 'Tienda no encontrada' });
-    
-    const tel = String(whatsapp).replace(/\D/g, '');
-    const em = email ? String(email).toLowerCase().trim() : null;
-    
-    const { rows: [existing] } = await pool.query(
-      `SELECT * FROM users WHERE whatsapp=$1 AND portfolio_id=$2 AND role='client'`, [tel, pf.id]);
-    
-    const pinHash = await bcrypt.hash(String(pin), 10);
-    
-    if (existing) {
-      const { rows: [user] } = await pool.query(
-        `UPDATE users SET pin_hash=$2, name=$3, city=COALESCE($4,city), address=COALESCE($5,address), email=COALESCE($6,email), status='Activo', must_change_pin=FALSE
-         WHERE id=$1 RETURNING id,name,whatsapp,city,address,email`,
-        [existing.id, pinHash, String(name).trim(), city || null, address || null, em]);
-      
-      const token = sign(user);
-      res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 30 * 24 * 60 * 60 * 1000 });
-      return res.json({ token, user: { ...user, role: 'client' }, portfolio: { id: pf.id, slug: pf.slug, name: pf.name } });
-    }
-    
-    const { rows: [user] } = await pool.query(
-      `INSERT INTO users (portfolio_id, role, whatsapp, pin_hash, name, city, address, email, status)
-       VALUES ($1,'client',$2,$3,$4,$5,$6,$7,'Activo') RETURNING id,name,whatsapp,city,address,email`,
-      [pf.id, tel, pinHash, String(name).trim(), city || null, address || null, em]);
-    
-    const token = sign(user);
-    res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 30 * 24 * 60 * 60 * 1000 });
-    res.json({ token, user: { ...user, role: 'client' }, portfolio: { id: pf.id, slug: pf.slug, name: pf.name } });
-  } catch (e: any) { console.error(e); res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
+    const { rows: [existing] } = await pool.query(`SELECT id FROM users WHERE whatsapp=$1 AND portfolio_id=$2 AND role='client'`, [u.whatsapp, pf.id]);
+    if (existing) return res.json({ message: 'Ya estás registrado en esta tienda', portfolio: pf });
+    await pool.query(`INSERT INTO users (portfolio_id, role, whatsapp, pin_hash, name, city, address, email, status)
+      SELECT $1,'client',whatsapp,pin_hash,name,city,address,email,status FROM users WHERE id=$2`, [pf.id, u.id]);
+    res.json({ message: 'Te has unido a la tienda', portfolio: pf });
+  } catch (e: any) { res.status(500).json({ error: 'Error del servidor' }); }
 });
 
 /* ── Cliente: cambiar PIN ── */
@@ -224,14 +170,10 @@ router.post('/client/forgot-pin', async (req: Request, res: Response) => {
   try {
     const tel = String(req.body.whatsapp || '').replace(/\D/g, '');
     const em = String(req.body.email || '').toLowerCase().trim();
-    
-    const { rows: [user] } = await pool.query(
-      `SELECT * FROM users WHERE whatsapp=$1 AND role='client' AND LOWER(email)=LOWER($2)`, [tel, em]);
-    
+    const { rows: [user] } = await pool.query(`SELECT * FROM users WHERE whatsapp=$1 AND role='client' AND LOWER(email)=LOWER($2)`, [tel, em]);
     if (user && user.email) {
       await pool.query(`UPDATE users SET pin_hash=$2, must_change_pin=TRUE WHERE id=$1`, [user.id, await bcrypt.hash('1234', 10)]);
-      await sendMail(user.email, 'Tu Live Shop · PIN temporal',
-        `<p>Tu PIN temporal es: <b>1234</b></p><p>Ingresa con tu WhatsApp y este PIN; la app te pedirá crear uno nuevo.</p>`);
+      await sendMail(user.email, 'Pandala Kawaii · PIN temporal', `<p>Tu PIN temporal es: <b>1234</b></p><p>Ingresa con tu WhatsApp y este PIN; la app te pedirá crear uno nuevo.</p>`);
     }
     res.json({ ok: true, message: 'Si el WhatsApp y el correo coinciden, enviaremos un PIN temporal.' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }

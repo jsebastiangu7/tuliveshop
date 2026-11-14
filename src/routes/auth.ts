@@ -1,4 +1,5 @@
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
+import type { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
@@ -118,7 +119,6 @@ router.post('/client/login', validate(clientLoginSchema), async (req: Request, r
 
     const { rows: users } = await pool.query(query, params);
     
-    // Filtrar usuarios que tengan PIN (o aceptar 1234 si no tienen)
     const validUsers = users.filter((u: any) => {
       if (!u.pin_hash) return String(pin) === '1234';
       return true;
@@ -128,7 +128,6 @@ router.post('/client/login', validate(clientLoginSchema), async (req: Request, r
       return res.status(401).json({ error: 'WhatsApp o PIN incorrectos.' });
     }
 
-    // Si hay múltiples tiendas, devolvemos la lista para que el cliente elija
     if (validUsers.length > 1 && !portfolio_slug) {
       const { rows: portfolios } = await pool.query(
         `SELECT id, name, slug FROM portfolios WHERE id IN (${validUsers.map((_: any, i: number) => `$${i+1}`).join(',')})`,
@@ -142,7 +141,6 @@ router.post('/client/login', validate(clientLoginSchema), async (req: Request, r
 
     const user = validUsers[0];
 
-    // Si no tiene PIN, lo creamos con 1234 y forzamos el cambio
     if (!user.pin_hash) {
       await pool.query(`UPDATE users SET pin_hash=$2, must_change_pin=TRUE WHERE id=$1`, 
         [user.id, await bcrypt.hash('1234', 10)]);

@@ -94,7 +94,18 @@ function menuGo(v) { closeUserMenu(); showTab(v); }
 document.addEventListener('click', (e) => { if (!e.target.closest('.who-wrap')) closeUserMenu(); });
 
 /* ---------- Navegación ---------- */
-const TABS = [['dash', 'Dashboard'], ['abonos', 'Abonos por confirmar'], ['inv', 'Inventario'], ['kits', 'Kits'], ['cats', 'Categorías'], ['clients', 'Clientes'], ['orders', 'Pedidos'], ['logis', 'Logística'], ['import', 'Importar JSON']];
+const TABS = [
+  ['dash', 'Dashboard'], 
+  ['ventas', 'Ventas'], 
+  ['ventas-prod', 'Ventas x Prod.'], 
+  ['abonos', 'Abonos'], 
+  ['inv', 'Inventario'], 
+  ['kits', 'Kits'], 
+  ['clients', 'Clientes'], 
+  ['orders', 'Pedidos'],
+  ['cats', 'Categorías'],
+  ['logis', 'Logística'] 
+];
 let currentTab = 'dash';
 function renderTabs() { const t = $('tabs'); if (t) t.innerHTML = TABS.map(([id, n]) => `<button class="chip ${currentTab === id ? 'active' : ''}" onclick="showTab('${id}')">${n}</button>`).join(''); }
 function showTab(id) {

@@ -1,84 +1,365 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pandala Kawaii · Super Administrador</title>
-<link rel="stylesheet" href="/styles.css">
-<script src="/super.js" defer></script>
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<title>Tu Live Shop · Super Administrador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-table.adm{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);color:var(--ink)}
-table.adm th,table.adm td{padding:8px 9px;border-bottom:1px solid #f1eadc;text-align:left;white-space:nowrap}
-table.adm th{background:#f7f1e6;font-size:11px;text-transform:uppercase;color:var(--muted);position:sticky;top:0}
-.tablewrap{overflow:auto;max-height:70vh;border:1px solid var(--border);border-radius:12px}
-.acts{white-space:nowrap}.acts .btn{margin-right:4px;padding:6px 10px;font-size:12px}
-.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
-.field{display:flex;flex-direction:column;gap:5px}
-.modal{width:min(760px,100%);max-height:calc(100vh - 32px);overflow:auto}
-main .panel{max-width:none;margin:0 0 14px;display:block}
+:root {
+  --bg: #0f172a;
+  --bg-gradient: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.15) 0%, transparent 40%);
+  --surface: rgba(30, 41, 59, 0.65);
+  --surface-hover: rgba(51, 65, 85, 0.8);
+  --border: rgba(255, 255, 255, 0.08);
+  --brand: #3b82f6;
+  --brand-hover: #2563eb;
+  --brand-glow: rgba(59, 130, 246, 0.4);
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  --ok: #22c55e; --warn: #f59e0b; --danger: #ef4444;
+}
+[data-theme="light"] {
+  --bg: #f0f9ff;
+  --bg-gradient: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.1) 0%, transparent 40%);
+  --surface: rgba(255, 255, 255, 0.7);
+  --surface-hover: rgba(255, 255, 255, 0.9);
+  --border: rgba(0, 0, 0, 0.08);
+  --brand: #0284c7;
+  --brand-hover: #0369a1;
+  --brand-glow: rgba(2, 132, 199, 0.3);
+  --text: #0f172a;
+  --text-muted: #475569;
+  --shadow: 0 8px 32px rgba(2, 132, 199, 0.1);
+}
+* { box-sizing: border-box; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  background-image: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--text);
+  margin: 0;
+  min-height: 100vh;
+}
+.glass {
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+header {
+  position: sticky; top: 0; z-index: 100;
+  padding: 16px 24px;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+}
+.brand { font-size: 20px; font-weight: 800; text-decoration: none; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.brand span { color: var(--brand); }
+.nav-right { display: flex; gap: 12px; align-items: center; }
+.btn {
+  padding: 10px 20px; border-radius: 12px; font-weight: 600; font-size: 14px;
+  text-decoration: none; cursor: pointer; transition: all 0.2s ease; border: none; display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-primary { background: var(--brand); color: #fff; box-shadow: 0 4px 14px var(--brand-glow); }
+.btn-primary:hover { background: var(--brand-hover); transform: translateY(-1px); }
+.btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+.btn-ghost:hover { color: var(--text); background: var(--surface-hover); }
+.btn-danger { background: var(--danger); color: #fff; }
+.theme-toggle {
+  width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface); cursor: pointer; font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+}
+main { max-width: 1200px; margin: 0 auto; padding: 40px 24px 80px; }
+h1 { font-size: 32px; font-weight: 800; margin-bottom: 8px; }
+.subtitle { color: var(--text-muted); margin-bottom: 32px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 32px; }
+.panel { padding: 24px; border-radius: 20px; }
+.panel h2 { font-size: 18px; font-weight: 700; margin: 0 0 16px; display: flex; align-items: center; gap: 8px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); }
+.form-group input, .form-group select {
+  width: 100%; padding: 12px 14px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--bg);
+  color: var(--text); font-size: 14px; font-family: inherit;
+}
+.form-group input:focus, .form-group select:focus { outline: none; border-color: var(--brand); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
+th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-weight: 600; }
+.badge { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-block; }
+.badge-ok { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.badge-warn { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.empty { text-align: center; padding: 40px; color: var(--text-muted); }
+.toast {
+  position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+  background: var(--surface); color: var(--text); padding: 12px 20px;
+  border-radius: 12px; font-weight: 700; font-size: 14px; z-index: 400;
+  box-shadow: var(--shadow); border: 1px solid var(--border);
+  opacity: 0; pointer-events: none; transition: opacity 0.3s;
+}
+.toast.show { opacity: 1; }
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  display: none; align-items: center; justify-content: center; z-index: 200; padding: 16px;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: var(--surface); backdrop-filter: blur(20px);
+  border: 1px solid var(--border); border-radius: 20px;
+  padding: 32px; width: min(480px, 100%); box-shadow: var(--shadow);
+}
+.modal-box h3 { font-size: 20px; margin-bottom: 16px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+.modal-actions .btn { flex: 1; justify-content: center; }
+@media (max-width: 640px) {
+  header { padding: 12px 16px; }
+  .nav-right { width: 100%; justify-content: center; }
+  main { padding: 24px 16px 60px; }
+  .form-row { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
-<header id="hdr" class="hidden">
-  <div class="brand">Pandala <span>Kawaii</span> · Super Admin</div>
-  <span class="pill ok">Multi-tienda</span>
-  <span id="who" class="pill"></span>
-  <button class="btn" onclick="logout()">Salir</button>
+
+<header class="glass">
+  <a href="/" class="brand">👑 Tu <span>Live Shop</span> · Super Admin</a>
+  <div class="nav-right">
+    <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn">🌙</button>
+    <span id="userName" style="font-weight:600"></span>
+    <a href="/" class="btn btn-ghost">Ver tienda</a>
+    <button class="btn btn-ghost" onclick="logout()">Salir</button>
+  </div>
 </header>
+
 <main>
-  <!-- LOGIN -->
   <section id="view-login" class="view active">
-    <h1>Super administrador</h1>
-    <p class="subtitle">Crea tiendas (portafolios) y sus administradores. Cada tienda vive en su propio enlace y sus datos nunca se mezclan.</p>
-    <form class="panel" onsubmit="login(event)" style="max-width:420px;margin:0 auto;display:grid;gap:10px">
-      <label>Correo</label><input id="aEmail" type="email" required autocomplete="username">
-      <label>Contraseña</label><input id="aPass" type="password" required autocomplete="current-password">
-      <button class="btn primary" type="submit">Ingresar</button>
-      <div id="aErr" class="error"></div>
-    </form>
+    <div style="max-width:420px;margin:60px auto">
+      <h1 style="text-align:center">👑 Acceso Super Admin</h1>
+      <p class="subtitle" style="text-align:center">Solo para el administrador principal del sistema.</p>
+      <form class="panel glass" onsubmit="superLogin(event)" style="display:grid;gap:12px">
+        <div class="form-group">
+          <label>Correo</label>
+          <input id="sEmail" type="email" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input id="sPass" type="password" required autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary" type="submit" style="width:100%;justify-content:center">Ingresar</button>
+        <div id="sErr" style="color:var(--danger);font-size:13px;text-align:center"></div>
+      </form>
+    </div>
   </section>
 
-  <!-- TIENDAS -->
-  <section id="view-main" class="view">
-    <h1>Tiendas (portafolios)</h1>
-    <p class="subtitle">Cada tienda tiene su enlace público, su inventario, clientes, pedidos y configuración propios.</p>
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <button class="btn primary" onclick="openPortfolio()">+ Nueva tienda</button>
-      <button class="btn" onclick="loadPortfolios()">🔄</button>
+  <section id="view-dashboard" class="view" style="display:none">
+    <h1>Panel de Control</h1>
+    <p class="subtitle">Gestión global de administradores, tiendas y usuarios.</p>
+
+    <div class="grid">
+      <div class="panel glass">
+        <h2>📊 Resumen</h2>
+        <div id="statsBox"></div>
+      </div>
+      <div class="panel glass">
+        <h2>➕ Crear Administrador</h2>
+        <form onsubmit="createAdmin(event)">
+          <div class="form-group">
+            <label>Nombre completo</label>
+            <input id="newAdminName" required>
+          </div>
+          <div class="form-group">
+            <label>Correo</label>
+            <input id="newAdminEmail" type="email" required>
+          </div>
+          <div class="form-group">
+            <label>Contraseña inicial</label>
+            <input id="newAdminPass" type="password" minlength="6" required>
+          </div>
+          <div class="form-group">
+            <label>Nombre de la tienda (slug)</label>
+            <input id="newStoreSlug" placeholder="ej: mi-tienda" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center">Crear administrador y tienda</button>
+        </form>
+      </div>
     </div>
-    <div id="pfTable"></div>
+
+    <div class="panel glass">
+      <h2>👥 Administradores registrados</h2>
+      <div id="adminsList"></div>
+    </div>
+
+    <div class="panel glass" style="margin-top:20px">
+      <h2>🏪 Tiendas (portafolios)</h2>
+      <div id="portfoliosList"></div>
+    </div>
   </section>
 </main>
 
-<!-- MODAL TIENDA -->
-<div id="pfModal" class="modal-backdrop"><div class="modal">
-  <h2 id="pfTitle">Nueva tienda</h2>
-  <input type="hidden" id="pfId">
-  <div class="fgrid">
-    <div class="field"><label>Nombre de la tienda</label><input id="pfName" placeholder="Ej: Pandala Kawaii"></div>
-    <div class="field"><label>Enlace (slug)</label><input id="pfSlug" placeholder="ej: ttshop"></div>
-    <div class="field"><label>Llave Bre-b</label><input id="pfBreb" placeholder="3058173611"></div>
-    <div class="field"><label>WhatsApp (con código de país)</label><input id="pfWa" placeholder="+573058173611"></div>
-    <div class="field"><label>Iniciales de numeración</label><input id="pfPrefix" maxlength="6" placeholder="BOL" style="text-transform:uppercase"></div>
-  </div>
-  <p class="note" id="pfLink" style="margin-top:10px"></p>
-  <div class="modal-actions"><button class="btn" onclick="closeModal('pfModal')">Cancelar</button><button class="btn primary" onclick="savePortfolio()">Guardar tienda</button></div>
-</div></div>
+<div id="toast" class="toast"></div>
 
-<!-- MODAL ADMINISTRADORES -->
-<div id="adModal" class="modal-backdrop"><div class="modal">
-  <h2 id="adTitle">Administradores</h2>
-  <div id="adList"></div>
-  <h3 style="margin:14px 0 6px">Crear administrador para esta tienda</h3>
-  <div class="fgrid">
-    <div class="field"><label>Nombre</label><input id="adName"></div>
-    <div class="field"><label>Correo</label><input id="adEmail" type="email"></div>
-    <div class="field"><label>Contraseña (mín. 8)</label><input id="adPass" type="password"></div>
-    <div class="field"><label>&nbsp;</label><button class="btn primary" onclick="createAdmin()">Crear</button></div>
-  </div>
-  <div class="modal-actions"><button class="btn" onclick="closeModal('adModal')">Cerrar</button></div>
-</div></div>
+<script>
+let token = localStorage.getItem('super_token') || '';
+let user = JSON.parse(localStorage.getItem('super_user') || 'null');
 
-<div id="toast" class="toast hidden"></div>
+const $ = id => document.getElementById(id);
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    ...opts,
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}), ...(opts.headers || {}) },
+    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Error ' + res.status);
+  return data;
+}
+
+function init() {
+  const saved = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = saved || (prefersDark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+  $('themeBtn').textContent = theme === 'dark' ? '🌙' : '☀️';
+
+  if (user && token && user.role === 'super_admin') showDashboard();
+  else showLogin();
+}
+
+function showLogin() {
+  $('view-login').style.display = 'block';
+  $('view-dashboard').style.display = 'none';
+}
+
+function showDashboard() {
+  $('view-login').style.display = 'none';
+  $('view-dashboard').style.display = 'block';
+  $('userName').textContent = '👑 ' + (user.name || 'Super Admin');
+  loadStats();
+  loadAdmins();
+  loadPortfolios();
+}
+
+async function superLogin(e) {
+  e.preventDefault();
+  $('sErr').textContent = '';
+  try {
+    const d = await api('/api/auth/admin/login', { method: 'POST', body: { email: $('sEmail').value.trim(), password: $('sPass').value } });
+    if (d.user.role !== 'super_admin') throw new Error('Esta cuenta no tiene permisos de super administrador');
+    token = d.token; user = d.user;
+    localStorage.setItem('super_token', token);
+    localStorage.setItem('super_user', JSON.stringify(user));
+    showDashboard();
+  } catch (e) { $('sErr').textContent = e.message; }
+}
+
+function logout() {
+  token = ''; user = null;
+  localStorage.removeItem('super_token');
+  localStorage.removeItem('super_user');
+  showLogin();
+}
+
+async function loadStats() {
+  try {
+    const admins = await api('/api/super/admins');
+    const portfolios = await api('/api/super/portfolios');
+    $('statsBox').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+        <div style="text-align:center;padding:16px;background:var(--bg);border-radius:12px">
+          <div style="font-size:28px;font-weight:800;color:var(--brand)">${admins.length}</div>
+          <div style="font-size:13px;color:var(--text-muted)">Administradores</div>
+        </div>
+        <div style="text-align:center;padding:16px;background:var(--bg);border-radius:12px">
+          <div style="font-size:28px;font-weight:800;color:var(--brand)">${portfolios.length}</div>
+          <div style="font-size:13px;color:var(--text-muted)">Tiendas activas</div>
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    $('statsBox').innerHTML = '<p class="empty">No se pudieron cargar las estadísticas.</p>';
+  }
+}
+
+async function loadAdmins() {
+  try {
+    const admins = await api('/api/super/admins');
+    if (!admins.length) { $('adminsList').innerHTML = '<p class="empty">Aún no hay administradores.</p>'; return; }
+    $('adminsList').innerHTML = '<table><thead><tr><th>Nombre</th><th>Correo</th><th>Tienda</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>' +
+      admins.map(a => `<tr>
+        <td><b>${a.name}</b></td>
+        <td>${a.email}</td>
+        <td>${a.portfolio_name || '—'}</td>
+        <td><span class="badge badge-ok">${a.status || 'Activo'}</span></td>
+        <td><button class="btn btn-ghost" style="padding:6px 12px;font-size:12px" onclick="resetAdminPass('${a.id}')">Resetear clave</button></td>
+      </tr>`).join('') + '</tbody></table>';
+  } catch (e) { $('adminsList').innerHTML = '<p class="empty">Error al cargar administradores.</p>'; }
+}
+
+async function loadPortfolios() {
+  try {
+    const portfolios = await api('/api/super/portfolios');
+    if (!portfolios.length) { $('portfoliosList').innerHTML = '<p class="empty">Aún no hay tiendas.</p>'; return; }
+    $('portfoliosList').innerHTML = '<table><thead><tr><th>Nombre</th><th>Slug</th><th>Administrador</th><th>Acciones</th></tr></thead><tbody>' +
+      portfolios.map(p => `<tr>
+        <td><b>${p.name}</b></td>
+        <td><code style="background:var(--bg);padding:2px 8px;border-radius:4px">${p.slug}</code></td>
+        <td>${p.admin_name || '—'}</td>
+        <td><a href="/?t=${p.slug}" target="_blank" class="btn btn-ghost" style="padding:6px 12px;font-size:12px">Ver tienda</a></td>
+      </tr>`).join('') + '</tbody></table>';
+  } catch (e) { $('portfoliosList').innerHTML = '<p class="empty">Error al cargar tiendas.</p>'; }
+}
+
+async function createAdmin(e) {
+  e.preventDefault();
+  try {
+    await api('/api/super/admins', {
+      method: 'POST',
+      body: {
+        name: $('newAdminName').value.trim(),
+        email: $('newAdminEmail').value.trim(),
+        password: $('newAdminPass').value,
+        store_name: $('newAdminName').value.trim() + ' Shop',
+        store_slug: $('newStoreSlug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-')
+      }
+    });
+    toast('✔ Administrador y tienda creados');
+    $('newAdminName').value = ''; $('newAdminEmail').value = ''; $('newAdminPass').value = ''; $('newStoreSlug').value = '';
+    loadStats(); loadAdmins(); loadPortfolios();
+  } catch (e) { toast('⚠ ' + e.message); }
+}
+
+async function resetAdminPass(id) {
+  const newPass = prompt('Nueva contraseña para este administrador (mín. 6 caracteres):');
+  if (!newPass || newPass.length < 6) return;
+  try {
+    await api('/api/super/admins/' + id + '/reset-password', { method: 'POST', body: { new_password: newPass } });
+    toast('✔ Contraseña reseteada');
+  } catch (e) { toast('⚠ ' + e.message); }
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  $('themeBtn').textContent = next === 'dark' ? '🌙' : '☀️';
+}
+
+init();
+</script>
 </body>
 </html>

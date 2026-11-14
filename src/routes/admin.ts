@@ -5,6 +5,7 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 import type { AuthRequest } from '../middleware/auth.js';
 import { productAvailable, kitAvailable, getOrderTotals, ensureShipmentFor } from '../services/inventory.js';
 import { emitAll } from '../realtime.js';
+import { decrypt } from '../utils/encryption.js';
 
 const router = Router();
 
@@ -366,6 +367,14 @@ router.get('/clients', async (req: AuthRequest, res) => {
        ) o ON true
        WHERE u.role='client' AND u.portfolio_id=$1
        GROUP BY u.id ORDER BY u.name`, [pf]);
+    res.json(rows.map(r => ({
+  ...r,
+  whatsapp: decrypt(String(r.whatsapp || '')), // ← Desencriptar aquí
+  email: decrypt(String(r.email || '')),       // ← Desencriptar aquí
+  total: Number(r.total),
+  paid: Number(r.paid),
+  balance: Math.max(0, Number(r.total) - Number(r.paid))
+})));
     res.json(rows.map(r => ({ ...r, total: Number(r.total), paid: Number(r.paid), balance: Math.max(0, Number(r.total) - Number(r.paid)) })));
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });

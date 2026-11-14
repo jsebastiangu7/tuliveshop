@@ -1,30 +1,98 @@
 <!doctype html>
-<html lang="es" data-theme="light">
+<html lang="es" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pandala Kawaii · Panel Administrador</title>
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<title>Tu Live Shop · Panel Administrador</title>
 <link rel="stylesheet" href="/styles.css">
 <style>
+/* === TEMA UNIFICADO: BLUE LIQUID GLASS === */
+:root {
+  --bg: #0f172a;
+  --bg-gradient: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.15) 0%, transparent 40%);
+  --surface: rgba(30, 41, 59, 0.65);
+  --surface-hover: rgba(51, 65, 85, 0.8);
+  --border: rgba(255, 255, 255, 0.08);
+  --brand: #3b82f6;
+  --brand-hover: #2563eb;
+  --brand-glow: rgba(59, 130, 246, 0.4);
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  --ok: #22c55e; --warn: #f59e0b; --danger: #ef4444;
+}
+[data-theme="light"] {
+  --bg: #f0f9ff;
+  --bg-gradient: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.1) 0%, transparent 40%);
+  --surface: rgba(255, 255, 255, 0.7);
+  --surface-hover: rgba(255, 255, 255, 0.9);
+  --border: rgba(255, 255, 255, 0.6);
+  --brand: #0284c7;
+  --brand-hover: #0369a1;
+  --brand-glow: rgba(2, 132, 199, 0.3);
+  --text: #0f172a;
+  --text-muted: #475569;
+  --shadow: 0 8px 32px rgba(2, 132, 199, 0.1);
+}
+
+body {
+  background: var(--bg);
+  background-image: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--text);
+}
+
+/* Efecto Liquid Glass aplicado a componentes clave */
+.glass, .panel, .card, .modal, header, .tablewrap, .chip {
+  background: var(--surface) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow) !important;
+  color: var(--text) !important;
+}
+
+.btn.primary, .btn-primary {
+  background: var(--brand) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: 0 4px 14px var(--brand-glow) !important;
+}
+.btn.primary:hover, .btn-primary:hover {
+  background: var(--brand-hover) !important;
+  transform: translateY(-1px);
+}
+
+table.adm { color: var(--text) !important; }
+table.adm th { background: var(--surface-hover) !important; color: var(--text-muted) !important; }
+.note, .muted { color: var(--text-muted) !important; }
+
+/* Ajustes específicos del layout existente */
 nav#tabs{display:flex;gap:6px;flex-wrap:wrap;margin-right:auto}
-table.adm{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);color:var(--ink)}
+table.adm{width:100%;border-collapse:collapse;font-size:13px}
 table.adm th,table.adm td{padding:8px 9px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
-table.adm th{background:var(--surface2);font-size:11px;text-transform:uppercase;color:var(--muted);position:sticky;top:0;cursor:pointer}
-table.adm th:hover{background:var(--border)}
-.tablewrap{overflow:auto;max-height:70vh;border:1px solid var(--border);border-radius:12px}
+table.adm th{font-size:11px;text-transform:uppercase;position:sticky;top:0}
+.tablewrap{overflow:auto;max-height:70vh;border-radius:12px}
 .acts{white-space:nowrap}.acts .btn{margin-right:4px;padding:6px 10px;font-size:12px}
 .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
 .field{display:flex;flex-direction:column;gap:5px}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
-.toolbar input,.toolbar select{border:1px solid var(--field);border-radius:10px;padding:9px;font:inherit;background:var(--surface);color:var(--ink)}
-.empty{color:var(--muted);text-align:center;padding:24px}
+.toolbar input,.toolbar select{border:1px solid var(--border);border-radius:10px;padding:9px;font:inherit;background:var(--surface);color:var(--text)}
+.empty{color:var(--text-muted);text-align:center;padding:24px}
 .modal{width:min(760px,100%)}
 h3{margin:14px 0 6px;font-size:15px}
+input, select, textarea {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
 </style>
 </head>
 <body>
-<header id="hdr" class="hidden">
-  <div class="brand" style="cursor:pointer" onclick="location.href='/'" title="Ir a la tienda">Pandala <span>Kawaii</span> · Admin</div>
+<header id="hdr" class="hidden glass">
+  <div class="brand" style="cursor:pointer" onclick="location.href='/'" title="Ir a la tienda">Tu <span>Live Shop</span> · Admin</div>
   <nav id="tabs" class="chips"></nav>
   <span id="whoName" class="pill"></span>
   <button class="btn" onclick="logout()">Salir</button>
@@ -32,11 +100,11 @@ h3{margin:14px 0 6px;font-size:15px}
 <main>
   <section id="view-login" class="view active">
     <h1>Acceso administrador</h1>
-    <form class="panel" onsubmit="adminLogin(event)" style="max-width:420px;margin:0 auto;display:grid;gap:10px">
-      <label>Correo</label><input id="aEmail" type="email" required>
-      <label>Contraseña</label><input id="aPass" type="password" required>
+    <form class="panel glass" onsubmit="adminLogin(event)" style="max-width:420px;margin:0 auto;display:grid;gap:10px">
+      <label>Correo</label><input id="aEmail" type="email" required autocomplete="username">
+      <label>Contraseña</label><input id="aPass" type="password" required autocomplete="current-password">
       <button class="btn primary" type="submit">Ingresar al panel</button>
-      <div id="aErr" class="err"></div>
+      <div id="aErr" class="err" style="color:var(--danger);font-size:13px"></div>
     </form>
   </section>
 
@@ -48,7 +116,7 @@ h3{margin:14px 0 6px;font-size:15px}
   <section id="view-ventas" class="view">
     <h1>🛒 Venta rápida (Live)</h1>
     <p class="note">Captura el pedido mientras haces el LIVE. El botón Guardar registra todo en un solo paso.</p>
-    <div class="panel">
+    <div class="panel glass">
       <div class="fgrid">
         <div class="field"><label>Cliente</label><select id="vClient"><option value="new">+ Nuevo cliente</option></select></div>
         <div class="field"><label>Fecha</label><input id="vDate" type="date"></div>
@@ -62,7 +130,7 @@ h3{margin:14px 0 6px;font-size:15px}
         <div class="field" style="flex:0.5"><label>&nbsp;</label><button class="btn primary" onclick="addVentaRow()">+ Agregar</button></div>
       </div>
       <div class="tablewrap" style="margin-top:12px"><table class="adm"><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Total</th><th></th></tr></thead><tbody id="vItems"></tbody></table></div>
-      <div class="totals" style="margin-top:16px"><span>Total: <b id="vTotal">$0</b></span></div>
+      <div class="totals" style="margin-top:16px;display:flex;gap:18px;justify-content:flex-end;font-weight:800"><span>Total: <b id="vTotal">$0</b></span></div>
       <h3 style="margin-top:24px">Abono inicial (opcional)</h3>
       <div class="fgrid">
         <div class="field"><label>Valor</label><input id="vPayAmount" type="number" min="0" value="0"></div>
@@ -80,10 +148,10 @@ h3{margin:14px 0 6px;font-size:15px}
   <section id="view-ventas-prod" class="view">
     <h1>📦 Ventas por producto</h1>
     <p class="note">Elige un producto y asigna sus unidades disponibles a los clientes activos.</p>
-    <div class="panel">
+    <div class="panel glass">
       <div class="fgrid" style="align-items:end">
-        <div class="field" style="flex:2"><label>Producto con stock disponible</label><select id="vpProd"></select></div>
-        <div class="field" style="flex:1"><label>Disponibles</label><input id="vpAvail" type="text" readonly style="background:var(--surface2);font-weight:800;color:var(--brand)"></div>
+        <div class="field" style="flex:2"><label>Producto</label><select id="vpProd"></select></div>
+        <div class="field" style="flex:1"><label>Disponibles</label><input id="vpAvail" type="text" readonly style="background:var(--surface-hover);font-weight:800;color:var(--brand)"></div>
         <div class="field" style="flex:1"><label>Buscar cliente</label><input id="vpClientSearch" type="text" placeholder="Escribe el nombre..." oninput="filterVpClients()"></div>
       </div>
       <div class="tablewrap" style="margin-top:16px"><table class="adm"><thead><tr><th>Cliente</th><th>Pedido actual</th><th>Asignar cantidad</th></tr></thead><tbody id="vpClients"></tbody></table></div>
@@ -92,7 +160,7 @@ h3{margin:14px 0 6px;font-size:15px}
   </section>
 
   <section id="view-abonos" class="view">
-    <h1>Abonos por confirmar</h1><p class="note">Reportes de pago Bre-b enviados por los clientes.</p>
+    <h1>Abonos por confirmar</h1><p class="note">Reportes de pago Bre-b enviados por los clientes (llegan en tiempo real).</p>
     <div id="reports"></div>
   </section>
 
@@ -140,7 +208,7 @@ h3{margin:14px 0 6px;font-size:15px}
   </section>
 
   <section id="view-logis" class="view">
-    <h1>Logística</h1><p class="note">Pedidos pagados por despachar y envíos ya realizados.</p>
+    <h1>Logística</h1><p class="note">Pedidos pagados por despachar y envíos registrados.</p>
     <div class="toolbar"><button class="btn" onclick="exportShipmentsExcel()">⬇ Excel envíos</button></div>
     <h3>📦 Por enviar</h3><div id="logisPending"></div>
     <h3 style="margin-top:20px">🚚 Enviados</h3><div id="logisSent"></div>
@@ -148,24 +216,24 @@ h3{margin:14px 0 6px;font-size:15px}
 
   <section id="view-config" class="view">
     <h1>Configuración</h1><p class="note">Apariencia, finanzas, objetivos y facturación.</p>
-    <div class="panel">
+    <div class="panel glass">
       <h2 style="margin-top:0">Apariencia</h2>
       <div class="fgrid">
-        <div class="field"><label>Tema de color</label><select id="uiThemeSel" onchange="setTheme(this.value)"><option value="light">Claro</option><option value="warm">Cálido</option><option value="dark">Oscuro</option></select></div>
-        <div class="field pk-pc-only"><label>Ubicación del menú (PC)</label><select id="uiLayoutSel" onchange="setLayout(this.value)"><option value="top">Barra superior</option><option value="side">Barra lateral</option></select></div>
+        <div class="field"><label>Tema de color</label><select id="uiThemeSel" onchange="setTheme(this.value)"><option value="light">Claro</option><option value="dark">Oscuro</option></select></div>
+        <div class="field pk-pc-only"><label>Ubicación del menú (PC)</label><select id="uiLayoutSel" onchange="setLayout(this.value)"><option value="top">Barra de menú superior</option><option value="side">Barra de menú lateral</option></select></div>
       </div>
     </div>
     
-    <div class="panel" style="margin-top:24px; border: 2px solid var(--danger); background: rgba(220,38,38,0.04);">
+    <div class="panel glass" style="margin-top:24px; border: 2px solid var(--danger) !important; background: rgba(239, 68, 68, 0.05) !important;">
       <h2 style="margin-top:0; color:var(--danger)">⚠️ Zona de peligro: Borrar toda la tienda</h2>
       <p class="note" style="color:var(--danger)">Esta acción eliminará <b>permanentemente</b> todo el inventario, categorías, kits, clientes, pedidos, abonos, logística, objetivos, donaciones y la configuración personalizada. <b>No se puede deshacer.</b></p>
-      <button class="btn danger" onclick="openWipeModal()">Borrar toda la información de la tienda</button>
+      <button class="btn danger" style="background:var(--danger);color:#fff;border:none" onclick="openWipeModal()">Borrar toda la información de la tienda</button>
     </div>
   </section>
 </main>
 
-<!-- Modales -->
-<div id="productModal" class="modal-backdrop"><div class="modal">
+<!-- Modales (simplificados para el ejemplo, el JS los maneja) -->
+<div id="productModal" class="modal-backdrop"><div class="modal glass">
   <h2 id="prodTitle">Producto</h2>
   <input type="hidden" id="pId">
   <div class="fgrid">
@@ -174,15 +242,15 @@ h3{margin:14px 0 6px;font-size:15px}
     <div class="field"><label>Categoría</label><select id="pCat"></select></div>
     <div class="field"><label>Fecha de compra</label><input id="pDate" type="date"></div>
     <div class="field"><label>Costo</label><input id="pCost" type="number" min="0"></div>
-    <div class="field"><label>Envío</label><input id="pShip" type="number" min="0"></div>
+    <div class="field"><label>Envío / costo adicional</label><input id="pShip" type="number" min="0"></div>
     <div class="field"><label>Precio de venta</label><input id="pPrice" type="number" min="0"></div>
     <div class="field"><label>Stock</label><input id="pStock" type="number" min="0"></div>
     <div class="field"><label>Mínimo de reposición</label><input id="pMin" type="number" min="0"></div>
   </div>
-  <div class="modal-actions"><button class="btn" onclick="closeModal('productModal')">Cancelar</button><button class="btn primary" onclick="saveProduct()">Guardar</button></div>
+  <div class="modal-actions" style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end"><button class="btn" onclick="closeModal('productModal')">Cancelar</button><button class="btn primary" onclick="saveProduct()">Guardar</button></div>
 </div></div>
 
-<div id="kitModal" class="modal-backdrop"><div class="modal">
+<div id="kitModal" class="modal-backdrop"><div class="modal glass">
   <h2 id="kitTitle">Kit</h2><input type="hidden" id="kId">
   <div class="fgrid">
     <div class="field"><label>Nombre del kit</label><input id="kName"></div>
@@ -191,10 +259,10 @@ h3{margin:14px 0 6px;font-size:15px}
   <h3>Componentes</h3>
   <div class="tablewrap" style="max-height:240px"><table class="adm"><thead><tr><th>Producto</th><th>Cantidad</th><th></th></tr></thead><tbody id="kComps"></tbody></table></div>
   <div class="actions" style="margin-top:10px"><button class="btn" onclick="addKitRow()">+ Agregar producto al kit</button></div>
-  <div class="modal-actions"><button class="btn danger" id="kDel" onclick="delKit()" style="display:none">Eliminar kit</button><button class="btn" onclick="closeModal('kitModal')">Cancelar</button><button class="btn primary" onclick="saveKit()">Guardar kit</button></div>
+  <div class="modal-actions" style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end"><button class="btn danger" id="kDel" onclick="delKit()" style="display:none">Eliminar kit</button><button class="btn" onclick="closeModal('kitModal')">Cancelar</button><button class="btn primary" onclick="saveKit()">Guardar kit</button></div>
 </div></div>
 
-<div id="clientModal" class="modal-backdrop"><div class="modal">
+<div id="clientModal" class="modal-backdrop"><div class="modal glass">
   <h2 id="cliTitle">Cliente</h2><input type="hidden" id="cId">
   <div class="fgrid">
     <div class="field"><label>Nombre</label><input id="cName"></div>
@@ -204,40 +272,41 @@ h3{margin:14px 0 6px;font-size:15px}
     <div class="field"><label>Estado</label><select id="cStatus"><option>Activo</option><option>Inactivo</option></select></div>
     <div class="field" id="cPinField"><label>PIN inicial (opcional)</label><input id="cPin" inputmode="numeric"></div>
   </div>
-  <div class="modal-actions"><button class="btn" onclick="closeModal('clientModal')">Cancelar</button><button class="btn primary" onclick="saveClient()">Guardar</button></div>
+  <div class="modal-actions" style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end"><button class="btn" onclick="closeModal('clientModal')">Cancelar</button><button class="btn primary" onclick="saveClient()">Guardar</button></div>
 </div></div>
 
-<div id="orderModal" class="modal-backdrop"><div class="modal"><div id="orderBody"></div><div class="modal-actions"><button class="btn" onclick="closeModal('orderModal')">Cerrar</button></div></div></div>
+<div id="orderModal" class="modal-backdrop"><div class="modal glass"><div id="orderBody"></div><div class="modal-actions" style="margin-top:16px;display:flex;justify-content:flex-end"><button class="btn" onclick="closeModal('orderModal')">Cerrar</button></div></div></div>
 
-<div id="shipModal" class="modal-backdrop"><div class="modal">
+<div id="shipModal" class="modal-backdrop"><div class="modal glass">
   <h2 id="shTitle">Preparar envío</h2><input type="hidden" id="shId">
   <div class="fgrid">
     <div class="field"><label>Pago del envío</label><select id="shPay"><option value="adelantado">Adelantado</option><option value="por_cobrar">Por cobrar</option></select></div>
     <div class="field"><label>Monto</label><input id="shAmount" type="number" min="0"></div>
     <div class="field"><label>Transportadora</label><select id="shCarrier" onchange="carrierChanged()"><option>Interrapidísimo</option><option>Envía</option><option>Coordinadora</option><option>Servientrega</option><option value="envío local">envío local</option><option value="otra">otra</option></select></div>
     <div class="field" id="shCarrierOtherField" style="display:none"><label>Nombre de la transportadora</label><input id="shCarrierOther"></div>
-    <div class="field"><label>Medidas del paquete</label><input id="shDims"></div>
+    <div class="field"><label>Medidas del paquete (opcional)</label><input id="shDims"></div>
     <div class="field"><label>Ciudad</label><input id="shCity"></div>
     <div class="field"><label>Dirección</label><input id="shAddress"></div>
-    <div class="field"><label>Dirección de este envío</label><select id="shAddrKind"><option value="temporal">Temporal (no modifica ficha)</option><option value="principal">Principal (actualiza ficha)</option></select></div>
+    <div class="field"><label>Dirección de este envío</label><select id="shAddrKind"><option value="temporal">Temporal (no modifica la ficha del cliente)</option><option value="principal">Principal (actualiza al cliente)</option></select></div>
   </div>
   <div id="shHint" class="note" style="margin:10px 0"></div>
-  <div class="modal-actions"><button class="btn" onclick="closeModal('shipModal')">Cancelar</button><button class="btn" onclick="saveShipment('save')">Guardar</button><button class="btn primary" id="shSendBtn" onclick="saveShipment('send')">Enviar</button></div>
+  <div class="modal-actions" style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end"><button class="btn" onclick="closeModal('shipModal')">Cancelar</button><button class="btn" onclick="saveShipment('save')">Guardar</button><button class="btn primary" id="shSendBtn" onclick="saveShipment('send')">Enviar</button></div>
 </div></div>
 
-<div id="wipeModal" class="modal-backdrop"><div class="modal" style="border: 2px solid var(--danger); max-width: 480px;">
+<div id="wipeModal" class="modal-backdrop"><div class="modal glass" style="border: 2px solid var(--danger) !important; max-width: 480px;">
   <h3 style="color:var(--danger); margin-top:0">⚠️ Confirmar borrado total</h3>
   <p class="note">Para confirmar, escribe <b>exactamente</b> la siguiente frase:</p>
-  <p style="font-weight:800; color:var(--danger); background:var(--surface2); padding:12px; border-radius:10px; text-align:center; font-size:14px;">Estoy seguro de hacer el borrado</p>
+  <p style="font-weight:800; color:var(--danger); background:var(--surface-hover); padding:12px; border-radius:10px; text-align:center; font-size:14px;">Estoy seguro de hacer el borrado</p>
   <div class="field"><label>Escribe la frase exacta para confirmar</label><input id="wipeConfirmText" type="text" placeholder="Estoy seguro de hacer el borrado" autocomplete="off"></div>
   <div class="err" id="wipeErr" style="min-height:18px; color:var(--danger); font-weight:700;"></div>
   <div class="modal-actions" style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end;">
     <button class="btn" onclick="closeModal('wipeModal')">Cancelar</button>
-    <button class="btn danger" id="wipeExecuteBtn" onclick="executeWipe()" disabled>Borrar todo permanentemente</button>
+    <button class="btn danger" style="background:var(--danger);color:#fff;border:none" id="wipeExecuteBtn" onclick="executeWipe()" disabled>Borrar todo permanentemente</button>
   </div>
 </div></div>
 
-<div id="toast" class="toast hidden"></div>
+<div id="toast" class="toast hidden" style="position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--text);padding:12px 20px;border-radius:12px;font-weight:700;font-size:14px;z-index:400;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.3s;border:1px solid var(--border)"></div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="/admin.js"></script>
 </body>

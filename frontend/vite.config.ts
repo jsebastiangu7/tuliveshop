@@ -5,6 +5,9 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
+  const apiTarget =
+    env.API_PROXY_TARGET || 'https://tuliveshop.onrender.com';
+
   return {
     plugins: [react()],
 
@@ -15,9 +18,9 @@ export default defineConfig(({ mode }) => {
 
       proxy: {
         '/api': {
-          target: env.API_PROXY_TARGET || 'http://localhost:3000',
+          target: apiTarget,
           changeOrigin: true,
-          secure: false
+          secure: true
         }
       }
     },

@@ -1,7 +1,8 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { pool } from '../db.js';
-import { authenticate, requireRole, AuthRequest } from '../middleware/auth.js';
+import { authenticate, requireRole } from '../middleware/auth.js';
+import type { AuthRequest } from '../middleware/auth.js';
 import { productAvailable, kitAvailable, getOrderTotals, ensureShipmentFor } from '../services/inventory.js';
 import { emitAll } from '../realtime.js';
 import { decrypt } from '../utils/encryption.js';
@@ -276,7 +277,6 @@ router.get('/clients', async (req: AuthRequest, res: Response) => {
        WHERE u.role='client' AND u.portfolio_id=$1
        GROUP BY u.id ORDER BY u.name`, [pf]);
     
-    // CORREGIDO: Un solo res.json con la desencriptación
     res.json(rows.map(r => ({
       ...r,
       whatsapp: decrypt(String(r.whatsapp || '')),
@@ -325,7 +325,7 @@ router.put('/clients/:id', async (req: AuthRequest, res: Response) => {
 router.post('/orders', async (req: AuthRequest, res: Response) => {
   try {
     const pf = pfOf(req);
-    const { client_id, status = 'apartada' } = req.body; // Por defecto 'apartada'
+    const { client_id, status = 'apartada' } = req.body;
     const { rows: [o] } = await pool.query(`INSERT INTO orders (portfolio_id, client_id, status, created_at) VALUES ($1, $2, $3, NOW()) RETURNING *`, [pf, client_id || null, status]);
     res.json(o);
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
@@ -430,7 +430,6 @@ router.post('/orders/:id/payments', async (req: AuthRequest, res: Response) => {
     
     const totals = await getOrderTotals(order.id);
     let newStatus = order.status;
-    // Auto-cambio a Pagada si el saldo es <= 0
     if (totals.balance <= 0 && ['draft', 'pending_confirm', 'apartada'].includes(order.status)) {
       newStatus = 'paid';
       await pool.query(`UPDATE orders SET status='paid', expires_at=NULL, updated_at=NOW() WHERE id=$1`, [order.id]);
@@ -678,7 +677,6 @@ router.post('/import-json', async (req: AuthRequest, res: Response) => {
     const clientIdByName = new Map<string, string>();
     for (const c of st.clients || []) {
       const name = String(c.nombre || '').trim(); if (!name) continue;
-      // CORREGIDO: Lee telefono, whatsapp o celular
       const tel = String(c.telefono || c.whatsapp || c.celular || '').replace(/\D/g, '') || null;
       let uid: string | null = null;
       if (tel) {

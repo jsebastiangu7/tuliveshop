@@ -5,48 +5,54 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="X-XSS-Protection" content="1; mode=block">
 <meta name="description" content="Tu Live Shop: El sistema de ventas, inventario y logística diseñado para emprendedores que venden en vivo.">
+<meta name="theme-color" content="#0A1430">
 <title>Tu Live Shop · Vende en vivo, cuadra la caja sin perder la voz</title>
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96;700;12..96;800&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
   color-scheme: dark;
   --bg: #0A1430;
-  --bg-gradient: radial-gradient(ellipse at 12% 8%, rgba(31,95,224,.24), transparent 42%), radial-gradient(ellipse at 88% 75%, rgba(43,159,216,.17), transparent 42%);
-  --surface: rgba(19,35,69,.64);
-  --surface-hover: rgba(31,55,98,.78);
-  --border: rgba(255,255,255,.12);
+  --bg-gradient: radial-gradient(circle at 8% 10%, rgba(31,95,224,.22), transparent 38%), radial-gradient(circle at 92% 80%, rgba(43,159,216,.15), transparent 38%);
+  --surface: rgba(22, 39, 75, .62);
+  --surface-hover: rgba(35, 58, 103, .78);
+  --border: rgba(255,255,255,.13);
   --brand: #5B9BFF;
-  --brand-hover: #1F5FE0;
+  --brand-solid: #1F5FE0;
+  --brand-hover: #3479F5;
   --brand-glow: rgba(31,95,224,.34);
-  --live: #FFB020;
-  --live-glow: rgba(255,176,32,.2);
+  --orange: #FFB020;
   --cyan: #5FC3F0;
-  --text: #F4F7FF;
-  --text-muted: #A6B5D1;
-  --shadow: 0 18px 55px rgba(0,0,0,.24);
-  --glass-blur: blur(22px) saturate(1.7);
+  --text: #F5F8FF;
+  --text-muted: #AAB8D2;
+  --shadow: 0 16px 48px rgba(0,0,0,.28);
+  --ok: #45D483;
+  --warn: #FFB020;
+  --danger: #FF647C;
+  --radius: 22px;
 }
 [data-theme="light"] {
   color-scheme: light;
   --bg: #EEF4FF;
-  --bg-gradient: radial-gradient(ellipse at 12% 8%, rgba(31,95,224,.12), transparent 42%), radial-gradient(ellipse at 88% 75%, rgba(43,159,216,.10), transparent 42%);
+  --bg-gradient: radial-gradient(circle at 8% 10%, rgba(31,95,224,.12), transparent 38%), radial-gradient(circle at 92% 80%, rgba(43,159,216,.12), transparent 38%);
   --surface: rgba(255,255,255,.68);
-  --surface-hover: rgba(255,255,255,.9);
-  --border: rgba(31,75,145,.12);
+  --surface-hover: rgba(255,255,255,.88);
+  --border: rgba(31,55,100,.12);
   --brand: #1F5FE0;
-  --brand-hover: #174DBB;
-  --brand-glow: rgba(31,95,224,.18);
-  --live: #F08A00;
-  --live-glow: rgba(240,138,0,.14);
-  --cyan: #2B9FD8;
-  --text: #102044;
-  --text-muted: #596B8B;
-  --shadow: 0 18px 45px rgba(31,75,145,.10);
+  --brand-solid: #1F5FE0;
+  --brand-hover: #174FC0;
+  --brand-glow: rgba(31,95,224,.20);
+  --orange: #F08A00;
+  --cyan: #168DBF;
+  --text: #142344;
+  --text-muted: #5D6D8B;
+  --shadow: 0 16px 44px rgba(31,65,125,.12);
+  --ok: #168B50;
+  --warn: #B86A00;
+  --danger: #C8324D;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
@@ -58,107 +64,91 @@ body {
   color: var(--text);
   min-height: 100vh;
   line-height: 1.6;
+  transition: background .25s, color .25s;
 }
-h1, h2, h3, .brand { font-family: 'Bricolage Grotesque', sans-serif; }
+button, input, select, textarea { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
 .glass {
   background: var(--surface);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: blur(22px) saturate(1.7);
+  -webkit-backdrop-filter: blur(22px) saturate(1.7);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
 }
 header {
-  position: sticky; top: 0; z-index: 100; padding: 16px 24px;
+  position: sticky; top: 0; z-index: 100; padding: 15px 24px;
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
-  background: var(--surface); backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur); border-bottom: 1px solid var(--border);
+  background: var(--surface); backdrop-filter: blur(22px) saturate(1.7);
+  -webkit-backdrop-filter: blur(22px) saturate(1.7);
+  border-bottom: 1px solid var(--border); box-shadow: 0 8px 30px rgba(0,0,0,.10);
 }
 .brand {
-  font-size: 21px; font-weight: 800; text-decoration: none; color: var(--text);
-  display: flex; align-items: center; gap: 8px; letter-spacing: -.5px;
+  font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 800;
+  text-decoration: none; color: var(--text); display: flex; align-items: center; gap: 8px; letter-spacing: -.7px;
 }
-.brand span { color: var(--live); }
-.nav-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.brand span { color: var(--brand); }
+.nav-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .btn {
   padding: 11px 20px; border-radius: 14px; font-weight: 700; font-size: 14px;
   text-decoration: none; cursor: pointer; transition: all .2s ease; border: 1px solid transparent;
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: 'DM Sans', sans-serif;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
 }
-.btn-ghost { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); backdrop-filter: var(--glass-blur); }
-.btn-ghost:hover { color: var(--text); background: var(--surface-hover); transform: translateY(-2px); }
-.btn-primary { background: linear-gradient(135deg, var(--brand), var(--brand-hover)); color: #fff; box-shadow: 0 7px 22px var(--brand-glow); }
-.btn-primary:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 10px 28px var(--brand-glow); }
-.btn-outline { background: var(--surface); color: var(--brand); border: 1px solid var(--brand); backdrop-filter: var(--glass-blur); }
-.btn-outline:hover { background: var(--brand); color: #fff; transform: translateY(-2px); }
+.btn-ghost { background: transparent; color: var(--text-muted); border-color: transparent; }
+.btn-ghost:hover { color: var(--text); background: var(--surface-hover); border-color: var(--border); }
+.btn-primary { background: linear-gradient(135deg, var(--brand-solid), var(--brand-hover)); color: #fff; box-shadow: 0 5px 18px var(--brand-glow); }
+.btn-primary:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 8px 24px var(--brand-glow); }
+.btn-outline { background: var(--surface); color: var(--brand); border: 1px solid var(--brand); backdrop-filter: blur(12px); }
+.btn-outline:hover { background: var(--brand-solid); color: #fff; transform: translateY(-1px); }
 .theme-toggle {
-  width: 40px; height: 40px; border-radius: 13px; border: 1px solid var(--border);
-  background: var(--surface); color: var(--text); cursor: pointer; font-size: 16px;
-  display: flex; align-items: center; justify-content: center; transition: all .2s; backdrop-filter: var(--glass-blur);
+  width: 42px; height: 42px; border-radius: 14px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); cursor: pointer; font-size: 17px;
+  display: flex; align-items: center; justify-content: center; transition: all .2s; backdrop-filter: blur(12px);
 }
-.theme-toggle:hover { background: var(--surface-hover); transform: rotate(8deg); }
-main { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
-section { margin-bottom: 88px; scroll-margin-top: 100px; }
-.hero { text-align: center; padding: 76px 0 42px; }
+.theme-toggle:hover { background: var(--surface-hover); transform: translateY(-1px); }
+main { max-width: 1160px; margin: 0 auto; padding: 40px 24px 80px; }
+section { margin-bottom: 88px; scroll-margin-top: 110px; }
+.hero { text-align: center; padding: 76px 0 44px; }
 .hero .tag {
-  display: inline-block; background: var(--live-glow); color: var(--live);
-  padding: 7px 17px; border-radius: 999px; font-weight: 800; font-size: 12px;
-  margin-bottom: 24px; border: 1px solid rgba(255,176,32,.3); letter-spacing: .5px; text-transform: uppercase;
+  display: inline-block; background: rgba(31,95,224,.15); color: var(--brand);
+  padding: 7px 17px; border-radius: 999px; font-weight: 700; font-size: 13px;
+  margin-bottom: 22px; border: 1px solid rgba(91,155,255,.25);
 }
-.hero h1 { font-size: clamp(38px, 6vw, 64px); font-weight: 800; line-height: 1.08; margin-bottom: 22px; letter-spacing: -1.8px; }
+.hero h1 {
+  font-family: 'Bricolage Grotesque', sans-serif; font-size: clamp(38px, 6vw, 66px);
+  font-weight: 800; line-height: 1.06; margin-bottom: 22px; letter-spacing: -2px;
+}
 .hero h1 .highlight {
-  background: linear-gradient(120deg, var(--brand), var(--cyan), var(--live));
+  background: linear-gradient(120deg, var(--brand), var(--cyan), var(--orange));
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-.hero p { font-size: 18px; color: var(--text-muted); max-width: 650px; margin: 0 auto 34px; }
+.hero p { font-size: 18px; color: var(--text-muted); max-width: 650px; margin: 0 auto 34px; line-height: 1.7; }
 .hero .cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 18px; margin-top: 64px; }
-.stat-card { padding: 25px; text-align: center; border-radius: 20px; transition: transform .2s, background .2s; }
-.stat-card:hover { transform: translateY(-4px); background: var(--surface-hover); }
-.stat-card b { font-family: 'Bricolage Grotesque', sans-serif; font-size: 30px; font-weight: 800; color: var(--live); display: block; margin-bottom: 4px; }
+.stat-card { padding: 26px; text-align: center; border-radius: var(--radius); }
+.stat-card b { font-family: 'Bricolage Grotesque', sans-serif; font-size: 32px; font-weight: 800; color: var(--brand); display: block; margin-bottom: 4px; }
 .stat-card span { font-size: 14px; color: var(--text-muted); }
-.section-title { text-align: center; font-size: clamp(29px, 4vw, 40px); font-weight: 800; margin-bottom: 12px; letter-spacing: -.8px; }
-.section-sub { text-align: center; color: var(--text-muted); max-width: 620px; margin: 0 auto 44px; font-size: 16px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
-.card { padding: 28px; border-radius: 22px; transition: transform .2s, background .2s, border-color .2s; }
-.card:hover { transform: translateY(-5px); background: var(--surface-hover); border-color: rgba(91,155,255,.32); }
-.card .icon { font-size: 31px; margin-bottom: 16px; display: block; }
-.card h3 { font-size: 19px; font-weight: 800; margin-bottom: 9px; }
+.section-title { font-family: 'Bricolage Grotesque', sans-serif; text-align: center; font-size: clamp(29px, 4vw, 40px); font-weight: 800; margin-bottom: 12px; letter-spacing: -.8px; }
+.section-sub { text-align: center; color: var(--text-muted); max-width: 620px; margin: 0 auto 48px; font-size: 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 22px; }
+.card { padding: 30px; border-radius: var(--radius); transition: transform .25s, background .25s, border-color .25s; }
+.card:hover { transform: translateY(-5px); background: var(--surface-hover); border-color: rgba(91,155,255,.35); }
+.card .icon { font-size: 32px; margin-bottom: 16px; display: block; }
+.card h3 { font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; margin-bottom: 8px; }
 .card p { font-size: 14px; color: var(--text-muted); line-height: 1.7; }
-.demo-tabs { display: flex; justify-content: center; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
-.demo-tab {
-  padding: 11px 20px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border);
-  color: var(--text-muted); cursor: pointer; font-weight: 700; font-size: 14px; transition: .2s; font-family: 'DM Sans', sans-serif;
-}
-.demo-tab.active, .demo-tab:hover { background: var(--brand); color: #fff; border-color: var(--brand); box-shadow: 0 5px 18px var(--brand-glow); }
-.demo-screen { padding: 32px; border-radius: 22px; min-height: 300px; display: flex; flex-direction: column; gap: 16px; }
-.mock-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--border); }
-.mock-row:last-child { border-bottom: none; }
-.mock-badge { padding: 5px 11px; border-radius: 8px; font-size: 12px; font-weight: 700; white-space: nowrap; }
-.badge-ok { background: rgba(34,197,94,.15); color: #22c55e; }
-.badge-warn { background: rgba(245,158,11,.15); color: #f59e0b; }
-.badge-muted { background: rgba(148,163,184,.15); color: #94a3b8; }
-.faq details { padding: 21px 24px; border-radius: 18px; margin-bottom: 12px; cursor: pointer; transition: background .2s; }
-.faq details:hover { background: var(--surface-hover); }
-.faq summary { font-weight: 700; font-size: 16px; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-.faq summary::-webkit-details-marker { display: none; }
-.faq summary::after { content: '+'; font-size: 22px; color: var(--live); }
-.faq details[open] summary::after { content: '−'; }
-.faq p { margin-top: 13px; color: var(--text-muted); font-size: 15px; }
 .pricing-card {
-  max-width: 490px; margin: 0 auto; padding: 42px 34px; border-radius: 26px; text-align: center;
-  border: 1px solid rgba(91,155,255,.38); position: relative; overflow: hidden;
-  background: var(--surface); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); box-shadow: var(--shadow);
+  max-width: 500px; margin: 0 auto; padding: 42px 34px; border-radius: 28px; text-align: center;
+  border: 1px solid rgba(91,155,255,.45); position: relative; overflow: hidden;
 }
-.pricing-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--brand), var(--cyan), var(--live)); }
-.price-tag { font-family: 'Bricolage Grotesque', sans-serif; font-size: 50px; font-weight: 800; color: var(--live); margin: 18px 0 8px; }
-.price-tag span { font-size: 16px; font-weight: 600; color: var(--text-muted); }
+.pricing-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--brand), var(--cyan), var(--orange)); }
+.price-tag { font-family: 'Bricolage Grotesque', sans-serif; font-size: 52px; font-weight: 800; color: var(--brand); margin: 18px 0 8px; }
+.price-tag span { font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600; color: var(--text-muted); }
 .features-list { list-style: none; text-align: left; margin: 32px 0; }
-.features-list li { padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 15px; display: flex; align-items: center; gap: 10px; }
-.features-list li::before { content: '✓'; color: var(--live); font-weight: 800; }
-footer { text-align: center; padding: 40px 24px; color: var(--text-muted); font-size: 14px; border-top: 1px solid var(--border); background: var(--surface); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); }
+.features-list li { padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 15px; display: flex; align-items: center; gap: 10px; }
+.features-list li::before { content: '✓'; color: var(--ok); font-weight: 800; }
+footer { text-align: center; padding: 40px 24px; color: var(--text-muted); font-size: 14px; border-top: 1px solid var(--border); background: var(--surface); backdrop-filter: blur(20px); }
 footer a { color: var(--brand); text-decoration: none; }
 
-/* Modales (mismos estilos que index.html) */
+/* Modales */
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(2,8,24,.72); backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center;
@@ -168,7 +158,7 @@ footer a { color: var(--brand); text-decoration: none; }
 .modal-box {
   background: var(--surface); backdrop-filter: blur(24px) saturate(1.6);
   -webkit-backdrop-filter: blur(24px) saturate(1.6); border: 1px solid var(--border);
-  border-radius: 24px; padding: 32px; width: min(440px, 100%); box-shadow: var(--shadow);
+  border-radius: 24px; padding: 32px; width: min(460px, 100%); box-shadow: var(--shadow);
   max-height: calc(100vh - 32px); overflow-y: auto;
 }
 .modal-box h3 { font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; margin-bottom: 8px; text-align: center; }
@@ -187,17 +177,31 @@ footer a { color: var(--brand); text-decoration: none; }
 .modal-actions .btn { flex: 1; justify-content: center; }
 .form-error { color: var(--danger); font-size: 13px; min-height: 18px; margin-top: 8px; text-align: center; }
 .form-error.success { color: var(--ok); }
+.store-checkbox-group { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; padding: 8px; background: rgba(5,15,38,.2); border-radius: 12px; border: 1px solid var(--border); }
+.store-checkbox-label { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; cursor: pointer; transition: background .2s; }
+.store-checkbox-label:hover { background: var(--surface-hover); }
+.store-checkbox-label input { width: 18px; height: 18px; accent-color: var(--brand); }
+.step-indicator { display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; }
+.step-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); transition: background .3s; }
+.step-dot.active { background: var(--brand); }
+.link-text { color: var(--brand); font-size: 13px; cursor: pointer; text-decoration: underline; background: none; border: none; font-family: inherit; display: block; text-align: center; margin-top: 12px; }
+.link-text:hover { color: var(--brand-hover); }
 
 @media (max-width: 640px) {
   header { padding: 12px 16px; }
-  .nav-actions { width: 100%; justify-content: center; margin-top: 8px; }
-  .hero { padding: 46px 0 20px; }
+  .brand { font-size: 20px; }
+  .nav-actions { width: 100%; justify-content: center; margin-top: 5px; }
+  .nav-actions .btn { padding: 10px 13px; font-size: 13px; }
+  .hero { padding: 44px 0 22px; }
+  .hero h1 { letter-spacing: -1.2px; }
+  .hero p { font-size: 16px; }
   main { padding: 24px 16px 60px; }
   section { margin-bottom: 65px; }
-  .hero h1 { letter-spacing: -1px; }
-  .demo-screen { padding: 20px; }
-  .mock-row { flex-wrap: wrap; font-size: 13px; }
+  .grid { grid-template-columns: 1fr; }
+  .card { padding: 24px; }
   .pricing-card { padding: 34px 22px; }
+  .price-tag { font-size: 42px; }
+  .modal-box { padding: 25px 20px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
@@ -208,11 +212,11 @@ footer a { color: var(--brand); text-decoration: none; }
 <body>
 
 <header class="glass">
-  <a href="#" class="brand">🎥 Tu <span>Live Shop</span></a>
+  <a href="#" class="brand">Tu <span>Live Shop</span></a>
   <div class="nav-actions">
-    <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn">🌙</button>
-    <button class="btn btn-ghost" onclick="openClientLogin()">Ingresar</button>
-    <a href="https://wa.me/573052889858?text=Hola%2C%20quiero%20suscribirme%20a%20Tu%20Live%20Shop" target="_blank" rel="noopener" class="btn btn-primary">Suscribirme</a>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn" aria-label="Cambiar tema">🌙</button>
+    <button class="btn btn-ghost" onclick="openAuthModal('client')">🛍️ Ingreso Cliente</button>
+    <button class="btn btn-primary" onclick="openAuthModal('store')">🏪 Ingreso Tienda</button>
   </div>
 </header>
 
@@ -223,7 +227,7 @@ footer a { color: var(--brand); text-decoration: none; }
     <p>Tu Live Shop registra los pedidos mientras transmites, controla inventario y abonos, y te muestra cuánto ganaste de verdad al terminar el live.</p>
     <div class="cta">
       <a href="#precio" class="btn btn-primary">Quiero Tu Live Shop</a>
-      <a href="#demo" class="btn btn-outline">Ver cómo funciona</a>
+      <a href="https://wa.me/573052889858?text=Hola%2C%20quiero%20suscribirme%20a%20Tu%20Live%20Shop" target="_blank" rel="noopener" class="btn btn-outline">Hablar por WhatsApp</a>
     </div>
     <div class="stats">
       <div class="stat-card glass"><b>$21.000</b><span>COP al mes</span></div>
@@ -254,38 +258,10 @@ footer a { color: var(--brand); text-decoration: none; }
     </div>
   </section>
 
-  <section id="demo">
-    <h2 class="section-title">Mira cómo se ve</h2>
-    <p class="section-sub">Tres pantallas que usarás en cada live.</p>
-    <div class="demo-tabs">
-      <button class="demo-tab active" onclick="showDemo('pedidos', this)">Pedidos</button>
-      <button class="demo-tab" onclick="showDemo('inventario', this)">Inventario</button>
-      <button class="demo-tab" onclick="showDemo('panel', this)">Panel de Ganancia</button>
-    </div>
-    <div id="demo-pedidos" class="demo-screen glass">
-      <h3 style="font-size:18px; margin-bottom:8px;">Captura rápida durante el live</h3>
-      <div class="mock-row"><span><b>Mariana R.</b> <span style="color:var(--text-muted)">· Blusa lino ×2</span></span> <span>$78.000</span> <span class="mock-badge badge-ok">Pagado</span></div>
-      <div class="mock-row"><span><b>Johana P.</b> <span style="color:var(--text-muted)">· Bolso mini ×1</span></span> <span>$45.000</span> <span class="mock-badge badge-warn">Abono $20.000</span></div>
-      <div class="mock-row"><span><b>Camila V.</b> <span style="color:var(--text-muted)">· Kit 3 aretes</span></span> <span>$36.000</span> <span class="mock-badge badge-muted">Pendiente</span></div>
-    </div>
-    <div id="demo-inventario" class="demo-screen glass" style="display:none;">
-      <h3 style="font-size:18px; margin-bottom:8px;">Sabes qué tienes antes de ofrecerlo</h3>
-      <div class="mock-row"><span><b>Blusa lino</b></span> <span>Stock: 14</span> <span>$39.000</span></div>
-      <div class="mock-row"><span><b>Bolso mini</b></span> <span style="color:#f59e0b">Stock: 2 ⚠️</span> <span>$45.000</span></div>
-      <div class="mock-row"><span><b>Aretes dorados</b></span> <span>Stock: 31</span> <span>$12.000</span></div>
-    </div>
-    <div id="demo-panel" class="demo-screen glass" style="display:none;">
-      <h3 style="font-size:18px; margin-bottom:8px;">Tu ganancia real, sin adivinar</h3>
-      <div class="mock-row"><span>Ventas del mes</span> <b>$2.480.000</b></div>
-      <div class="mock-row"><span>Ganancia neta</span> <b style="color:#22c55e">$930.000</b></div>
-      <div class="mock-row"><span>Meta del mes</span> <span style="color:var(--brand)">68% ████████░░</span></div>
-    </div>
-  </section>
-
   <section id="precio">
     <h2 class="section-title">Un solo plan. Un solo precio.</h2>
     <div class="pricing-card glass">
-      <span class="tag" style="background:var(--live-glow); color:var(--live); border-color:rgba(255,176,32,.3);">LANZAMIENTO</span>
+      <span class="tag" style="background:rgba(240,138,0,.14); color:var(--orange); border-color:rgba(240,138,0,.3);">LANZAMIENTO</span>
       <div class="price-tag">$21.000 <span>COP / mes</span></div>
       <ul class="features-list">
         <li>Pedidos, inventario, abonos y facturas</li>
@@ -294,16 +270,16 @@ footer a { color: var(--brand); text-decoration: none; }
         <li>Tema claro y oscuro</li>
         <li>Cancelas cuando quieras</li>
       </ul>
-      <a href="https://wa.me/573052889858?text=Hola%2C%20quiero%20suscribirme%20a%20Tu%20Live%20Shop" target="_blank" rel="noopener" class="btn btn-primary" style="width:100%; justify-content:center; padding:14px; font-size:16px;">📲 Suscribirme por WhatsApp</a>
+      <a href="https://wa.me/573052889858?text=Hola%2C%20quiero%20suscribirme%20a%20Tu%20Live%20Shop" target="_blank" rel="noopener" class="btn btn-primary" style="width:100%; padding:14px; font-size:16px;">📲 Suscribirme por WhatsApp</a>
     </div>
   </section>
 
-  <section id="faq" class="faq">
+  <section id="faq" class="faq" style="max-width:720px; margin:0 auto;">
     <h2 class="section-title">Preguntas frecuentes</h2>
-    <details class="glass"><summary>¿Cómo pago y cómo se activa?</summary><p>Haces clic en el botón de WhatsApp, coordinamos el pago y activamos tu acceso.</p></details>
-    <details class="glass"><summary>¿Funciona con TikTok, Instagram y Facebook?</summary><p>Sí. Tú registras los pedidos del live en la aplicación.</p></details>
-    <details class="glass"><summary>¿Necesito instalar algo?</summary><p>Se usa desde el navegador de tu celular o computador.</p></details>
-    <details class="glass"><summary>¿Puedo traer mi inventario de Excel?</summary><p>Sí. Puedes importar tu archivo y empezar con tus productos ya cargados.</p></details>
+    <details class="glass" style="padding:21px 24px; border-radius:18px; margin-bottom:13px; cursor:pointer; transition:background .2s;"><summary style="font-weight:700; font-size:16px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:15px;">¿Cómo pago y cómo se activa?<span style="font-size:22px; color:var(--brand);">+</span></summary><p style="margin-top:12px; color:var(--text-muted); font-size:15px;">Haces clic en el botón de WhatsApp, coordinamos el pago y activamos tu acceso.</p></details>
+    <details class="glass" style="padding:21px 24px; border-radius:18px; margin-bottom:13px; cursor:pointer; transition:background .2s;"><summary style="font-weight:700; font-size:16px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:15px;">¿Funciona con TikTok, Instagram y Facebook?<span style="font-size:22px; color:var(--brand);">+</span></summary><p style="margin-top:12px; color:var(--text-muted); font-size:15px;">Sí. Tú registras los pedidos del live en la aplicación.</p></details>
+    <details class="glass" style="padding:21px 24px; border-radius:18px; margin-bottom:13px; cursor:pointer; transition:background .2s;"><summary style="font-weight:700; font-size:16px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:15px;">¿Necesito instalar algo?<span style="font-size:22px; color:var(--brand);">+</span></summary><p style="margin-top:12px; color:var(--text-muted); font-size:15px;">Se usa desde el navegador de tu celular o computador.</p></details>
+    <details class="glass" style="padding:21px 24px; border-radius:18px; margin-bottom:13px; cursor:pointer; transition:background .2s;"><summary style="font-weight:700; font-size:16px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:15px;">¿Puedo traer mi inventario de Excel?<span style="font-size:22px; color:var(--brand);">+</span></summary><p style="margin-top:12px; color:var(--text-muted); font-size:15px;">Sí. Puedes importar tu archivo y empezar con tus productos ya cargados.</p></details>
   </section>
 </main>
 
@@ -311,68 +287,182 @@ footer a { color: var(--brand); text-decoration: none; }
   <p>© 2026 Tu Live Shop · Hecho para vendedores de lives en Colombia.</p>
 </footer>
 
-<!-- ================= MODALES (Copiados de index.html) ================= -->
-<div class="modal-overlay" id="clientLoginModal">
-  <div class="modal-box">
-    <h3>🛍️ Acceso a tu Bolsita</h3>
-    <p class="subtitle">Ingresa con tu WhatsApp y PIN</p>
-    <div id="clientLoginStep1">
-      <form onsubmit="handleClientLoginStep1(event)">
-        <div class="form-group"><label>WhatsApp</label><input type="text" id="cliWa" inputmode="numeric" placeholder="3001234567" required></div>
-        <div class="form-group"><label>PIN</label><input type="password" id="cliPin" inputmode="numeric" placeholder="••••" minlength="4" required></div>
-        <div class="form-error" id="cliErr"></div>
-        <div class="modal-actions">
-          <button type="button" class="btn btn-ghost" onclick="closeClientModals()">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Ingresar</button>
-        </div>
-      </form>
-      <div style="text-align:center; margin-top:16px; display:flex; flex-direction:column; gap:8px;">
-        <button class="btn btn-ghost" style="font-size:13px; padding:8px;" onclick="showClientRegister()">¿No tienes cuenta? Regístrate aquí</button>
-        <button class="btn btn-ghost" style="font-size:13px; padding:8px; color:var(--brand);" onclick="showClientRecover()">¿Olvidaste tu PIN?</button>
-      </div>
+<!-- ================= MODALES DE AUTENTICACIÓN ================= -->
+
+<!-- MODAL PRINCIPAL DE SELECCIÓN -->
+<div class="modal-overlay" id="mainAuthModal">
+  <div class="modal-box" style="text-align:center;">
+    <h3>¿Cómo deseas ingresar?</h3>
+    <p class="subtitle">Selecciona tu tipo de cuenta para continuar</p>
+    <div style="display:flex; flex-direction:column; gap:12px; margin-top:24px;">
+      <button class="btn btn-outline" style="padding:16px; font-size:16px;" onclick="switchAuthView('client-login')">🛍️ Soy Cliente</button>
+      <button class="btn btn-primary" style="padding:16px; font-size:16px;" onclick="switchAuthView('store-login')">🏪 Soy Tienda (Administrador)</button>
     </div>
-    <div id="clientLoginStep2" style="display:none;">
-      <p class="subtitle">Tu número está registrado en varias tiendas. Selecciona una:</p>
-      <div id="storeSelectionList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;"></div>
-      <button class="btn btn-ghost" style="width:100%;" onclick="backToClientStep1()">← Volver</button>
-    </div>
+    <button class="link-text" onclick="closeAllModals()" style="margin-top:24px;">Cancelar</button>
   </div>
 </div>
 
-<div class="modal-overlay" id="clientRegisterModal">
+<!-- CLIENTE: LOGIN -->
+<div class="modal-overlay" id="clientLoginModal">
   <div class="modal-box">
-    <h3>📝 Crear cuenta de Cliente</h3>
-    <form onsubmit="handleClientRegister(event)">
-      <div class="form-group"><label>Nombre completo</label><input id="regName" required></div>
-      <div class="form-group"><label>WhatsApp</label><input type="text" id="regWa" inputmode="numeric" placeholder="3001234567" required></div>
-      <div class="form-group"><label>Correo (para recuperar tu PIN)</label><input type="email" id="regEmail" required></div>
-      <div class="form-group"><label>Crea tu PIN (4 a 8 dígitos)</label><input type="password" id="regPin" inputmode="numeric" minlength="4" maxlength="8" required></div>
-      <div class="form-error" id="regErr"></div>
+    <h3>🛍️ Acceso Cliente</h3>
+    <p class="subtitle">Ingresa con tu WhatsApp y PIN</p>
+    <form onsubmit="handleClientLogin(event)">
+      <div class="form-group">
+        <label>WhatsApp</label>
+        <input type="text" id="cliWa" inputmode="numeric" placeholder="3001234567" required>
+      </div>
+      <div class="form-group">
+        <label>PIN</label>
+        <input type="password" id="cliPin" inputmode="numeric" placeholder="••••" minlength="4" required>
+      </div>
+      <div class="form-error" id="cliLoginErr"></div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" onclick="closeClientModals()">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Registrarme</button>
+        <button type="button" class="btn btn-ghost" onclick="closeAllModals()">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Ingresar</button>
+      </div>
+    </form>
+    <button class="link-text" onclick="switchAuthView('client-register')">¿No tienes cuenta? Regístrate aquí</button>
+    <button class="link-text" onclick="switchAuthView('client-forgot-pin')" style="color:var(--orange);">¿Olvidaste tu PIN?</button>
+  </div>
+</div>
+
+<!-- CLIENTE: REGISTRO PASO 1 -->
+<div class="modal-overlay" id="clientRegStep1Modal">
+  <div class="modal-box">
+    <div class="step-indicator"><div class="step-dot active"></div><div class="step-dot"></div></div>
+    <h3>📝 Crear cuenta (Paso 1/2)</h3>
+    <p class="subtitle">Ingresa tus datos personales</p>
+    <form onsubmit="handleClientRegStep1(event)">
+      <div class="form-group">
+        <label>Nombre completo</label>
+        <input id="regName" required>
+      </div>
+      <div class="form-group">
+        <label>WhatsApp</label>
+        <input type="text" id="regWa" inputmode="numeric" placeholder="3001234567" required>
+      </div>
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input type="email" id="regEmail" placeholder="Para recuperar tu PIN" required>
+      </div>
+      <div class="form-group">
+        <label>Ciudad</label>
+        <input id="regCity">
+      </div>
+      <div class="form-group">
+        <label>Dirección</label>
+        <input id="regAddress">
+      </div>
+      <div class="form-group">
+        <label>Crea tu PIN (4 a 8 dígitos)</label>
+        <input type="password" id="regPin" inputmode="numeric" minlength="4" maxlength="8" required>
+      </div>
+      <div class="form-error" id="regStep1Err"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeAllModals()">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Siguiente</button>
       </div>
     </form>
   </div>
 </div>
 
-<div class="modal-overlay" id="clientRecoverModal">
+<!-- CLIENTE: REGISTRO PASO 2 (Selección de tiendas) -->
+<div class="modal-overlay" id="clientRegStep2Modal">
+  <div class="modal-box">
+    <div class="step-indicator"><div class="step-dot"></div><div class="step-dot active"></div></div>
+    <h3>🏪 Selecciona tus tiendas (Paso 2/2)</h3>
+    <p class="subtitle">Marca las tiendas a las que deseas tener acceso</p>
+    <form onsubmit="handleClientRegStep2(event)">
+      <div class="form-group">
+        <label>Tiendas disponibles</label>
+        <div id="storeSelectionList" class="store-checkbox-group">
+          <!-- Se llena dinámicamente -->
+        </div>
+      </div>
+      <div class="form-error" id="regStep2Err"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="switchAuthView('client-reg-step1')">Atrás</button>
+        <button type="submit" class="btn btn-primary">Crear usuario</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- CLIENTE: OLVIDÉ PIN -->
+<div class="modal-overlay" id="clientForgotPinModal">
   <div class="modal-box">
     <h3>🔑 Recuperar PIN</h3>
     <p class="subtitle">Te enviaremos un PIN temporal a tu correo registrado.</p>
-    <form onsubmit="handleClientRecover(event)">
-      <div class="form-group"><label>WhatsApp registrado</label><input type="text" id="recWa" inputmode="numeric" placeholder="3001234567" required></div>
-      <div class="form-group"><label>Correo registrado</label><input type="email" id="recEmail" required></div>
-      <div class="form-error" id="recErr"></div>
+    <form onsubmit="handleClientForgotPin(event)">
+      <div class="form-group">
+        <label>WhatsApp registrado</label>
+        <input type="text" id="recWa" inputmode="numeric" placeholder="3001234567" required>
+      </div>
+      <div class="form-group">
+        <label>Correo registrado</label>
+        <input type="email" id="recEmail" required>
+      </div>
+      <div class="form-error" id="recPinErr"></div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" onclick="closeClientModals()">Cancelar</button>
+        <button type="button" class="btn btn-ghost" onclick="closeAllModals()">Cancelar</button>
         <button type="submit" class="btn btn-primary">Enviar PIN temporal</button>
       </div>
     </form>
+    <button class="link-text" onclick="switchAuthView('client-login')">Volver al inicio de sesión</button>
+  </div>
+</div>
+
+<!-- TIENDA: LOGIN -->
+<div class="modal-overlay" id="storeLoginModal">
+  <div class="modal-box">
+    <h3>🏪 Acceso Tienda</h3>
+    <p class="subtitle">Ingresa con tu correo y contraseña de administrador</p>
+    <form onsubmit="handleStoreLogin(event)">
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input type="email" id="storeEmail" required>
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="storePass" required>
+      </div>
+      <div class="form-error" id="storeLoginErr"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeAllModals()">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Ingresar al panel</button>
+      </div>
+    </form>
+    <button class="link-text" onclick="switchAuthView('store-forgot-pass')">¿Olvidaste tu contraseña?</button>
+  </div>
+</div>
+
+<!-- TIENDA: OLVIDÉ CONTRASEÑA -->
+<div class="modal-overlay" id="storeForgotPassModal">
+  <div class="modal-box">
+    <h3>🔒 Recuperar Contraseña</h3>
+    <p class="subtitle">Ingresa tu correo y el número de documento (NIT/CC) de la tienda para verificar.</p>
+    <form onsubmit="handleStoreForgotPass(event)">
+      <div class="form-group">
+        <label>Correo registrado</label>
+        <input type="email" id="storeRecEmail" required>
+      </div>
+      <div class="form-group">
+        <label>Número de documento (NIT/CC)</label>
+        <input type="text" id="storeRecDoc" placeholder="Ej: 900123456-7 o 1234567890" required>
+      </div>
+      <div class="form-error" id="storeRecErr"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeAllModals()">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Enviar instrucciones</button>
+      </div>
+    </form>
+    <button class="link-text" onclick="switchAuthView('store-login')">Volver al inicio de sesión</button>
   </div>
 </div>
 
 <script>
+// Toggle de tema
 function toggleTheme() {
   const html = document.documentElement;
   const current = html.getAttribute('data-theme');
@@ -388,122 +478,212 @@ function toggleTheme() {
   document.documentElement.setAttribute('data-theme', theme);
   document.getElementById('themeBtn').textContent = theme === 'dark' ? '🌙' : '☀️';
 })();
-function showDemo(id, btn) {
-  document.querySelectorAll('.demo-screen').forEach(el => el.style.display = 'none');
-  document.querySelectorAll('.demo-tab').forEach(el => el.classList.remove('active'));
-  document.getElementById('demo-' + id).style.display = 'flex';
-  if (btn) btn.classList.add('active');
+
+// Gestión de Modales
+function closeAllModals() {
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+  document.querySelectorAll('.form-error').forEach(e => { e.textContent = ''; e.className = 'form-error'; });
 }
 
-// ================= LÓGICA DE MODALES =================
-let pendingClientData = null;
-function closeClientModals() {
-  ['clientLoginModal', 'clientRegisterModal', 'clientRecoverModal'].forEach(id => document.getElementById(id).classList.remove('open'));
-  document.getElementById('cliErr').textContent = '';
-  document.getElementById('regErr').textContent = '';
-  document.getElementById('recErr').textContent = '';
-  backToClientStep1();
+function openAuthModal(type) {
+  closeAllModals();
+  if (type === 'client') switchAuthView('client-login');
+  else if (type === 'store') switchAuthView('store-login');
+  else document.getElementById('mainAuthModal').classList.add('open');
 }
-function showClientRegister() {
-  document.getElementById('clientLoginModal').classList.remove('open');
-  document.getElementById('clientRegisterModal').classList.add('open');
-}
-function showClientRecover() {
-  document.getElementById('clientLoginModal').classList.remove('open');
-  document.getElementById('clientRecoverModal').classList.add('open');
-}
-function backToClientStep1() {
-  document.getElementById('clientLoginStep1').style.display = 'block';
-  document.getElementById('clientLoginStep2').style.display = 'none';
-  pendingClientData = null;
-}
-function openClientLogin() { document.getElementById('clientLoginModal').classList.add('open'); }
 
-async function handleClientLoginStep1(e) {
+function switchAuthView(viewId) {
+  closeAllModals();
+  const modalMap = {
+    'client-login': 'clientLoginModal',
+    'client-reg-step1': 'clientRegStep1Modal',
+    'client-reg-step2': 'clientRegStep2Modal',
+    'client-forgot-pin': 'clientForgotPinModal',
+    'store-login': 'storeLoginModal',
+    'store-forgot-pass': 'storeForgotPassModal'
+  };
+  if (modalMap[viewId]) {
+    document.getElementById(modalMap[viewId]).classList.add('open');
+    if (viewId === 'client-reg-step2') loadAvailableStores();
+  }
+}
+
+// --- LÓGICA CLIENTE ---
+async function handleClientLogin(e) {
   e.preventDefault();
-  const err = document.getElementById('cliErr');
-  err.textContent = 'Verificando...'; err.className = 'form-error';
+  const err = document.getElementById('cliLoginErr');
+  err.textContent = 'Verificando...';
   try {
     const res = await fetch('/api/auth/client/login', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ whatsapp: document.getElementById('cliWa').value, pin: document.getElementById('cliPin').value })
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        whatsapp: document.getElementById('cliWa').value,
+        pin: document.getElementById('cliPin').value
+      })
     });
     const data = await res.json();
-    if (!res.ok) throw new Error((data.error && data.error.includes('no encontrada')) ? 'WhatsApp o PIN incorrectos.' : (data.error || 'Error al ingresar'));
-    if (data.multiple_stores) {
-      pendingClientData = data;
-      document.getElementById('storeSelectionList').innerHTML = data.multiple_stores.map(store =>
-        `<button class="btn btn-outline" style="width:100%;" onclick="finalizeClientLogin('${store.slug}')">🏪 ${store.name}</button>`
-      ).join('');
-      document.getElementById('clientLoginStep1').style.display = 'none';
-      document.getElementById('clientLoginStep2').style.display = 'block';
-      err.textContent = '';
-    } else {
-      finalizeClientLogin(data.portfolio.slug, data);
-    }
-  } catch (e) { err.textContent = e.message; }
-}
-
-async function finalizeClientLogin(slug, dataOverride = null) {
-  try {
-    const data = dataOverride || pendingClientData;
+    if (!res.ok) throw new Error(data.error || 'Error al ingresar');
+    
     localStorage.setItem('pk_token', data.token);
     localStorage.setItem('pk_user', JSON.stringify(data.user));
-    localStorage.setItem('pk_slug', slug);
-    closeClientModals();
-    window.location.href = '/?t=' + slug;
-  } catch (e) { document.getElementById('cliErr').textContent = 'Error al seleccionar la tienda.'; }
+    localStorage.setItem('pk_slug', data.portfolio.slug);
+    closeAllModals();
+    window.location.href = '/?t=' + data.portfolio.slug;
+  } catch (e) {
+    err.textContent = e.message;
+  }
 }
 
-async function handleClientRegister(e) {
+let regDataTemp = {};
+async function handleClientRegStep1(e) {
   e.preventDefault();
-  const err = document.getElementById('regErr');
-  err.textContent = 'Registrando...'; err.className = 'form-error';
+  const err = document.getElementById('regStep1Err');
+  err.textContent = 'Guardando datos...';
+  regDataTemp = {
+    name: document.getElementById('regName').value,
+    whatsapp: document.getElementById('regWa').value,
+    email: document.getElementById('regEmail').value,
+    city: document.getElementById('regCity').value,
+    address: document.getElementById('regAddress').value,
+    pin: document.getElementById('regPin').value
+  };
+  // Cargar tiendas para el paso 2
+  switchAuthView('client-reg-step2');
+}
+
+async function loadAvailableStores() {
+  const list = document.getElementById('storeSelectionList');
+  list.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:10px;">Cargando tiendas...</p>';
+  try {
+    // Usamos el endpoint de portfolios públicos o el mismo de auth si no hay uno específico
+    const res = await fetch('/api/auth/client/portfolios'); // Asumimos que este endpoint existe o usamos un fallback
+    const data = await res.json();
+    const stores = res.ok ? data : []; // Fallback si el endpoint no existe aún, se manejará en backend
+    
+    if (stores.length === 0) {
+      list.innerHTML = '<p style="text-align:center; color:var(--danger); padding:10px;">No hay tiendas disponibles.</p>';
+      return;
+    }
+    
+    list.innerHTML = stores.map(s => `
+      <label class="store-checkbox-label">
+        <input type="checkbox" name="store" value="${s.slug}">
+        <span>🏪 ${s.name}</span>
+      </label>
+    `).join('');
+  } catch (e) {
+    list.innerHTML = '<p style="text-align:center; color:var(--danger); padding:10px;">Error al cargar tiendas.</p>';
+  }
+}
+
+async function handleClientRegStep2(e) {
+  e.preventDefault();
+  const err = document.getElementById('regStep2Err');
+  err.textContent = 'Creando cuenta...';
+  
+  const selectedStores = Array.from(document.querySelectorAll('input[name="store"]:checked')).map(cb => cb.value);
+  if (selectedStores.length === 0) {
+    err.textContent = 'Debes seleccionar al menos una tienda.';
+    return;
+  }
+
   try {
     const res = await fetch('/api/auth/client/register', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name: document.getElementById('regName').value,
-        whatsapp: document.getElementById('regWa').value,
-        email: document.getElementById('regEmail').value,
-        pin: document.getElementById('regPin').value
+        ...regDataTemp,
+        portfolios: selectedStores
       })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error al registrarse');
-    if (data.multiple_stores) {
-      pendingClientData = data;
-      document.getElementById('storeSelectionList').innerHTML = data.multiple_stores.map(store =>
-        `<button class="btn btn-outline" style="width:100%;" onclick="finalizeClientLogin('${store.slug}')">🏪 ${store.name}</button>`
-      ).join('');
-      document.getElementById('clientRegisterModal').classList.remove('open');
-      document.getElementById('clientLoginModal').classList.add('open');
-      document.getElementById('clientLoginStep1').style.display = 'none';
-      document.getElementById('clientLoginStep2').style.display = 'block';
-    } else {
-      localStorage.setItem('pk_token', data.token);
-      localStorage.setItem('pk_user', JSON.stringify(data.user));
-      localStorage.setItem('pk_slug', data.portfolio.slug);
-      closeClientModals();
-      window.location.href = '/?t=' + data.portfolio.slug;
-    }
-  } catch (e) { err.textContent = e.message; }
+    
+    // Auto-login con la primera tienda seleccionada
+    localStorage.setItem('pk_token', data.token);
+    localStorage.setItem('pk_user', JSON.stringify(data.user));
+    localStorage.setItem('pk_slug', selectedStores[0]);
+    
+    closeAllModals();
+    window.location.href = '/?t=' + selectedStores[0];
+  } catch (e) {
+    err.textContent = e.message;
+  }
 }
 
-async function handleClientRecover(e) {
+async function handleClientForgotPin(e) {
   e.preventDefault();
-  const err = document.getElementById('recErr');
-  err.textContent = 'Enviando...'; err.className = 'form-error';
+  const err = document.getElementById('recPinErr');
+  err.textContent = 'Enviando...';
   try {
     const res = await fetch('/api/auth/client/forgot-pin', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ whatsapp: document.getElementById('recWa').value, email: document.getElementById('recEmail').value })
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        whatsapp: document.getElementById('recWa').value,
+        email: document.getElementById('recEmail').value
+      })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'No se pudo enviar el PIN.');
     err.className = 'form-error success';
     err.textContent = '✔ Si los datos coinciden, recibirás un PIN temporal en tu correo.';
-  } catch (e) { err.className = 'form-error'; err.textContent = e.message; }
+  } catch (e) {
+    err.className = 'form-error';
+    err.textContent = e.message;
+  }
+}
+
+// --- LÓGICA TIENDA (ADMIN) ---
+async function handleStoreLogin(e) {
+  e.preventDefault();
+  const err = document.getElementById('storeLoginErr');
+  err.textContent = 'Verificando...';
+  try {
+    const res = await fetch('/api/auth/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: document.getElementById('storeEmail').value,
+        password: document.getElementById('storePass').value
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Credenciales inválidas');
+    
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    if (data.portfolio) localStorage.setItem('portfolio', JSON.stringify(data.portfolio));
+    
+    closeAllModals();
+    window.location.href = '/admin.html';
+  } catch (e) {
+    err.textContent = e.message;
+  }
+}
+
+async function handleStoreForgotPass(e) {
+  e.preventDefault();
+  const err = document.getElementById('storeRecErr');
+  err.textContent = 'Enviando...';
+  try {
+    const res = await fetch('/api/auth/admin/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: document.getElementById('storeRecEmail').value,
+        document: document.getElementById('storeRecDoc').value
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'No se pudo procesar la solicitud.');
+    err.className = 'form-error success';
+    err.textContent = '✔ Si los datos coinciden, recibirás una contraseña temporal en tu correo.';
+  } catch (e) {
+    err.className = 'form-error';
+    err.textContent = e.message;
+  }
 }
 </script>
 </body>

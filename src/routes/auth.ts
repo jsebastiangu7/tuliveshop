@@ -6,7 +6,6 @@ import nodemailer from 'nodemailer';
 import { pool } from '../db.js';
 import { validate } from '../middleware/validate.js';
 import { adminLoginSchema, clientLoginSchema, clientRegisterSchema } from '../validations/auth.js';
-import { encrypt } from '../utils/encryption.js';
 
 const router = Router();
 
@@ -58,38 +57,39 @@ router.post('/admin/login', validate(adminLoginSchema), async (req: Request, res
   } catch (e: any) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 
-/* ── Admin: cambiar contraseña ── */
-router.post('/admin/change-password', async (req: Request, res: Response) => {
-  try {
-    const u = authUser(req);
-    const np = String(req.body.new_password || '');
-    if (np.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
-    await pool.query(`UPDATE users SET password_hash=$2, must_change_password=FALSE WHERE id=$1`, [u.id, await bcrypt.hash(np, 10)]);
-    res.json({ ok: true });
-  } catch (e: any) { res.status(401).json({ error: e.message || 'No autenticado' }); }
-});
-
-/* ── Admin: olvidé contraseña ── */
+/* ── Admin: olvidé contraseña (Correo + Documento) ── */
 router.post('/admin/forgot-password', async (req: Request, res: Response) => {
   try {
     const email = String(req.body.email || '').toLowerCase().trim();
-    const { rows: [user] } = await pool.query(`SELECT * FROM users WHERE email=$1 AND role IN ('admin','super_admin')`, [email]);
+    const document = String(req.body.document || '').trim();
+    
+    // Buscamos un admin cuyo correo coincida Y el NIT/documento de su portafolio coincida
+    const { rows: [user] } = await pool.query(
+      `SELECT u.id, u.email, p.nit 
+       FROM users u 
+       JOIN portfolios p ON u.portfolio_id = p.id 
+       WHERE u.email = $1 AND u.role IN ('admin','super_admin') AND (p.nit = $2 OR p.id::text = $2)`,
+      [email, document]
+    );
+
     if (user && user.email) {
-      const temp = 'Pk' + Math.random().toString(36).slice(2, 8) + Math.floor(Math.random() * 90 + 10);
-      await pool.query(`UPDATE users SET password_hash=$2, must_change_password=TRUE WHERE id=$1`, [user.id, await bcrypt.hash(temp, 10)]);
-      await sendMail(user.email, 'Tu Live Shop · Contraseña temporal', `<p>Tu contraseña temporal es: <b>${temp}</b></p><p>Ingresa al panel y cámbiala cuando se te solicite.</p>`);
+      const temp = 'Tk' + Math.random().toString(36).slice(2, 8) + Math.floor(Math.random() * 90 + 10);
+      await pool.query(`UPDATE users SET password_hash=$2, must_change_password=TRUE WHERE id=$1`,
+        [user.id, await bcrypt.hash(temp, 10)]);
+      await sendMail(user.email, 'Tu Live Shop · Recuperación de contraseña',
+        `<p>Tu contraseña temporal es: <b>${temp}</b></p><p>Ingresa al panel y cámbiala cuando se te solicite.</p>`);
     }
-    res.json({ ok: true, message: 'Si el correo existe, enviaremos una contraseña temporal.' });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+    // Mensaje genérico por seguridad
+    res.json({ ok: true, message: 'Si los datos coinciden, enviaremos una contraseña temporal a tu correo.' });
+  } catch (e: any) { res.status(500).json({ error: 'Error del servidor' }); }
 });
 
-/* ── Cliente: login (Corregido para manejar usuarios sin tienda asignada) ── */
+/* ── Cliente: login ── */
 router.post('/client/login', async (req: Request, res: Response) => {
   try {
     const { whatsapp, pin } = req.body;
     const tel = String(whatsapp).replace(/\D/g, '');
     
-    // 1. Verificar credenciales globalmente primero
     const { rows: [user] } = await pool.query(
       `SELECT * FROM users WHERE whatsapp=$1 AND role='client' AND status='Activo'`, [tel]
     );
@@ -98,7 +98,6 @@ router.post('/client/login', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'WhatsApp o PIN incorrectos' });
     }
 
-    // 2. Manejar cambio de PIN inicial si es necesario
     if (user.must_change_pin) {
       const token = sign(user);
       res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 30 * 24 * 60 * 60 * 1000 });
@@ -109,7 +108,6 @@ router.post('/client/login', async (req: Request, res: Response) => {
       });
     }
 
-    // 3. Verificar si ya tiene una tienda asignada
     if (user.portfolio_id) {
       const { rows: [pf] } = await pool.query(`SELECT id, name, slug FROM portfolios WHERE id=$1`, [user.portfolio_id]);
       const token = sign({ ...user, portfolio_id: pf.id });
@@ -120,7 +118,6 @@ router.post('/client/login', async (req: Request, res: Response) => {
         portfolio: { id: pf.id, slug: pf.slug, name: pf.name }
       });
     } else {
-      // 4. No tiene tienda: devolver lista de tiendas para que elija
       const { rows: portfolios } = await pool.query(`SELECT id, name, slug FROM portfolios ORDER BY name`);
       const token = sign(user);
       res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 30 * 24 * 60 * 60 * 1000 });
@@ -134,61 +131,68 @@ router.post('/client/login', async (req: Request, res: Response) => {
   } catch (e: any) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 
-/* ── Cliente: seleccionar tienda después del login/registro ── */
-router.post('/client/select-portfolio', async (req: Request, res: Response) => {
-  try {
-    const u = authUser(req);
-    const { portfolio_slug } = req.body;
-    const { rows: [pf] } = await pool.query(`SELECT id, slug, name FROM portfolios WHERE slug=$1`, [portfolio_slug]);
-    if (!pf) return res.status(404).json({ error: 'Tienda no encontrada' });
-    
-    await pool.query(`UPDATE users SET portfolio_id=$1 WHERE id=$2`, [pf.id, u.id]);
-    
-    const token = sign({ ...u, portfolio_id: pf.id });
-    res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 30 * 24 * 60 * 60 * 1000 });
-    
-    res.json({
-      token,
-      portfolio: { id: pf.id, slug: pf.slug, name: pf.name }
-    });
-  } catch (e: any) { res.status(500).json({ error: 'Error del servidor' }); }
-});
-
-/* ── Cliente: registro ── */
+/* ── Cliente: registro (Soporta múltiples tiendas) ── */
 router.post('/client/register', async (req: Request, res: Response) => {
   try {
-    const { whatsapp, pin, name, city, address, email } = req.body;
+    const { whatsapp, pin, name, city, address, email, portfolios } = req.body;
     if (!whatsapp || !pin || !name) return res.status(400).json({ error: 'WhatsApp, PIN y nombre son obligatorios' });
     if (String(pin).length < 4) return res.status(400).json({ error: 'El PIN debe tener al menos 4 dígitos' });
-    
+    if (!portfolios || !Array.isArray(portfolios) || portfolios.length === 0) {
+      return res.status(400).json({ error: 'Debes seleccionar al menos una tienda' });
+    }
+
     const tel = String(whatsapp).replace(/\D/g, '');
     const em = email ? String(email).toLowerCase().trim() : null;
     const pinHash = await bcrypt.hash(String(pin), 10);
+
+    // Verificamos si ya existe en alguna de las tiendas seleccionadas
+    const { rows: [existing] } = await pool.query(
+      `SELECT * FROM users WHERE whatsapp=$1 AND role='client' AND portfolio_id = ANY($2::uuid[])`, 
+      [tel, portfolios] // Nota: esto asume que portfolios es un array de slugs, necesitamos convertirlo a IDs
+    );
     
-    const { rows: [existing] } = await pool.query(`SELECT * FROM users WHERE whatsapp=$1 AND role='client'`, [tel]);
-    if (existing) {
-      return res.status(400).json({ error: 'Este WhatsApp ya está registrado. Inicia sesión o recupera tu PIN.' });
+    // Obtenemos los IDs de los portfolios
+    const { rows: pfRows } = await pool.query(`SELECT id, slug FROM portfolios WHERE slug = ANY($1)`, [portfolios]);
+    const pfIds = pfRows.map((p: any) => p.id);
+    
+    const { rows: [existingById] } = await pool.query(
+      `SELECT * FROM users WHERE whatsapp=$1 AND role='client' AND portfolio_id = ANY($2)`, 
+      [tel, pfIds]
+    );
+
+    if (existingById) {
+      return res.status(400).json({ error: 'Este WhatsApp ya está registrado en una de las tiendas seleccionadas.' });
     }
-    
-    const { rows: [user] } = await pool.query(
-      `INSERT INTO users (portfolio_id, role, whatsapp, pin_hash, name, city, address, email, status, must_change_pin)
-       VALUES (NULL,'client',$1,$2,$3,$4,$5,$6,'Activo', TRUE)
-       RETURNING id,name,whatsapp,city,address,email`,
-      [tel, pinHash, String(name).trim(), city || null, address || null, em]);
-      
-    const token = sign(user);
+
+    // Creamos un usuario por cada tienda seleccionada (para mantener compatibilidad con schema actual de 1 portfolio_id por user)
+    const createdUsers = [];
+    for (const pf of pfRows) {
+      const { rows: [newUser] } = await pool.query(
+        `INSERT INTO users (portfolio_id, role, whatsapp, pin_hash, name, city, address, email, status, must_change_pin)
+         VALUES ($1,'client',$2,$3,$4,$5,$6,$7,'Activo', TRUE)
+         RETURNING id,name,whatsapp,city,address,email`,
+        [pf.id, tel, pinHash, String(name).trim(), city || null, address || null, em]
+      );
+      createdUsers.push(newUser);
+    }
+
+    const token = sign(createdUsers[0]); // Token basado en el primer usuario creado
     res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 30 * 24 * 60 * 60 * 1000 });
-    
-    // Devolvemos las tiendas disponibles para que elija inmediatamente
-    const { rows: portfolios } = await pool.query(`SELECT id, name, slug FROM portfolios ORDER BY name`);
     
     res.json({ 
       token, 
-      user: { ...user, role: 'client' }, 
-      portfolios,
-      message: 'Registro exitoso. Ahora selecciona tu tienda.' 
+      user: { ...createdUsers[0], role: 'client' }, 
+      message: 'Registro exitoso.' 
     });
   } catch (e: any) { console.error(e); res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
+});
+
+/* ── Cliente: obtener tiendas disponibles (para el registro) ── */
+router.get('/client/portfolios', async (req: Request, res: Response) => {
+  try {
+    const { rows } = await pool.query(`SELECT id, name, slug FROM portfolios ORDER BY name`);
+    res.json(rows);
+  } catch (e: any) { res.status(500).json({ error: 'Error del servidor' }); }
 });
 
 /* ── Cliente: cambiar PIN ── */

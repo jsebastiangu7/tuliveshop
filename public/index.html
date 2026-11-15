@@ -9,11 +9,9 @@
 <meta name="description" content="Tu Live Shop: El sistema de ventas, inventario y logística diseñado para emprendedores que venden en vivo.">
 <meta name="theme-color" content="#0A1430">
 <title>Tu Live Shop · Vende en vivo, cuadra la caja sin perder la voz</title>
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96;700;12..96;800&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
 <style>
 :root {
   color-scheme: dark;
@@ -137,26 +135,6 @@ section { margin-bottom: 88px; scroll-margin-top: 110px; }
 .card .icon { font-size: 32px; margin-bottom: 16px; display: block; }
 .card h3 { font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; margin-bottom: 8px; }
 .card p { font-size: 14px; color: var(--text-muted); line-height: 1.7; }
-.demo-tabs { display: flex; justify-content: center; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
-.demo-tab {
-  padding: 11px 21px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border);
-  color: var(--text-muted); cursor: pointer; font-weight: 700; font-size: 14px; transition: .2s; backdrop-filter: blur(12px);
-}
-.demo-tab.active, .demo-tab:hover { background: var(--brand-solid); color: #fff; border-color: var(--brand-solid); }
-.demo-screen { padding: 32px; border-radius: var(--radius); min-height: 300px; display: flex; flex-direction: column; gap: 16px; }
-.mock-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--border); }
-.mock-row:last-child { border-bottom: none; }
-.mock-badge { padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
-.badge-ok { background: rgba(69,212,131,.15); color: var(--ok); }
-.badge-warn { background: rgba(255,176,32,.15); color: var(--warn); }
-.badge-muted { background: rgba(148,163,184,.15); color: var(--text-muted); }
-.faq details { padding: 21px 24px; border-radius: 18px; margin-bottom: 13px; cursor: pointer; transition: background .2s; }
-.faq details:hover { background: var(--surface-hover); }
-.faq summary { font-weight: 700; font-size: 16px; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 15px; }
-.faq summary::-webkit-details-marker { display: none; }
-.faq summary::after { content: '+'; font-size: 22px; color: var(--brand); }
-.faq details[open] summary::after { content: '−'; }
-.faq p { margin-top: 12px; color: var(--text-muted); font-size: 15px; }
 .pricing-card {
   max-width: 500px; margin: 0 auto; padding: 42px 34px; border-radius: 28px; text-align: center;
   border: 1px solid rgba(91,155,255,.45); position: relative; overflow: hidden;
@@ -213,8 +191,6 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
   section { margin-bottom: 65px; }
   .grid { grid-template-columns: 1fr; }
   .card { padding: 24px; }
-  .demo-screen { padding: 20px; overflow-x: auto; }
-  .mock-row { flex-wrap: wrap; font-size: 13px; }
   .pricing-card { padding: 34px 22px; }
   .price-tag { font-size: 42px; }
   .modal-box { padding: 25px 20px; }
@@ -231,6 +207,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
   <a href="#" class="brand">🎥 Tu <span>Live Shop</span></a>
   <div class="nav-actions">
     <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn" aria-label="Cambiar tema">🌙</button>
+    <!-- PROBLEMA 1 SOLUCIONADO: Botones claros y separados para Cliente y Tienda -->
     <button class="btn btn-ghost" onclick="openClientLogin()">🛍️ Ingreso Cliente</button>
     <a href="/admin.html" class="btn btn-primary">🏪 Ingreso Tienda</a>
   </div>
@@ -243,7 +220,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
     <p>Tu Live Shop registra los pedidos mientras transmites, controla inventario y abonos, y te muestra cuánto ganaste de verdad al terminar el live.</p>
     <div class="cta">
       <a href="#precio" class="btn btn-primary">Quiero Tu Live Shop</a>
-      <a href="#demo" class="btn btn-outline">Ver cómo funciona</a>
+      <a href="https://wa.me/573052889858?text=Hola%2C%20quiero%20suscribirme%20a%20Tu%20Live%20Shop" target="_blank" rel="noopener" class="btn btn-outline">Hablar por WhatsApp</a>
     </div>
     <div class="stats">
       <div class="stat-card glass"><b>$21.000</b><span>COP al mes</span></div>
@@ -274,34 +251,6 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
     </div>
   </section>
 
-  <section id="demo">
-    <h2 class="section-title">Mira cómo se ve</h2>
-    <p class="section-sub">Tres pantallas que usarás en cada live.</p>
-    <div class="demo-tabs">
-      <button class="demo-tab active" onclick="showDemo('pedidos', this)">Pedidos</button>
-      <button class="demo-tab" onclick="showDemo('inventario', this)">Inventario</button>
-      <button class="demo-tab" onclick="showDemo('panel', this)">Panel de Ganancia</button>
-    </div>
-    <div id="demo-pedidos" class="demo-screen glass">
-      <h3 style="font-size:18px; margin-bottom:8px;">Captura rápida durante el live</h3>
-      <div class="mock-row"><span><b>Mariana R.</b> <span style="color:var(--text-muted)">· Blusa lino ×2</span></span> <span>$78.000</span> <span class="mock-badge badge-ok">Pagado</span></div>
-      <div class="mock-row"><span><b>Johana P.</b> <span style="color:var(--text-muted)">· Bolso mini ×1</span></span> <span>$45.000</span> <span class="mock-badge badge-warn">Abono $20.000</span></div>
-      <div class="mock-row"><span><b>Camila V.</b> <span style="color:var(--text-muted)">· Kit 3 aretes</span></span> <span>$36.000</span> <span class="mock-badge badge-muted">Pendiente</span></div>
-    </div>
-    <div id="demo-inventario" class="demo-screen glass" style="display:none;">
-      <h3 style="font-size:18px; margin-bottom:8px;">Sabes qué tienes antes de ofrecerlo</h3>
-      <div class="mock-row"><span><b>Blusa lino</b></span> <span>Stock: 14</span> <span>$39.000</span></div>
-      <div class="mock-row"><span><b>Bolso mini</b></span> <span style="color:#f59e0b">Stock: 2 ⚠️</span> <span>$45.000</span></div>
-      <div class="mock-row"><span><b>Aretes dorados</b></span> <span>Stock: 31</span> <span>$12.000</span></div>
-    </div>
-    <div id="demo-panel" class="demo-screen glass" style="display:none;">
-      <h3 style="font-size:18px; margin-bottom:8px;">Tu ganancia real, sin adivinar</h3>
-      <div class="mock-row"><span>Ventas del mes</span> <b>$2.480.000</b></div>
-      <div class="mock-row"><span>Ganancia neta</span> <b style="color:var(--ok)">$930.000</b></div>
-      <div class="mock-row"><span>Meta del mes</span> <span style="color:var(--brand)">68% ████████░░</span></div>
-    </div>
-  </section>
-
   <section id="precio">
     <h2 class="section-title">Un solo plan. Un solo precio.</h2>
     <div class="pricing-card glass">
@@ -318,12 +267,12 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
     </div>
   </section>
 
-  <section id="faq" class="faq">
+  <section id="faq" class="faq" style="max-width:720px; margin:0 auto;">
     <h2 class="section-title">Preguntas frecuentes</h2>
-    <details class="glass"><summary>¿Cómo pago y cómo se activa?</summary><p>Haces clic en el botón de WhatsApp, coordinamos el pago y activamos tu acceso.</p></details>
-    <details class="glass"><summary>¿Funciona con TikTok, Instagram y Facebook?</summary><p>Sí. Tú registras los pedidos del live en la aplicación.</p></details>
-    <details class="glass"><summary>¿Necesito instalar algo?</summary><p>Se usa desde el navegador de tu celular o computador.</p></details>
-    <details class="glass"><summary>¿Puedo traer mi inventario de Excel?</summary><p>Sí. Puedes importar tu archivo y empezar con tus productos ya cargados.</p></details>
+    <details class="glass" style="padding:21px 24px; border-radius:18px; margin-bottom:13px; cursor:pointer; transition:background .2s;"><summary style="font-weight:700; font-size:16px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:15px;">¿Cómo pago y cómo se activa?<span style="font-size:22px; color:var(--brand);">+</span></summary><p style="margin-top:12px; color:var(--text-muted); font-size:15px;">Haces clic en el botón de WhatsApp, coordinamos el pago y activamos tu acceso.</p></details>
+    <details class="glass" style="padding:21px 24px; border-radius:18px; margin-bottom:13px; cursor:pointer; transition:background .2s;"><summary style="font-weight:700; font-size:16px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:15px;">¿Funciona con TikTok, Instagram y Facebook?<span style="font-size:22px; color:var(--brand);">+</span></summary><p style="margin-top:12px; color:var(--text-muted); font-size:15px;">Sí. Tú registras los pedidos del live en la aplicación.</p></details>
+    <details class="glass" style="padding:21px 24px; border-radius:18px; margin-bottom:13px; cursor:pointer; transition:background .2s;"><summary style="font-weight:700; font-size:16px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:15px;">¿Necesito instalar algo?<span style="font-size:22px; color:var(--brand);">+</span></summary><p style="margin-top:12px; color:var(--text-muted); font-size:15px;">Se usa desde el navegador de tu celular o computador.</p></details>
+    <details class="glass" style="padding:21px 24px; border-radius:18px; margin-bottom:13px; cursor:pointer; transition:background .2s;"><summary style="font-weight:700; font-size:16px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:15px;">¿Puedo traer mi inventario de Excel?<span style="font-size:22px; color:var(--brand);">+</span></summary><p style="margin-top:12px; color:var(--text-muted); font-size:15px;">Sí. Puedes importar tu archivo y empezar con tus productos ya cargados.</p></details>
   </section>
 </main>
 
@@ -333,12 +282,11 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 
 <!-- ================= MODALES ================= -->
 
-<!-- MODAL LOGIN CLIENTE (2 PASOS) -->
+<!-- MODAL LOGIN CLIENTE -->
 <div class="modal-overlay" id="clientLoginModal">
   <div class="modal-box">
     <h3>🛍️ Acceso a tu Bolsita</h3>
     <p class="subtitle">Ingresa con tu WhatsApp y PIN</p>
-
     <div id="clientLoginStep1">
       <form onsubmit="handleClientLoginStep1(event)">
         <div class="form-group">
@@ -359,12 +307,6 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
         <button class="btn btn-ghost" style="font-size:13px; padding:8px;" onclick="showClientRegister()">¿No tienes cuenta? Regístrate aquí</button>
         <button class="btn btn-ghost" style="font-size:13px; padding:8px; color:var(--brand);" onclick="showClientRecover()">¿Olvidaste tu PIN?</button>
       </div>
-    </div>
-
-    <div id="clientLoginStep2" style="display:none;">
-      <p class="subtitle">Tu número está registrado en varias tiendas. Selecciona una:</p>
-      <div id="storeSelectionList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;"></div>
-      <button class="btn btn-ghost" style="width:100%;" onclick="backToClientStep1()">← Volver</button>
     </div>
   </div>
 </div>
@@ -422,6 +364,16 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
   </div>
 </div>
 
+<!-- MODAL SELECCIÓN DE TIENDA (Nuevo) -->
+<div class="modal-overlay" id="storeSelectionModal">
+  <div class="modal-box">
+    <h3>🏪 Selecciona tu tienda</h3>
+    <p class="subtitle">Tu cuenta está lista. Elige a qué tienda deseas ingresar:</p>
+    <div id="storeSelectionList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;"></div>
+    <button class="btn btn-ghost" style="width:100%; justify-content:center;" onclick="closeStoreSelection()">Cancelar</button>
+  </div>
+</div>
+
 <script>
 // Toggle de tema
 function toggleTheme() {
@@ -440,17 +392,7 @@ function toggleTheme() {
   document.getElementById('themeBtn').textContent = theme === 'dark' ? '🌙' : '☀️';
 })();
 
-// Tabs del demo
-function showDemo(id, btn) {
-  document.querySelectorAll('.demo-screen').forEach(el => el.style.display = 'none');
-  document.querySelectorAll('.demo-tab').forEach(el => el.classList.remove('active'));
-  document.getElementById('demo-' + id).style.display = 'flex';
-  if (btn) btn.classList.add('active');
-}
-
 // ================= LÓGICA DE MODALES =================
-let pendingClientData = null;
-
 function closeClientModals() {
   ['clientLoginModal', 'clientRegisterModal', 'clientRecoverModal'].forEach(id => {
     document.getElementById(id).classList.remove('open');
@@ -458,34 +400,32 @@ function closeClientModals() {
   document.getElementById('cliErr').textContent = '';
   document.getElementById('regErr').textContent = '';
   document.getElementById('recErr').textContent = '';
-  backToClientStep1();
 }
 
 function showClientRegister() {
-  document.getElementById('clientLoginModal').classList.remove('open');
+  closeClientModals();
   document.getElementById('clientRegisterModal').classList.add('open');
 }
 
 function showClientRecover() {
-  document.getElementById('clientLoginModal').classList.remove('open');
+  closeClientModals();
   document.getElementById('clientRecoverModal').classList.add('open');
 }
 
-function backToClientStep1() {
-  document.getElementById('clientLoginStep1').style.display = 'block';
-  document.getElementById('clientLoginStep2').style.display = 'none';
-  pendingClientData = null;
-}
-
 function openClientLogin() {
+  closeClientModals();
   document.getElementById('clientLoginModal').classList.add('open');
 }
 
+function closeStoreSelection() {
+  document.getElementById('storeSelectionModal').classList.remove('open');
+}
+
+// PROBLEMA 2 y 3 SOLUCIONADOS: Manejo correcto de la respuesta del backend
 async function handleClientLoginStep1(e) {
   e.preventDefault();
   const err = document.getElementById('cliErr');
-  err.textContent = 'Verificando...';
-  err.className = 'form-error';
+  err.textContent = 'Verificando...'; err.className = 'form-error';
 
   try {
     const res = await fetch('/api/auth/client/login', {
@@ -494,58 +434,130 @@ async function handleClientLoginStep1(e) {
       body: JSON.stringify({
         whatsapp: document.getElementById('cliWa').value,
         pin: document.getElementById('cliPin').value
-        // NOTA: No enviamos portfolio_slug aquí. El backend devolverá multiple_stores si aplica.
       })
     });
 
     const data = await res.json();
-    if (!res.ok) {
-      if (data.error && data.error.includes('no encontrada')) {
-        throw new Error('WhatsApp o PIN incorrectos.');
-      }
-      throw new Error(data.error || 'Error al ingresar');
+    if (!res.ok) throw new Error(data.error || 'Error al ingresar');
+
+    // Guardar datos básicos
+    localStorage.setItem('pk_token', data.token);
+    localStorage.setItem('pk_user', JSON.stringify(data.user));
+
+    if (data.must_change_pin) {
+      closeClientModals();
+      alert('Por seguridad, debes cambiar tu PIN inicial. Serás redirigido.');
+      window.location.href = '/?t=' + (data.portfolio ? data.portfolio.slug : 'ttshop');
+      return;
     }
 
-    if (data.multiple_stores) {
-      pendingClientData = data;
-      const list = document.getElementById('storeSelectionList');
-      list.innerHTML = data.multiple_stores.map(store =>
-        `<button class="btn btn-outline" style="width:100%;" onclick="finalizeClientLogin('${store.slug}')">
-          🏪 ${store.name}
-        </button>`
-      ).join('');
-      document.getElementById('clientLoginStep1').style.display = 'none';
-      document.getElementById('clientLoginStep2').style.display = 'block';
-      err.textContent = '';
+    if (data.needs_portfolio_selection) {
+      // El usuario es válido, pero necesita elegir tienda
+      closeClientModals();
+      openStoreSelectionModal(data.portfolios);
     } else {
-      finalizeClientLogin(data.portfolio.slug, data);
+      // Login normal con tienda ya asignada
+      localStorage.setItem('pk_slug', data.portfolio.slug);
+      closeClientModals();
+      window.location.href = '/?t=' + data.portfolio.slug;
     }
   } catch (e) {
     err.textContent = e.message;
   }
 }
 
-async function finalizeClientLogin(slug, dataOverride = null) {
-  try {
-    const data = dataOverride || pendingClientData;
-    localStorage.setItem('pk_token', data.token);
-    localStorage.setItem('pk_user', JSON.stringify(data.user));
-    localStorage.setItem('pk_slug', slug);
-
-    closeClientModals();
-    window.location.href = '/?t=' + slug;
-  } catch (e) {
-    document.getElementById('cliErr').textContent = 'Error al seleccionar la tienda.';
-  }
-}
-
 async function handleClientRegister(e) {
   e.preventDefault();
   const err = document.getElementById('regErr');
-  err.textContent = 'Registrando...';
-  err.className = 'form-error';
+  err.textContent = 'Registrando...'; err.className = 'form-error';
 
   try {
     const res = await fetch('/api/auth/client/register', {
       method: 'POST',
-      headers: { 'Content
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: document.getElementById('regName').value,
+        whatsapp: document.getElementById('regWa').value,
+        email: document.getElementById('regEmail').value,
+        pin: document.getElementById('regPin').value
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al registrarse');
+
+    // Guardar token y usuario
+    localStorage.setItem('pk_token', data.token);
+    localStorage.setItem('pk_user', JSON.stringify(data.user));
+    
+    // Cerrar modal de registro y abrir el de selección de tienda
+    closeClientModals();
+    openStoreSelectionModal(data.portfolios || []);
+  } catch (e) {
+    err.textContent = e.message;
+  }
+}
+
+async function handleClientRecover(e) {
+  e.preventDefault();
+  const err = document.getElementById('recErr');
+  err.textContent = 'Enviando...'; err.className = 'form-error';
+
+  try {
+    const res = await fetch('/api/auth/client/forgot-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        whatsapp: document.getElementById('recWa').value,
+        email: document.getElementById('recEmail').value
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'No se pudo enviar el PIN.');
+    err.className = 'form-error success';
+    err.textContent = '✔ Si los datos coinciden, recibirás un PIN temporal en tu correo.';
+  } catch (e) {
+    err.className = 'form-error';
+    err.textContent = e.message;
+  }
+}
+
+function openStoreSelectionModal(portfolios) {
+  const modal = document.getElementById('storeSelectionModal');
+  const list = modal.querySelector('#storeSelectionList');
+  
+  if (!portfolios || portfolios.length === 0) {
+    list.innerHTML = '<p class="form-error">No hay tiendas disponibles en este momento.</p>';
+  } else {
+    list.innerHTML = portfolios.map(p => 
+      `<button class="btn btn-outline" style="width:100%; justify-content:center;" onclick="selectStoreAndLogin('${p.slug}')">
+        🏪 ${p.name}
+      </button>`
+    ).join('');
+  }
+  modal.classList.add('open');
+}
+
+async function selectStoreAndLogin(slug) {
+  try {
+    const res = await fetch('/api/auth/client/select-portfolio', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + localStorage.getItem('pk_token')
+      },
+      body: JSON.stringify({ portfolio_slug: slug })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al seleccionar tienda');
+    
+    localStorage.setItem('pk_slug', data.portfolio.slug);
+    closeStoreSelection();
+    window.location.href = '/?t=' + data.portfolio.slug;
+  } catch (e) {
+    alert(e.message);
+  }
+}
+</script>
+</body>
+</html>

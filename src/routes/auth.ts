@@ -77,81 +77,118 @@ router.post('/admin/forgot-password', async (req: Request, res: Response) => {
     if (user && user.email) {
       const temp = 'Pk' + Math.random().toString(36).slice(2, 8) + Math.floor(Math.random() * 90 + 10);
       await pool.query(`UPDATE users SET password_hash=$2, must_change_password=TRUE WHERE id=$1`, [user.id, await bcrypt.hash(temp, 10)]);
-      await sendMail(user.email, 'Pandala Kawaii · Contraseña temporal', `<p>Tu contraseña temporal es: <b>${temp}</b></p><p>Ingresa al panel y cámbiala cuando se te solicite.</p>`);
+      await sendMail(user.email, 'Tu Live Shop · Contraseña temporal', `<p>Tu contraseña temporal es: <b>${temp}</b></p><p>Ingresa al panel y cámbiala cuando se te solicite.</p>`);
     }
     res.json({ ok: true, message: 'Si el correo existe, enviaremos una contraseña temporal.' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-/* ── Cliente: login ── */
-router.post('/client/login', validate(clientLoginSchema), async (req: Request, res: Response) => {
+/* ── Cliente: login (Corregido para manejar usuarios sin tienda asignada) ── */
+router.post('/client/login', async (req: Request, res: Response) => {
   try {
-    const { whatsapp, pin, portfolio_slug } = req.body;
-    const { rows: [pf] } = await pool.query(`SELECT id FROM portfolios WHERE slug=$1`, [portfolio_slug]);
-    if (!pf) return res.status(404).json({ error: 'Tienda no encontrada' });
+    const { whatsapp, pin } = req.body;
     const tel = String(whatsapp).replace(/\D/g, '');
-    let { rows: [user] } = await pool.query(`SELECT * FROM users WHERE whatsapp=$1 AND portfolio_id=$2 AND role='client' AND status='Activo'`, [tel, pf.id]);
-    if (!user) return res.status(401).json({ error: 'WhatsApp o PIN incorrectos' });
-    if (!user.pin_hash) {
-      if (String(pin) !== '1234') return res.status(401).json({ error: 'Tu PIN inicial es 1234. Ingresa con él y cámbialo.' });
-      await pool.query(`UPDATE users SET pin_hash=$2, must_change_pin=TRUE WHERE id=$1`, [user.id, await bcrypt.hash('1234', 10)]);
-      user.must_change_pin = true;
-      user.pin_hash = await bcrypt.hash('1234', 10);
-    }
-    if (!(await bcrypt.compare(String(pin), user.pin_hash)))
+    
+    // 1. Verificar credenciales globalmente primero
+    const { rows: [user] } = await pool.query(
+      `SELECT * FROM users WHERE whatsapp=$1 AND role='client' AND status='Activo'`, [tel]
+    );
+    
+    if (!user || !(await bcrypt.compare(String(pin), user.pin_hash))) {
       return res.status(401).json({ error: 'WhatsApp o PIN incorrectos' });
-    const token = sign(user);
-    res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 30 * 24 * 60 * 60 * 1000 });
-    res.json({ token, user: { id: user.id, role: 'client', name: user.name, whatsapp: user.whatsapp, city: user.city, address: user.address, email: user.email }, portfolio: { id: pf.id, slug: portfolio_slug }, must_change_pin: !!user.must_change_pin });
+    }
+
+    // 2. Manejar cambio de PIN inicial si es necesario
+    if (user.must_change_pin) {
+      const token = sign(user);
+      res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 30 * 24 * 60 * 60 * 1000 });
+      return res.json({ 
+        token, 
+        user: { id: user.id, role: 'client', name: user.name, whatsapp: user.whatsapp, email: user.email },
+        must_change_pin: true 
+      });
+    }
+
+    // 3. Verificar si ya tiene una tienda asignada
+    if (user.portfolio_id) {
+      const { rows: [pf] } = await pool.query(`SELECT id, name, slug FROM portfolios WHERE id=$1`, [user.portfolio_id]);
+      const token = sign({ ...user, portfolio_id: pf.id });
+      res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 30 * 24 * 60 * 60 * 1000 });
+      return res.json({ 
+        token, 
+        user: { id: user.id, role: 'client', name: user.name, whatsapp: user.whatsapp, city: user.city, address: user.address, email: user.email }, 
+        portfolio: { id: pf.id, slug: pf.slug, name: pf.name }
+      });
+    } else {
+      // 4. No tiene tienda: devolver lista de tiendas para que elija
+      const { rows: portfolios } = await pool.query(`SELECT id, name, slug FROM portfolios ORDER BY name`);
+      const token = sign(user);
+      res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 30 * 24 * 60 * 60 * 1000 });
+      return res.json({
+        needs_portfolio_selection: true,
+        token,
+        user: { id: user.id, role: 'client', name: user.name, whatsapp: user.whatsapp, email: user.email },
+        portfolios
+      });
+    }
   } catch (e: any) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 
-/* ── Cliente: registro (SIN tienda obligatoria) ── */
+/* ── Cliente: seleccionar tienda después del login/registro ── */
+router.post('/client/select-portfolio', async (req: Request, res: Response) => {
+  try {
+    const u = authUser(req);
+    const { portfolio_slug } = req.body;
+    const { rows: [pf] } = await pool.query(`SELECT id, slug, name FROM portfolios WHERE slug=$1`, [portfolio_slug]);
+    if (!pf) return res.status(404).json({ error: 'Tienda no encontrada' });
+    
+    await pool.query(`UPDATE users SET portfolio_id=$1 WHERE id=$2`, [pf.id, u.id]);
+    
+    const token = sign({ ...u, portfolio_id: pf.id });
+    res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 30 * 24 * 60 * 60 * 1000 });
+    
+    res.json({
+      token,
+      portfolio: { id: pf.id, slug: pf.slug, name: pf.name }
+    });
+  } catch (e: any) { res.status(500).json({ error: 'Error del servidor' }); }
+});
+
+/* ── Cliente: registro ── */
 router.post('/client/register', async (req: Request, res: Response) => {
   try {
     const { whatsapp, pin, name, city, address, email } = req.body;
     if (!whatsapp || !pin || !name) return res.status(400).json({ error: 'WhatsApp, PIN y nombre son obligatorios' });
     if (String(pin).length < 4) return res.status(400).json({ error: 'El PIN debe tener al menos 4 dígitos' });
+    
     const tel = String(whatsapp).replace(/\D/g, '');
     const em = email ? String(email).toLowerCase().trim() : null;
     const pinHash = await bcrypt.hash(String(pin), 10);
+    
     const { rows: [existing] } = await pool.query(`SELECT * FROM users WHERE whatsapp=$1 AND role='client'`, [tel]);
     if (existing) {
       return res.status(400).json({ error: 'Este WhatsApp ya está registrado. Inicia sesión o recupera tu PIN.' });
     }
+    
     const { rows: [user] } = await pool.query(
-      `INSERT INTO users (portfolio_id, role, whatsapp, pin_hash, name, city, address, email, status)
-       VALUES (NULL,'client',$1,$2,$3,$4,$5,$6,'Activo')
+      `INSERT INTO users (portfolio_id, role, whatsapp, pin_hash, name, city, address, email, status, must_change_pin)
+       VALUES (NULL,'client',$1,$2,$3,$4,$5,$6,'Activo', TRUE)
        RETURNING id,name,whatsapp,city,address,email`,
       [tel, pinHash, String(name).trim(), city || null, address || null, em]);
+      
     const token = sign(user);
     res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 30 * 24 * 60 * 60 * 1000 });
-    res.json({ token, user: { ...user, role: 'client' }, message: 'Registro exitoso. Ahora selecciona una tienda.' });
+    
+    // Devolvemos las tiendas disponibles para que elija inmediatamente
+    const { rows: portfolios } = await pool.query(`SELECT id, name, slug FROM portfolios ORDER BY name`);
+    
+    res.json({ 
+      token, 
+      user: { ...user, role: 'client' }, 
+      portfolios,
+      message: 'Registro exitoso. Ahora selecciona tu tienda.' 
+    });
   } catch (e: any) { console.error(e); res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
-});
-
-/* ── Cliente: listar tiendas disponibles ── */
-router.get('/client/portfolios', async (req: Request, res: Response) => {
-  try {
-    const { rows } = await pool.query(`SELECT id, name, slug FROM portfolios ORDER BY name`);
-    res.json(rows);
-  } catch (e: any) { res.status(500).json({ error: 'Error del servidor' }); }
-});
-
-/* ── Cliente: asociarse a una tienda ── */
-router.post('/client/join-portfolio', async (req: Request, res: Response) => {
-  try {
-    const u = authUser(req);
-    const { portfolio_slug } = req.body;
-    if (!portfolio_slug) return res.status(400).json({ error: 'Selecciona una tienda' });
-    const { rows: [pf] } = await pool.query(`SELECT id FROM portfolios WHERE slug=$1`, [portfolio_slug]);
-    if (!pf) return res.status(404).json({ error: 'Tienda no encontrada' });
-    const { rows: [existing] } = await pool.query(`SELECT id FROM users WHERE whatsapp=$1 AND portfolio_id=$2 AND role='client'`, [u.whatsapp, pf.id]);
-    if (existing) return res.json({ message: 'Ya estás registrado en esta tienda', portfolio: pf });
-    await pool.query(`INSERT INTO users (portfolio_id, role, whatsapp, pin_hash, name, city, address, email, status)
-      SELECT $1,'client',whatsapp,pin_hash,name,city,address,email,status FROM users WHERE id=$2`, [pf.id, u.id]);
-    res.json({ message: 'Te has unido a la tienda', portfolio: pf });
-  } catch (e: any) { res.status(500).json({ error: 'Error del servidor' }); }
 });
 
 /* ── Cliente: cambiar PIN ── */
@@ -173,7 +210,7 @@ router.post('/client/forgot-pin', async (req: Request, res: Response) => {
     const { rows: [user] } = await pool.query(`SELECT * FROM users WHERE whatsapp=$1 AND role='client' AND LOWER(email)=LOWER($2)`, [tel, em]);
     if (user && user.email) {
       await pool.query(`UPDATE users SET pin_hash=$2, must_change_pin=TRUE WHERE id=$1`, [user.id, await bcrypt.hash('1234', 10)]);
-      await sendMail(user.email, 'Pandala Kawaii · PIN temporal', `<p>Tu PIN temporal es: <b>1234</b></p><p>Ingresa con tu WhatsApp y este PIN; la app te pedirá crear uno nuevo.</p>`);
+      await sendMail(user.email, 'Tu Live Shop · PIN temporal', `<p>Tu PIN temporal es: <b>1234</b></p><p>Ingresa con tu WhatsApp y este PIN; la app te pedirá crear uno nuevo.</p>`);
     }
     res.json({ ok: true, message: 'Si el WhatsApp y el correo coinciden, enviaremos un PIN temporal.' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }

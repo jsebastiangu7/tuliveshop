@@ -530,7 +530,7 @@ async function handleClientLogin(e) {
     localStorage.setItem('pk_user', JSON.stringify(data.user));
     localStorage.setItem('pk_slug', data.portfolio.slug);
     closeAllModals();
-    window.location.href = '/?t=' + data.portfolio.slug;
+    window.location.href = '/client.html?t=' + data.portfolio.slug;
   } catch (e) {
     err.textContent = e.message;
   }
@@ -607,7 +607,7 @@ async function handleClientRegStep2(e) {
     localStorage.setItem('pk_slug', selectedStores[0]);
     
     closeAllModals();
-    window.location.href = '/?t=' + selectedStores[0];
+    window.location.href = '/client.html?t=' + selectedStores[0];
   } catch (e) {
     err.textContent = e.message;
   }

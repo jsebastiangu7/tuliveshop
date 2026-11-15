@@ -99,12 +99,6 @@ header {
 .btn-primary:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 8px 24px var(--brand-glow); }
 .btn-outline { background: var(--surface); color: var(--brand); border: 1px solid var(--brand); backdrop-filter: blur(12px); }
 .btn-outline:hover { background: var(--brand-solid); color: #fff; transform: translateY(-1px); }
-.theme-toggle {
-  width: 42px; height: 42px; border-radius: 14px; border: 1px solid var(--border);
-  background: var(--surface); color: var(--text); cursor: pointer; font-size: 17px;
-  display: flex; align-items: center; justify-content: center; transition: all .2s; backdrop-filter: blur(12px);
-}
-.theme-toggle:hover { background: var(--surface-hover); transform: translateY(-1px); }
 main { max-width: 1160px; margin: 0 auto; padding: 40px 24px 80px; }
 section { margin-bottom: 88px; scroll-margin-top: 110px; }
 .hero { text-align: center; padding: 76px 0 44px; }
@@ -158,10 +152,11 @@ footer a { color: var(--brand); text-decoration: none; }
 .modal-box {
   background: var(--surface); backdrop-filter: blur(24px) saturate(1.6);
   -webkit-backdrop-filter: blur(24px) saturate(1.6); border: 1px solid var(--border);
-  border-radius: 24px; padding: 32px; width: min(440px, 100%); box-shadow: var(--shadow);
-  max-height: calc(100vh - 32px); overflow-y: auto;
+  border-radius: 24px; padding: 32px; width: min(480px, 100%); box-shadow: var(--shadow);
+  max-height: calc(100vh - 32px); overflow-y: auto; position: relative;
 }
 .modal-box h3 { font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; margin-bottom: 8px; text-align: center; }
+.modal-box h4 { font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; margin-bottom: 16px; text-align: center; }
 .modal-box .subtitle { color: var(--text-muted); text-align: center; margin-bottom: 24px; font-size: 14px; }
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--text-muted); }
@@ -173,8 +168,6 @@ footer a { color: var(--brand); text-decoration: none; }
 [data-theme="light"] .form-group input, [data-theme="light"] .form-group select { background: rgba(255,255,255,.75); }
 .form-group input:focus, .form-group select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-glow); }
 .form-group input::placeholder { color: var(--text-muted); opacity: .7; }
-.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
-.modal-actions .btn { flex: 1; justify-content: center; }
 .form-error { color: var(--danger); font-size: 13px; min-height: 18px; margin-top: 8px; text-align: center; }
 .form-error.success { color: var(--ok); }
 button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
@@ -206,10 +199,8 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 <header class="glass">
   <a href="#" class="brand">🎥 Tu <span>Live Shop</span></a>
   <div class="nav-actions">
-    <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn" aria-label="Cambiar tema">🌙</button>
-    <!-- PROBLEMA 1 SOLUCIONADO: Botones claros y separados para Cliente y Tienda -->
-    <button class="btn btn-ghost" onclick="openClientLogin()">🛍️ Ingreso Cliente</button>
-    <a href="/admin.html" class="btn btn-primary">🏪 Ingreso Tienda</a>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn" aria-label="Cambiar tema" style="width:42px;height:42px;border-radius:14px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;">🌙</button>
+    <button class="btn btn-primary" onclick="showMainEntry()">Ingresar</button>
   </div>
 </header>
 
@@ -272,7 +263,6 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
     <details class="glass" style="padding:21px 24px; border-radius:18px; margin-bottom:13px; cursor:pointer; transition:background .2s;"><summary style="font-weight:700; font-size:16px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:15px;">¿Cómo pago y cómo se activa?<span style="font-size:22px; color:var(--brand);">+</span></summary><p style="margin-top:12px; color:var(--text-muted); font-size:15px;">Haces clic en el botón de WhatsApp, coordinamos el pago y activamos tu acceso.</p></details>
     <details class="glass" style="padding:21px 24px; border-radius:18px; margin-bottom:13px; cursor:pointer; transition:background .2s;"><summary style="font-weight:700; font-size:16px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:15px;">¿Funciona con TikTok, Instagram y Facebook?<span style="font-size:22px; color:var(--brand);">+</span></summary><p style="margin-top:12px; color:var(--text-muted); font-size:15px;">Sí. Tú registras los pedidos del live en la aplicación.</p></details>
     <details class="glass" style="padding:21px 24px; border-radius:18px; margin-bottom:13px; cursor:pointer; transition:background .2s;"><summary style="font-weight:700; font-size:16px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:15px;">¿Necesito instalar algo?<span style="font-size:22px; color:var(--brand);">+</span></summary><p style="margin-top:12px; color:var(--text-muted); font-size:15px;">Se usa desde el navegador de tu celular o computador.</p></details>
-    <details class="glass" style="padding:21px 24px; border-radius:18px; margin-bottom:13px; cursor:pointer; transition:background .2s;"><summary style="font-weight:700; font-size:16px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:15px;">¿Puedo traer mi inventario de Excel?<span style="font-size:22px; color:var(--brand);">+</span></summary><p style="margin-top:12px; color:var(--text-muted); font-size:15px;">Sí. Puedes importar tu archivo y empezar con tus productos ya cargados.</p></details>
   </section>
 </main>
 
@@ -280,97 +270,112 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
   <p>© 2026 Tu Live Shop · Hecho para vendedores de lives en Colombia.</p>
 </footer>
 
-<!-- ================= MODALES ================= -->
+<!-- ================= MODALES DE INGRESO ================= -->
 
-<!-- MODAL LOGIN CLIENTE -->
-<div class="modal-overlay" id="clientLoginModal">
+<!-- 1. Modal Principal de Entrada -->
+<div class="modal-overlay" id="mainEntryModal">
+  <div class="modal-box" style="max-width: 400px;">
+    <h3>Bienvenido a Tu Live Shop</h3>
+    <p class="subtitle">Selecciona cómo deseas ingresar</p>
+    <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px;">
+      <button class="btn btn-primary" style="width: 100%; justify-content: center; padding: 16px;" onclick="showClientSection()">🛍️ Soy Cliente</button>
+      <button class="btn btn-outline" style="width: 100%; justify-content: center; padding: 16px;" onclick="showStoreSection()">🏪 Soy Tienda (Administrador)</button>
+    </div>
+    <button class="btn btn-ghost" style="width: 100%; margin-top: 12px;" onclick="closeAllModals()">Cerrar</button>
+  </div>
+</div>
+
+<!-- 2. Modal Sección Cliente -->
+<div class="modal-overlay" id="clientSectionModal">
   <div class="modal-box">
-    <h3>🛍️ Acceso a tu Bolsita</h3>
-    <p class="subtitle">Ingresa con tu WhatsApp y PIN</p>
-    <div id="clientLoginStep1">
-      <form onsubmit="handleClientLoginStep1(event)">
-        <div class="form-group">
-          <label>WhatsApp</label>
-          <input type="text" id="cliWa" inputmode="numeric" placeholder="3001234567" required>
-        </div>
-        <div class="form-group">
-          <label>PIN</label>
-          <input type="password" id="cliPin" inputmode="numeric" placeholder="••••" minlength="4" required>
-        </div>
+    <button class="btn btn-ghost" style="position: absolute; top: 10px; left: 10px; padding: 4px 8px;" onclick="showMainEntry()">← Volver</button>
+    <h3>🛍️ Acceso Cliente</h3>
+    
+    <!-- Cliente: Login -->
+    <div id="clientLoginView">
+      <form onsubmit="handleClientLogin(event)">
+        <div class="form-group"><label>WhatsApp</label><input type="text" id="cliWa" inputmode="numeric" placeholder="3001234567" required></div>
+        <div class="form-group"><label>PIN</label><input type="password" id="cliPin" inputmode="numeric" placeholder="••••" minlength="4" required></div>
         <div class="form-error" id="cliErr"></div>
-        <div class="modal-actions">
-          <button type="button" class="btn btn-ghost" onclick="closeClientModals()">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Ingresar</button>
-        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Ingresar</button>
       </form>
-      <div style="text-align:center; margin-top:16px; display:flex; flex-direction:column; gap:8px;">
-        <button class="btn btn-ghost" style="font-size:13px; padding:8px;" onclick="showClientRegister()">¿No tienes cuenta? Regístrate aquí</button>
-        <button class="btn btn-ghost" style="font-size:13px; padding:8px; color:var(--brand);" onclick="showClientRecover()">¿Olvidaste tu PIN?</button>
+      <div style="text-align: center; margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
+        <button class="btn btn-ghost" style="font-size: 13px; padding: 8px;" onclick="showClientRegister()">¿No tienes cuenta? Regístrate aquí</button>
+        <button class="btn btn-ghost" style="font-size: 13px; padding: 8px; color: var(--brand);" onclick="showClientRecover()">¿Olvidaste tu PIN?</button>
       </div>
+    </div>
+
+    <!-- Cliente: Registro Paso 1 -->
+    <div id="clientRegisterView1" style="display: none;">
+      <h4>Paso 1: Tus datos</h4>
+      <form onsubmit="handleClientRegisterStep1(event)">
+        <div class="form-group"><label>Nombre completo</label><input id="regName" required></div>
+        <div class="form-group"><label>WhatsApp</label><input type="text" id="regWa" inputmode="numeric" placeholder="3001234567" required></div>
+        <div class="form-group"><label>Ciudad</label><input id="regCity"></div>
+        <div class="form-group"><label>Dirección</label><input id="regAddress"></div>
+        <div class="form-group"><label>Crea tu PIN (4 a 8 dígitos)</label><input type="password" id="regPin" inputmode="numeric" minlength="4" maxlength="8" required></div>
+        <div class="form-error" id="regErr1"></div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Siguiente</button>
+      </form>
+      <button class="btn btn-ghost" style="width: 100%; margin-top: 8px;" onclick="showClientLogin()">Volver al login</button>
+    </div>
+
+    <!-- Cliente: Registro Paso 2 -->
+    <div id="clientRegisterView2" style="display: none;">
+      <h4>Paso 2: Selecciona tus tiendas</h4>
+      <p class="subtitle">Marca las tiendas a las que deseas tener acceso:</p>
+      <div id="storeSelectionList" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; max-height: 200px; overflow-y: auto;"></div>
+      <div class="form-error" id="regErr2"></div>
+      <button class="btn btn-primary" style="width: 100%;" onclick="handleClientRegisterStep2()">Crear usuario</button>
+      <button class="btn btn-ghost" style="width: 100%; margin-top: 8px;" onclick="showClientRegisterStep1()">Atrás</button>
+    </div>
+
+    <!-- Cliente: Recuperar PIN -->
+    <div id="clientRecoverView" style="display: none;">
+      <h4>Recuperar PIN</h4>
+      <p class="subtitle">Te enviaremos un PIN temporal a tu correo registrado.</p>
+      <form onsubmit="handleClientRecover(event)">
+        <div class="form-group"><label>WhatsApp registrado</label><input type="text" id="recWa" inputmode="numeric" placeholder="3001234567" required></div>
+        <div class="form-group"><label>Correo electrónico registrado</label><input type="email" id="recEmail" required></div>
+        <div class="form-error" id="recErr"></div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Enviar PIN temporal</button>
+      </form>
+      <button class="btn btn-ghost" style="width: 100%; margin-top: 8px;" onclick="showClientLogin()">Volver al login</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL REGISTRO CLIENTE -->
-<div class="modal-overlay" id="clientRegisterModal">
+<!-- 3. Modal Sección Tienda -->
+<div class="modal-overlay" id="storeSectionModal">
   <div class="modal-box">
-    <h3>📝 Crear cuenta de Cliente</h3>
-    <form onsubmit="handleClientRegister(event)">
-      <div class="form-group">
-        <label>Nombre completo</label>
-        <input id="regName" required>
+    <button class="btn btn-ghost" style="position: absolute; top: 10px; left: 10px; padding: 4px 8px;" onclick="showMainEntry()">← Volver</button>
+    <h3>🏪 Acceso Tienda</h3>
+    
+    <!-- Tienda: Login -->
+    <div id="storeLoginView">
+      <form onsubmit="handleStoreLogin(event)">
+        <div class="form-group"><label>Correo electrónico</label><input type="email" id="storeEmail" required></div>
+        <div class="form-group"><label>Contraseña</label><input type="password" id="storePass" required></div>
+        <div class="form-error" id="storeErr"></div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Ingresar al panel</button>
+      </form>
+      <div style="text-align: center; margin-top: 16px;">
+        <button class="btn btn-ghost" style="font-size: 13px; padding: 8px; color: var(--brand);" onclick="showStoreRecover()">¿Olvidaste tu contraseña?</button>
       </div>
-      <div class="form-group">
-        <label>WhatsApp</label>
-        <input type="text" id="regWa" inputmode="numeric" placeholder="3001234567" required>
-      </div>
-      <div class="form-group">
-        <label>Correo (para recuperar tu PIN)</label>
-        <input type="email" id="regEmail" required>
-      </div>
-      <div class="form-group">
-        <label>Crea tu PIN (4 a 8 dígitos)</label>
-        <input type="password" id="regPin" inputmode="numeric" minlength="4" maxlength="8" required>
-      </div>
-      <div class="form-error" id="regErr"></div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" onclick="closeClientModals()">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Registrarme</button>
-      </div>
-    </form>
-  </div>
-</div>
+    </div>
 
-<!-- MODAL RECUPERAR PIN -->
-<div class="modal-overlay" id="clientRecoverModal">
-  <div class="modal-box">
-    <h3>🔑 Recuperar PIN</h3>
-    <p class="subtitle">Te enviaremos un PIN temporal a tu correo registrado.</p>
-    <form onsubmit="handleClientRecover(event)">
-      <div class="form-group">
-        <label>WhatsApp registrado</label>
-        <input type="text" id="recWa" inputmode="numeric" placeholder="3001234567" required>
-      </div>
-      <div class="form-group">
-        <label>Correo registrado</label>
-        <input type="email" id="recEmail" required>
-      </div>
-      <div class="form-error" id="recErr"></div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" onclick="closeClientModals()">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Enviar PIN temporal</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- MODAL SELECCIÓN DE TIENDA (Nuevo) -->
-<div class="modal-overlay" id="storeSelectionModal">
-  <div class="modal-box">
-    <h3>🏪 Selecciona tu tienda</h3>
-    <p class="subtitle">Tu cuenta está lista. Elige a qué tienda deseas ingresar:</p>
-    <div id="storeSelectionList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;"></div>
-    <button class="btn btn-ghost" style="width:100%; justify-content:center;" onclick="closeStoreSelection()">Cancelar</button>
+    <!-- Tienda: Recuperar Contraseña -->
+    <div id="storeRecoverView" style="display: none;">
+      <h4>Recuperar Contraseña</h4>
+      <p class="subtitle">Ingresa tu correo y número de documento para recibir un enlace de recuperación.</p>
+      <form onsubmit="handleStoreRecover(event)">
+        <div class="form-group"><label>Correo electrónico registrado</label><input type="email" id="storeRecEmail" required></div>
+        <div class="form-group"><label>Número de documento (NIT/CC)</label><input type="text" id="storeRecDoc" required></div>
+        <div class="form-error" id="storeRecErr"></div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Enviar recuperación</button>
+      </form>
+      <button class="btn btn-ghost" style="width: 100%; margin-top: 8px;" onclick="showStoreLogin()">Volver al login</button>
+    </div>
   </div>
 </div>
 
@@ -393,72 +398,101 @@ function toggleTheme() {
 })();
 
 // ================= LÓGICA DE MODALES =================
-function closeClientModals() {
-  ['clientLoginModal', 'clientRegisterModal', 'clientRecoverModal'].forEach(id => {
-    document.getElementById(id).classList.remove('open');
-  });
-  document.getElementById('cliErr').textContent = '';
-  document.getElementById('regErr').textContent = '';
-  document.getElementById('recErr').textContent = '';
+function closeAllModals() {
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+  document.querySelectorAll('.form-error').forEach(e => { e.textContent = ''; e.className = 'form-error'; });
+}
+
+function showMainEntry() {
+  closeAllModals();
+  document.getElementById('mainEntryModal').classList.add('open');
+}
+
+function showClientSection() {
+  closeAllModals();
+  document.getElementById('clientSectionModal').classList.add('open');
+  showClientLogin();
+}
+
+function showClientLogin() {
+  document.getElementById('clientLoginView').style.display = 'block';
+  document.getElementById('clientRegisterView1').style.display = 'none';
+  document.getElementById('clientRegisterView2').style.display = 'none';
+  document.getElementById('clientRecoverView').style.display = 'none';
 }
 
 function showClientRegister() {
-  closeClientModals();
-  document.getElementById('clientRegisterModal').classList.add('open');
+  document.getElementById('clientLoginView').style.display = 'none';
+  document.getElementById('clientRegisterView1').style.display = 'block';
+  document.getElementById('clientRegisterView2').style.display = 'none';
+  document.getElementById('clientRecoverView').style.display = 'none';
+}
+
+function showClientRegisterStep1() {
+  document.getElementById('clientRegisterView1').style.display = 'block';
+  document.getElementById('clientRegisterView2').style.display = 'none';
 }
 
 function showClientRecover() {
-  closeClientModals();
-  document.getElementById('clientRecoverModal').classList.add('open');
+  document.getElementById('clientLoginView').style.display = 'none';
+  document.getElementById('clientRegisterView1').style.display = 'none';
+  document.getElementById('clientRegisterView2').style.display = 'none';
+  document.getElementById('clientRecoverView').style.display = 'block';
 }
 
-function openClientLogin() {
-  closeClientModals();
-  document.getElementById('clientLoginModal').classList.add('open');
+function showStoreSection() {
+  closeAllModals();
+  document.getElementById('storeSectionModal').classList.add('open');
+  showStoreLogin();
 }
 
-function closeStoreSelection() {
-  document.getElementById('storeSelectionModal').classList.remove('open');
+function showStoreLogin() {
+  document.getElementById('storeLoginView').style.display = 'block';
+  document.getElementById('storeRecoverView').style.display = 'none';
 }
 
-// PROBLEMA 2 y 3 SOLUCIONADOS: Manejo correcto de la respuesta del backend
-async function handleClientLoginStep1(e) {
+function showStoreRecover() {
+  document.getElementById('storeLoginView').style.display = 'none';
+  document.getElementById('storeRecoverView').style.display = 'block';
+}
+
+// ================= LÓGICA DE CLIENTE =================
+let tempClientData = {};
+
+async function handleClientLogin(e) {
   e.preventDefault();
   const err = document.getElementById('cliErr');
-  err.textContent = 'Verificando...'; err.className = 'form-error';
-
+  err.textContent = 'Verificando...';
   try {
     const res = await fetch('/api/auth/client/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        whatsapp: document.getElementById('cliWa').value,
-        pin: document.getElementById('cliPin').value
-      })
+      body: JSON.stringify({ whatsapp: document.getElementById('cliWa').value, pin: document.getElementById('cliPin').value })
     });
-
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error al ingresar');
-
-    // Guardar datos básicos
+    
     localStorage.setItem('pk_token', data.token);
     localStorage.setItem('pk_user', JSON.stringify(data.user));
-
-    if (data.must_change_pin) {
-      closeClientModals();
-      alert('Por seguridad, debes cambiar tu PIN inicial. Serás redirigido.');
-      window.location.href = '/?t=' + (data.portfolio ? data.portfolio.slug : 'ttshop');
-      return;
-    }
-
+    
     if (data.needs_portfolio_selection) {
-      // El usuario es válido, pero necesita elegir tienda
-      closeClientModals();
-      openStoreSelectionModal(data.portfolios);
+      // Mostrar selección de tiendas si tiene varias
+      const list = document.getElementById('storeSelectionList');
+      list.innerHTML = data.portfolios.map(p => 
+        `<button class="btn btn-outline" style="width:100%; justify-content:center;" onclick="finalizeClientLogin('${p.slug}')">🏪 ${p.name}</button>`
+      ).join('');
+      document.getElementById('clientLoginView').style.display = 'none';
+      document.getElementById('clientRegisterView2').style.display = 'block';
+      document.querySelector('#clientRegisterView2 h4').textContent = 'Selecciona tu tienda';
+      document.querySelector('#clientRegisterView2 .subtitle').textContent = 'Tu cuenta está activa en varias tiendas:';
+      // Ocultar botón de crear y cambiar lógica
+      document.querySelector('#clientRegisterView2 .btn-primary').textContent = 'Ingresar';
+      document.querySelector('#clientRegisterView2 .btn-primary').onclick = function() {
+         // Reutilizamos la lógica de selección
+      };
     } else {
-      // Login normal con tienda ya asignada
       localStorage.setItem('pk_slug', data.portfolio.slug);
-      closeClientModals();
+      closeAllModals();
       window.location.href = '/?t=' + data.portfolio.slug;
     }
   } catch (e) {
@@ -466,33 +500,68 @@ async function handleClientLoginStep1(e) {
   }
 }
 
-async function handleClientRegister(e) {
+async function handleClientRegisterStep1(e) {
   e.preventDefault();
-  const err = document.getElementById('regErr');
-  err.textContent = 'Registrando...'; err.className = 'form-error';
+  const err = document.getElementById('regErr1');
+  err.textContent = 'Cargando tiendas...';
+  try {
+    tempClientData = {
+      name: document.getElementById('regName').value,
+      whatsapp: document.getElementById('regWa').value.replace(/\D/g, ''),
+      city: document.getElementById('regCity').value,
+      address: document.getElementById('regAddress').value,
+      pin: document.getElementById('regPin').value
+    };
+    
+    const res = await fetch('/api/auth/client/portfolios');
+    const stores = await res.json();
+    
+    const list = document.getElementById('storeSelectionList');
+    if (!stores.length) {
+      list.innerHTML = '<p class="note" style="text-align:center; color:var(--text-muted);">No hay tiendas disponibles en este momento.</p>';
+    } else {
+      list.innerHTML = stores.map(s => `
+        <label style="display:flex; align-items:center; gap:10px; padding:12px; background:var(--bg); border-radius:10px; cursor:pointer; border:1px solid var(--border);">
+          <input type="checkbox" class="store-checkbox" value="${s.slug}" style="width:18px; height:18px;">
+          <span style="font-weight:600;">🏪 ${s.name}</span>
+        </label>
+      `).join('');
+    }
+    
+    document.getElementById('clientRegisterView1').style.display = 'none';
+    document.getElementById('clientRegisterView2').style.display = 'block';
+    document.querySelector('#clientRegisterView2 h4').textContent = 'Paso 2: Selecciona tus tiendas';
+    document.querySelector('#clientRegisterView2 .btn-primary').textContent = 'Crear usuario';
+    document.querySelector('#clientRegisterView2 .btn-primary').onclick = handleClientRegisterStep2;
+    err.textContent = '';
+  } catch (e) {
+    err.textContent = 'Error al cargar tiendas. Intenta de nuevo.';
+  }
+}
 
+async function handleClientRegisterStep2() {
+  const checkboxes = document.querySelectorAll('.store-checkbox:checked');
+  const err = document.getElementById('regErr2');
+  if (checkboxes.length === 0) {
+    err.textContent = 'Selecciona al menos una tienda';
+    return;
+  }
+  err.textContent = 'Creando usuario...';
+  
+  const selectedSlugs = Array.from(checkboxes).map(cb => cb.value);
+  
   try {
     const res = await fetch('/api/auth/client/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: document.getElementById('regName').value,
-        whatsapp: document.getElementById('regWa').value,
-        email: document.getElementById('regEmail').value,
-        pin: document.getElementById('regPin').value
-      })
+      body: JSON.stringify({ ...tempClientData, portfolio_slugs: selectedSlugs })
     });
-
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error al registrarse');
-
-    // Guardar token y usuario
-    localStorage.setItem('pk_token', data.token);
-    localStorage.setItem('pk_user', JSON.stringify(data.user));
     
-    // Cerrar modal de registro y abrir el de selección de tienda
-    closeClientModals();
-    openStoreSelectionModal(data.portfolios || []);
+    closeAllModals();
+    alert('¡Registro exitoso! Ahora puedes iniciar sesión.');
+    showClientSection();
   } catch (e) {
     err.textContent = e.message;
   }
@@ -501,8 +570,7 @@ async function handleClientRegister(e) {
 async function handleClientRecover(e) {
   e.preventDefault();
   const err = document.getElementById('recErr');
-  err.textContent = 'Enviando...'; err.className = 'form-error';
-
+  err.textContent = 'Enviando...';
   try {
     const res = await fetch('/api/auth/client/forgot-pin', {
       method: 'POST',
@@ -522,40 +590,54 @@ async function handleClientRecover(e) {
   }
 }
 
-function openStoreSelectionModal(portfolios) {
-  const modal = document.getElementById('storeSelectionModal');
-  const list = modal.querySelector('#storeSelectionList');
-  
-  if (!portfolios || portfolios.length === 0) {
-    list.innerHTML = '<p class="form-error">No hay tiendas disponibles en este momento.</p>';
-  } else {
-    list.innerHTML = portfolios.map(p => 
-      `<button class="btn btn-outline" style="width:100%; justify-content:center;" onclick="selectStoreAndLogin('${p.slug}')">
-        🏪 ${p.name}
-      </button>`
-    ).join('');
-  }
-  modal.classList.add('open');
-}
-
-async function selectStoreAndLogin(slug) {
+// ================= LÓGICA DE TIENDA =================
+async function handleStoreLogin(e) {
+  e.preventDefault();
+  const err = document.getElementById('storeErr');
+  err.textContent = 'Verificando...';
   try {
-    const res = await fetch('/api/auth/client/select-portfolio', {
+    const res = await fetch('/api/auth/admin/login', {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + localStorage.getItem('pk_token')
-      },
-      body: JSON.stringify({ portfolio_slug: slug })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: document.getElementById('storeEmail').value,
+        password: document.getElementById('storePass').value
+      })
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Error al seleccionar tienda');
+    if (!res.ok) throw new Error(data.error || 'Credenciales inválidas');
     
-    localStorage.setItem('pk_slug', data.portfolio.slug);
-    closeStoreSelection();
-    window.location.href = '/?t=' + data.portfolio.slug;
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    if (data.portfolio) localStorage.setItem('portfolio', JSON.stringify(data.portfolio));
+    
+    closeAllModals();
+    window.location.href = '/admin.html';
   } catch (e) {
-    alert(e.message);
+    err.textContent = e.message;
+  }
+}
+
+async function handleStoreRecover(e) {
+  e.preventDefault();
+  const err = document.getElementById('storeRecErr');
+  err.textContent = 'Enviando...';
+  try {
+    const res = await fetch('/api/auth/admin/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: document.getElementById('storeRecEmail').value,
+        document: document.getElementById('storeRecDoc').value
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'No se pudo enviar el correo.');
+    err.className = 'form-error success';
+    err.textContent = '✔ Si los datos coinciden, recibirás un correo de recuperación.';
+  } catch (e) {
+    err.className = 'form-error';
+    err.textContent = e.message;
   }
 }
 </script>

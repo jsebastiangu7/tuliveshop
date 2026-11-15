@@ -248,7 +248,7 @@ a.btn {
 .btn.danger,
 .btn.btn-danger {
   background: var(--danger) !important;
-  color: #fff !important;
+  color: var(--brand-ink) !important;
   border-color: transparent !important;
   box-shadow: 0 10px 24px -10px var(--danger) !important;
 }

@@ -115,10 +115,11 @@ h2 { font-size: 18px; font-weight: 700; margin: 0 0 12px; }
 h3 { font-size: 15px; font-weight: 700; margin: 14px 0 6px; }
 .note { color: var(--text-muted); font-size: 13px; }
 .panel { padding: 22px; border-radius: 18px; margin-bottom: 20px; }
-.fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
-.field { display: flex; flex-direction: column; gap: 5px; }
+.fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 10px; }
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .field label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
 input, select, textarea {
+  min-width: 0; max-width: 100%;
   padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
   background: var(--bg); color: var(--text); font: inherit; font-size: 14px;
 }
@@ -175,8 +176,11 @@ table.adm th:hover { color: var(--brand); }
   .toolbar { gap: 6px; }
   .toolbar input, .toolbar select { flex: 1 1 46%; min-width: 0; }
   .modal { padding: 16px; }
-  .fgrid { grid-template-columns: 1fr 1fr; }
+  .fgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .card .metric { font-size: 22px; }
+}
+@media (max-width: 430px) {
+  .fgrid { grid-template-columns: minmax(0, 1fr); }
 }
 </style>
 </head>
@@ -501,6 +505,15 @@ table.adm th:hover { color: var(--brand); }
       </div>
       <div class="actions" style="margin-top:12px"><button class="btn primary" onclick="saveGeneral()">Guardar configuración</button></div>
     </div>
+    <div class="panel glass">
+      <h2>📥 Importar datos de la versión anterior (JSON)</h2>
+      <p class="note">Carga el archivo JSON de tu software anterior. Agrega y actualiza categorías, productos, kits, clientes, pedidos y abonos. <b>No borra</b> lo que ya tienes y, si algo falla, no se guarda nada.</p>
+      <div class="actions">
+        <button class="btn primary" onclick="document.getElementById('importFile').click()">Seleccionar archivo JSON</button>
+        <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="onImportFile(event)">
+      </div>
+      <div id="importResult" class="note" style="margin-top:12px"></div>
+    </div>
     <div class="panel glass" style="border: 2px solid var(--danger) !important; background: rgba(239, 68, 68, 0.05) !important;">
       <h2 style="color:var(--danger)">⚠️ Zona de peligro: Borrar toda la tienda</h2>
       <p class="note" style="color:var(--danger)">Esta acción eliminará <b>permanentemente</b> todo el inventario, categorías, kits, clientes, pedidos, abonos, logística, objetivos, donaciones y la configuración personalizada. <b>No se puede deshacer.</b></p>
@@ -621,10 +634,17 @@ table.adm th:hover { color: var(--brand); }
   </div>
 </div></div>
 
+<!-- MODAL: Importando JSON -->
+<div id="importModal" class="modal-backdrop"><div class="modal" style="max-width:420px; text-align:center">
+  <h3 style="margin-top:0">⏳ Importando datos…</h3>
+  <p class="note">No cierres esta ventana. Puede tardar un poco.</p>
+  <p id="importTimer" style="font-weight:800">Tiempo: 0s</p>
+</div></div>
+
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="/admin.js"></script>
+<script src="/admin.js?v=3"></script>
 <script>
 // Toggle de tema
 function toggleTheme() {

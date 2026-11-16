@@ -88,17 +88,20 @@ function logout() {
 }
 
 /* ---------- Menú del administrador ---------- */
-function toggleUserMenu() {
-  const m = $('userMenu'); m.classList.toggle('hidden');
-  if (m.classList.contains('hidden')) return;
+function placeUserMenu() {
+  const m = $('userMenu'); if (!m || m.classList.contains('hidden')) return;
   // El botón cambia de lugar según el ancho de pantalla: se mide y se corrige para que el menú nunca se salga
   m.style.transform = '';
-  const r = m.getBoundingClientRect(), pad = 8;
+  const vw = document.documentElement.clientWidth || window.innerWidth, pad = 8;
+  const r = m.getBoundingClientRect();
   let dx = 0;
-  if (r.right > innerWidth - pad) dx = innerWidth - pad - r.right;
-  if (r.left + dx < pad) dx = pad - r.left;
+  if (r.left < pad) dx = pad - r.left;
+  else if (r.right > vw - pad) dx = vw - pad - r.right;
   if (dx) m.style.transform = `translateX(${Math.round(dx)}px)`;
 }
+function toggleUserMenu() { $('userMenu').classList.toggle('hidden'); placeUserMenu(); }
+window.addEventListener('resize', placeUserMenu);
+window.addEventListener('orientationchange', () => setTimeout(placeUserMenu, 150));
 function closeUserMenu() { const m = $('userMenu'); if (m) m.classList.add('hidden'); }
 function menuGo(v) { closeUserMenu(); showTab(v); }
 document.addEventListener('click', (e) => { if (!e.target.closest('.who-wrap')) closeUserMenu(); });
@@ -162,7 +165,7 @@ function renderLegal() {
 function injectStyleOnce() {
   if ($('admExtraCss')) return;
   const s = document.createElement('style'); s.id = 'admExtraCss';
-  s.textContent = `@media(max-width:900px){header{padding:8px 10px}.hdr-bottom{gap:8px}nav#tabs{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:thin}.hdr-icons{margin-left:0}} @media(max-width:650px){.toolbar{gap:6px}.toolbar input,.toolbar select{flex:1 1 46%;min-width:0}.modal{padding:16px}.fgrid{grid-template-columns:1fr 1fr}.who-btn span{max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.metric{font-size:23px}} @media(max-width:430px){.fgrid{grid-template-columns:1fr}.cards{grid-template-columns:1fr 1fr}.metric{font-size:21px;white-space:nowrap}} .imp-table input,.imp-table select{padding:6px 8px;font-size:12.5px;min-width:70px}`;
+  s.textContent = `@media(max-width:900px){header{padding:8px 10px}.hdr-bottom{gap:8px}nav#tabs{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:thin}.hdr-icons{margin-left:0}} @media(max-width:650px){.toolbar{gap:6px}.toolbar input,.toolbar select{flex:1 1 46%;min-width:0}.modal{padding:16px}.fgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.who-btn span{max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.metric{font-size:23px}} @media(max-width:430px){.fgrid{grid-template-columns:minmax(0,1fr)}.cards{grid-template-columns:1fr 1fr}.metric{font-size:21px;white-space:nowrap}} .imp-table input,.imp-table select{padding:6px 8px;font-size:12.5px;min-width:70px}`;
   document.head.appendChild(s);
 }
 function ensureXLSX() {
@@ -1403,9 +1406,4 @@ async function generateInvoice(orderId) {
     doc.text('No. ' + o.order_number, 196, y + 9, { align: 'right' });
     doc.text('Fecha: ' + String(o.created_at || '').slice(0, 10), 196, y + 14, { align: 'right' });
     doc.text('Estado: ' + (STATUS_LABEL[o.status] || o.status), 196, y + 19, { align: 'right' });
-    const lineY = Math.max(iy, y + 24) + 2;
-    doc.setDrawColor(...green); doc.setLineWidth(0.6); doc.line(14, lineY, 196, lineY);
-    let by = lineY + 8;
-    setTitleFont('bold'); doc.setFontSize(9); doc.setTextColor(...muted);
-    doc.text('CLIENTE', 14, by);
-    setBodyFont('normal'); doc.setFontSize(
+    const lineY = Math.max(i

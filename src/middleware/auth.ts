@@ -3,7 +3,6 @@ import jwt from 'jsonwebtoken';
 
 export interface AuthRequest extends Request {
   user?: any;
-  cookies?: Record<string, string>;
 }
 
 export function authenticate(req: AuthRequest, res: Response, next: NextFunction) {

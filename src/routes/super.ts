@@ -28,6 +28,9 @@ router.post('/portfolios', async (req: AuthRequest, res) => {
     const { name, slug, bre_b_key, whatsapp_number, order_prefix } = req.body;
     const cleanSlug = String(slug || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
     if (!String(name || '').trim()) return res.status(400).json({ error: 'El nombre de la tienda es obligatorio' });
+    // Sin valores por defecto: antes una tienda nueva cobraba en el Bre-b/WhatsApp de Pandala Kawaii
+    if (!String(bre_b_key || '').trim()) return res.status(400).json({ error: 'La llave Bre-b de la tienda es obligatoria' });
+    if (!String(whatsapp_number || '').trim()) return res.status(400).json({ error: 'El WhatsApp de la tienda es obligatorio' });
     if (!/^[a-z0-9-]{3,30}$/.test(cleanSlug)) return res.status(400).json({ error: 'El enlace debe tener 3-30 caracteres (a-z, 0-9, guiones)' });
     const { rows: [dup] } = await pool.query(`SELECT id FROM portfolios WHERE slug = $1`, [cleanSlug]);
     if (dup) return res.status(400).json({ error: 'Ese enlace ya está en uso por otra tienda' });
@@ -35,8 +38,8 @@ router.post('/portfolios', async (req: AuthRequest, res) => {
       `INSERT INTO portfolios (name, slug, bre_b_key, whatsapp_number, order_prefix)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
       [String(name).trim(), cleanSlug,
-       String(bre_b_key || '').trim() || '3058173611',
-       String(whatsapp_number || '').trim() || '+573058173611',
+       String(bre_b_key).trim(),
+       String(whatsapp_number).trim(),
        String(order_prefix || 'BOL').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) || 'BOL']);
     for (const [key, value] of [['inventory_reserve_hours', '12'], ['payment_confirm_hours', '48'], ['min_payment_amount', '10000']]) {
       await pool.query(

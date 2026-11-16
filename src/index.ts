@@ -64,7 +64,7 @@ app.use(express.static(path.join(process.cwd(), 'public'), {
   extensions: ['html', 'js', 'css', 'png', 'jpg', 'jpeg', 'svg', 'ico', 'webp'], // Solo sirve estos tipos
   setHeaders: (res, path) => {
     if (path.endsWith('.js') || path.endsWith('.css')) {
-      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache de 1 día para estáticos
+      res.setHeader('Cache-Control', 'no-cache'); // Revalida siempre (ETag): evita que el celular use un JS/CSS viejo tras actualizar
     }
   }
 }));

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { pool } from '../db.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import type { AuthRequest } from '../middleware/auth.js';
-import { productAvailable, kitAvailable, getOrderTotals, money, ensureShipmentFor } from '../services/inventory.js';
+import { productAvailable, kitAvailable, lockProducts, kitProductIds, getOrderTotals, money, ensureShipmentFor } from '../services/inventory.js';
 import { emitPortfolio } from '../realtime.js';
 
 const router = Router();
@@ -68,39 +68,77 @@ router.post('/', authenticate, requireRole('client'), async (req: AuthRequest, r
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 
-// Agregar producto/kit (valida stock disponible en tiempo real)
+// Agregar producto/kit (valida stock disponible en tiempo real).
+// Todo ocurre en UNA transacción con las filas de producto bloqueadas: dos clientes que piden
+// la última unidad al mismo tiempo se atienden en fila y el segundo recibe "Stock insuficiente".
 router.post('/:id/items', authenticate, requireRole('client'), async (req: AuthRequest, res) => {
+  const { product_id, kit_id } = req.body;
+  const qty = Math.min(1000, Math.max(1, Math.floor(Number(req.body.quantity) || 1)));
+  if (!product_id && !kit_id) return res.status(400).json({ error: 'Indica un producto o kit' });
+
+  const db = await pool.connect();
   try {
-    const { product_id, kit_id } = req.body;
-    const qty = Math.max(1, Math.floor(Number(req.body.quantity) || 1));
-    if (!product_id && !kit_id) return res.status(400).json({ error: 'Indica un producto o kit' });
+    await db.query('BEGIN');
 
-    const { rows: [order] } = await pool.query(`SELECT * FROM orders WHERE id = $1`, [req.params.id]);
-    if (!order || order.client_id !== req.user!.id) return res.status(404).json({ error: 'Bolsita no encontrada' });
-    if (!['draft', 'pending_confirm', 'apartada'].includes(order.status))
+    const { rows: [order] } = await db.query(`SELECT * FROM orders WHERE id = $1 FOR UPDATE`, [req.params.id]);
+    if (!order || order.client_id !== req.user!.id) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ error: 'Bolsita no encontrada' });
+    }
+    if (!['draft', 'pending_confirm', 'apartada'].includes(order.status)) {
+      await db.query('ROLLBACK');
       return res.status(400).json({ error: 'Esta bolsita ya no puede modificarse' });
+    }
 
+    // 1) El producto/kit debe ser de la MISMA tienda que la bolsita (evita comprar de otra tienda por id)
+    const own = product_id
+      ? await db.query(`SELECT 1 FROM products WHERE id = $1 AND portfolio_id = $2`, [product_id, order.portfolio_id])
+      : await db.query(`SELECT 1 FROM kits WHERE id = $1 AND portfolio_id = $2`, [kit_id, order.portfolio_id]);
+    if (!own.rows.length) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+
+    // 2) Bloquear los productos implicados (el producto, o todos los componentes del kit)
+    const ids = product_id ? [product_id] : await kitProductIds(kit_id, db);
+    await lockProducts(db, ids);
+
+    // 3) Con el candado puesto, recién ahora se mide el stock disponible
     let price = 0;
     if (product_id) {
-      const avail = await productAvailable(product_id);
-      if (avail < qty) return res.status(409).json({ error: `Stock insuficiente. Disponibles: ${avail}` });
-      const { rows: [p] } = await pool.query(`SELECT price FROM products WHERE id = $1`, [product_id]);
+      const avail = await productAvailable(product_id, db);
+      if (avail < qty) {
+        await db.query('ROLLBACK');
+        return res.status(409).json({ error: `Stock insuficiente. Disponibles: ${avail}` });
+      }
+      const { rows: [p] } = await db.query(`SELECT price FROM products WHERE id = $1`, [product_id]);
       price = Number(p.price);
     } else {
-      const avail = await kitAvailable(kit_id);
-      if (avail < qty) return res.status(409).json({ error: `Stock insuficiente del kit. Disponibles: ${avail}` });
-      const { rows: [k] } = await pool.query(`SELECT price FROM kits WHERE id = $1`, [kit_id]);
+      const avail = await kitAvailable(kit_id, db);
+      if (avail < qty) {
+        await db.query('ROLLBACK');
+        return res.status(409).json({ error: `Stock insuficiente del kit. Disponibles: ${avail}` });
+      }
+      const { rows: [k] } = await db.query(`SELECT price FROM kits WHERE id = $1`, [kit_id]);
       price = Number(k.price);
     }
 
-    await pool.query(
+    // 4) Reservar (insertar) antes de soltar el candado
+    await db.query(
       `INSERT INTO order_items (order_id, product_id, kit_id, quantity, price) VALUES ($1,$2,$3,$4,$5)`,
       [order.id, product_id || null, kit_id || null, qty, price]);
     if (order.status === 'draft')
-      await pool.query(`UPDATE orders SET expires_at = NOW() + INTERVAL '12 hours', updated_at = NOW() WHERE id = $1`, [order.id]);
+      await db.query(`UPDATE orders SET expires_at = NOW() + INTERVAL '12 hours', updated_at = NOW() WHERE id = $1`, [order.id]);
 
+    await db.query('COMMIT');
     res.json({ ok: true, ...(await getOrderTotals(order.id)) });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
+  } catch (e) {
+    try { await db.query('ROLLBACK'); } catch { /* ya cerrada */ }
+    console.error(e);
+    res.status(500).json({ error: 'Error del servidor' });
+  } finally {
+    db.release();
+  }
 });
 
 // Quitar producto: SOLO en borrador (separadas/pagadas solo el admin)

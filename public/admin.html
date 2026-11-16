@@ -82,8 +82,9 @@ nav#tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-right: auto; }
 }
 .who-btn span { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #userMenu {
-  display: none; position: absolute; top: 100%; right: 0; margin-top: 8px;
-  min-width: 200px; border-radius: 12px; padding: 8px; z-index: 200;
+  display: flex; position: absolute; top: 100%; right: 0; margin-top: 8px;
+  min-width: 210px; max-width: calc(100vw - 16px); border-radius: 12px; padding: 8px; z-index: 200;
+  background: var(--bg);
   flex-direction: column; gap: 4px;
 }
 #userMenu.hidden { display: none !important; }
@@ -192,7 +193,7 @@ table.adm th:hover { color: var(--brand); }
         <button onclick="menuGo('config')">⚙️ Configuración</button>
         <button onclick="menuGo('legal')">📜 Legal</button>
         <div style="height:1px; background:var(--border); margin:4px 0;"></div>
-        <button onclick="logout()" style="color:var(--danger)">🚪 Salir</button>
+        <button onclick="logout()" style="color:var(--danger)">🚪 Cerrar sesión</button>
       </div>
     </div>
   </div>

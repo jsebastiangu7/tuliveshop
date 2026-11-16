@@ -204,6 +204,7 @@ function ensureExtraUI() {
   }
 }
 
+
 /* ---------- Excel ---------- */
 function downloadExcel(filename, sheetName, rows) {
   if (!window.XLSX) { toast('⚠ La librería de Excel aún carga; intenta en unos segundos'); return; }

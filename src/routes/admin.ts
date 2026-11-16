@@ -4,12 +4,13 @@ import bcrypt from 'bcryptjs';
 import { pool } from '../db.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import type { AuthRequest } from '../middleware/auth.js';
-import { productAvailable, kitAvailable, getOrderTotals, ensureShipmentFor } from '../services/inventory.js';
+import { productAvailable, kitAvailable, lockProducts, kitProductIds, getOrderTotals, ensureShipmentFor } from '../services/inventory.js';
 import { emitAll } from '../realtime.js';
 import { decrypt } from '../utils/encryption.js';
 
 const router = Router();
 
+// Todas las rutas de este archivo exigen sesión de administrador
 router.use(authenticate, requireRole('admin', 'super_admin'));
 
 const pfOf = (req: AuthRequest) => req.user!.portfolio_id as string;
@@ -250,7 +251,7 @@ router.delete('/kits/:id', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
 });
 
-/* ─────────────── Clientes (CON DESENCRIPTACIÓN) ─────────────── */
+/* ─────────────── Clientes (CON DESENCRIPTACIÓN CORREGIDA) ─────────────── */
 router.get('/clients', async (req: AuthRequest, res: Response) => {
   try {
     const pf = pfOf(req);
@@ -310,7 +311,7 @@ router.put('/clients/:id', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
 });
 
-/* ─────────────── Pedidos (CON RUTA POST Y CONCURRENCIA ATÓMICA) ─────────────── */
+/* ─────────────── Pedidos (CON RUTA POST AGREGADA) ─────────────── */
 router.post('/orders', async (req: AuthRequest, res: Response) => {
   try {
     const pf = pfOf(req);
@@ -366,62 +367,44 @@ router.put('/orders/:id', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
 });
 
-// ★ ACTUALIZACIÓN ATÓMICA DE STOCK (previene sobreventa)
 router.post('/orders/:id/items', async (req: AuthRequest, res: Response) => {
-  const client = await pool.connect();
+  const pf = pfOf(req);
+  const { product_id, kit_id } = req.body;
+  const qty = Math.min(1000, Math.max(1, Math.floor(Number(req.body.quantity) || 1)));
+  if (!product_id && !kit_id) return res.status(400).json({ error: 'Indica un producto o kit' });
+
+  const db = await pool.connect();
   try {
-    await client.query('BEGIN');
-    const pf = pfOf(req);
-    const { product_id, kit_id } = req.body;
-    const qty = Math.max(1, Math.floor(Number(req.body.quantity) || 1));
-    if (!product_id && !kit_id) { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Indica un producto o kit' }); }
-    const { rows: [order] } = await client.query(`SELECT * FROM orders WHERE id=$1 AND portfolio_id=$2`, [req.params.id, pf]);
-    if (!order) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Pedido no encontrado' }); }
-    if (['canceled', 'expired'].includes(order.status)) { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Pedido cerrado' }); }
-    
+    await db.query('BEGIN');
+    const { rows: [order] } = await db.query(`SELECT * FROM orders WHERE id=$1 AND portfolio_id=$2 FOR UPDATE`, [req.params.id, pf]);
+    if (!order) { await db.query('ROLLBACK'); return res.status(404).json({ error: 'Pedido no encontrado' }); }
+    if (['canceled', 'expired'].includes(order.status)) { await db.query('ROLLBACK'); return res.status(400).json({ error: 'Pedido cerrado' }); }
+
     let price = 0;
     if (product_id) {
-      // ★ Actualización atómica: descuenta stock solo si hay suficiente
-      const { rows: [updated] } = await client.query(
-        `UPDATE products SET stock = stock - $1 WHERE id = $2 AND portfolio_id = $3 AND stock >= $1 RETURNING id, stock, price`,
-        [qty, product_id, pf]
-      );
-      if (!updated) {
-        await client.query('ROLLBACK');
-        return res.status(409).json({ error: 'Stock insuficiente. Otro cliente acaba de comprar las últimas unidades.' });
-      }
-      price = Number(updated.price);
+      const { rows: [p] } = await db.query(`SELECT price FROM products WHERE id=$1 AND portfolio_id=$2`, [product_id, pf]);
+      if (!p) { await db.query('ROLLBACK'); return res.status(404).json({ error: 'Producto no encontrado' }); }
+      await lockProducts(db, [product_id]);
+      const avail = await productAvailable(product_id, db);
+      if (avail < qty) { await db.query('ROLLBACK'); return res.status(409).json({ error: `Stock insuficiente. Disponibles: ${avail}` }); }
+      price = Number(p.price);
     } else {
-      // Para kits, verificar disponibilidad de todos los componentes
-      const { rows: components } = await client.query(
-        `SELECT kc.product_id, kc.quantity as comp_qty, p.stock FROM kit_components kc JOIN products p ON p.id = kc.product_id WHERE kc.kit_id = $1`,
-        [kit_id]
-      );
-      for (const comp of components) {
-        const needed = comp.comp_qty * qty;
-        const { rows: [updated] } = await client.query(
-          `UPDATE products SET stock = stock - $1 WHERE id = $2 AND portfolio_id = $3 AND stock >= $1 RETURNING id`,
-          [needed, comp.product_id, pf]
-        );
-        if (!updated) {
-          await client.query('ROLLBACK');
-          return res.status(409).json({ error: `Stock insuficiente para componente del kit. Otro cliente acaba de comprar las últimas unidades.` });
-        }
-      }
-      const { rows: [k] } = await client.query(`SELECT price FROM kits WHERE id=$1 AND portfolio_id=$2`, [kit_id, pf]);
-      if (!k) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Kit no encontrado' }); }
+      const { rows: [k] } = await db.query(`SELECT price FROM kits WHERE id=$1 AND portfolio_id=$2`, [kit_id, pf]);
+      if (!k) { await db.query('ROLLBACK'); return res.status(404).json({ error: 'Kit no encontrado' }); }
+      await lockProducts(db, await kitProductIds(kit_id, db));
+      const avail = await kitAvailable(kit_id, db);
+      if (avail < qty) { await db.query('ROLLBACK'); return res.status(409).json({ error: `Stock insuficiente del kit. Disponibles: ${avail}` }); }
       price = Number(k.price);
     }
-    
-    await client.query(`INSERT INTO order_items (order_id, product_id, kit_id, quantity, price) VALUES ($1,$2,$3,$4,$5)`, [order.id, product_id || null, kit_id || null, qty, price]);
-    await client.query('COMMIT');
+
+    await db.query(`INSERT INTO order_items (order_id, product_id, kit_id, quantity, price) VALUES ($1,$2,$3,$4,$5)`, [order.id, product_id || null, kit_id || null, qty, price]);
+    await db.query('COMMIT');
     res.json({ ok: true, ...(await getOrderTotals(order.id)) });
   } catch (e: any) {
-    await client.query('ROLLBACK');
-    console.error('Error adding item:', e);
+    try { await db.query('ROLLBACK'); } catch { /* ya cerrada */ }
     res.status(500).json({ error: 'Error del servidor: ' + e.message });
   } finally {
-    client.release();
+    db.release();
   }
 });
 
@@ -431,18 +414,6 @@ router.delete('/orders/:id/items/:itemId', async (req: AuthRequest, res: Respons
     const { rows: [order] } = await pool.query(`SELECT * FROM orders WHERE id=$1 AND portfolio_id=$2`, [req.params.id, pf]);
     if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
     if (['canceled', 'expired'].includes(order.status)) return res.status(400).json({ error: 'Pedido cerrado' });
-    // ★ Devolver stock al eliminar item
-    const { rows: [item] } = await pool.query(`SELECT product_id, kit_id, quantity FROM order_items WHERE id=$1 AND order_id=$2`, [req.params.itemId, order.id]);
-    if (item) {
-      if (item.product_id) {
-        await pool.query(`UPDATE products SET stock = stock + $1 WHERE id = $2 AND portfolio_id = $3`, [item.quantity, item.product_id, pf]);
-      } else if (item.kit_id) {
-        const { rows: components } = await pool.query(`SELECT kc.product_id, kc.quantity as comp_qty FROM kit_components kc WHERE kc.kit_id = $1`, [item.kit_id]);
-        for (const comp of components) {
-          await pool.query(`UPDATE products SET stock = stock + $1 WHERE id = $2 AND portfolio_id = $3`, [comp.comp_qty * item.quantity, comp.product_id, pf]);
-        }
-      }
-    }
     await pool.query(`DELETE FROM order_items WHERE id=$1 AND order_id=$2`, [req.params.itemId, order.id]);
     res.json({ ok: true, ...(await getOrderTotals(order.id)) });
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
@@ -647,7 +618,7 @@ router.put('/settings', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
 });
 
-/* ─────────────── Importador JSON ─────────────── */
+/* ─────────────── Importador JSON (CON LECTURA FLEXIBLE DE WHATSAPP) ─────────────── */
 router.post('/import-json', async (req: AuthRequest, res: Response) => {
   const pf = pfOf(req);
   const st = req.body;
@@ -714,7 +685,7 @@ router.post('/import-json', async (req: AuthRequest, res: Response) => {
       } else {
         await client.query(`UPDATE users SET name=$2, city=COALESCE($3,city), address=COALESCE($4,address), status=$5 WHERE id=$1`, [uid, name, c.tiktok || null, c.direccion || null, c.estado || 'Activo']);
       }
-      clientIdByName.set(name, uid);
+      clientIdByName.set(name, uid as string);
     }
     const STATUS_MAP: Record<string, string> = { 'Pendiente': 'draft', 'Apartado': 'apartada', 'Pagado': 'paid', 'Enviado': 'shipped', 'Entregado': 'delivered', 'Cancelado': 'canceled' };
     const orderIdByNumber = new Map<string, string>();
@@ -762,7 +733,7 @@ router.post('/import-json', async (req: AuthRequest, res: Response) => {
   }
 });
 
-/* ─────────────── BORRADO TOTAL ─────────────── */
+/* ─────────────── BORRADO TOTAL (Zona de peligro) ─────────────── */
 router.post('/wipe', async (req: AuthRequest, res: Response) => {
   try {
     const pf = pfOf(req);
@@ -785,7 +756,7 @@ router.post('/wipe', async (req: AuthRequest, res: Response) => {
       await client.query(`DELETE FROM goals WHERE portfolio_id=$1`, [pf]);
       await client.query(`DELETE FROM donations WHERE portfolio_id=$1`, [pf]);
       await client.query(`DELETE FROM settings WHERE portfolio_id=$1`, [pf]);
-      await client.query(`UPDATE portfolios SET bre_b_key = '3058173611', whatsapp_number = '+573058173611', whatsapp_template = 'Hola, Mar. Te envío el abono a mi bolsita {ORDER_NUMBER}. Total: {TOTAL}. Abono: {AMOUNT}.', order_prefix = 'BOL', order_digits = 5, order_start = 1 WHERE id = $1`, [pf]);
+      await client.query(`UPDATE portfolios SET order_prefix = 'BOL', order_digits = 5, order_start = 1 WHERE id = $1`, [pf]);
       await client.query('COMMIT');
       res.json({ ok: true, message: 'Tienda borrada exitosamente' });
     } catch (e) {

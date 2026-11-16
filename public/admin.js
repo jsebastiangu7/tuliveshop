@@ -1548,7 +1548,6 @@ async function executeWipe() {
     var wrap = document.createElement('div');
     wrap.id = 'pkMobileNav';
     var opts = TABS.map(function (t) { return '<option value="' + t[0] + '">' + t[1] + '</option>'; }).join('');
-    opts += '<option value="config">Configuración</option><option value="legal">Legal</option>';
     wrap.innerHTML = '<div class="pk-mnav-shell"><span class="pk-mnav-ico" id="pkMnavIco">📊</span>' +
       '<select id="pkMobileNavSel" aria-label="Menú del panel">' + opts + '</select>' +
       '<span class="pk-mnav-chev">▾</span></div>';
@@ -1558,6 +1557,16 @@ async function executeWipe() {
   }
   function sync() {
     var sel = document.getElementById('pkMobileNavSel'); if (!sel) return;
+    // Configuración y Legal viven en el botón del perfil, no en esta lista. Si estás dentro de una de
+    // ellas se muestra su nombre en el selector con una opción oculta (no aparece al desplegar la lista).
+    var extra = document.getElementById('pkExtraOpt');
+    var inList = Array.prototype.some.call(sel.options, function (o) { return o.id !== 'pkExtraOpt' && o.value === currentTab; });
+    if (inList) { if (extra) extra.remove(); }
+    else {
+      if (!extra) { extra = document.createElement('option'); extra.id = 'pkExtraOpt'; extra.hidden = true; extra.disabled = true; sel.appendChild(extra); }
+      extra.value = currentTab;
+      extra.textContent = currentTab === 'config' ? 'Configuración' : currentTab === 'legal' ? 'Legal' : String(currentTab);
+    }
     if (sel.value !== currentTab) sel.value = currentTab;
     var ico = document.getElementById('pkMnavIco'); if (ico) ico.textContent = ICONS[currentTab] || '🧭';
   }

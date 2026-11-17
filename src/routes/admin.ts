@@ -440,6 +440,22 @@ router.post('/orders/:id/payments', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
 });
 
+/** Últimos abonos registrados de la tienda (para la vista Abonos) */
+router.get('/payments', async (req: AuthRequest, res: Response) => {
+  try {
+    const pf = pfOf(req);
+    const { rows } = await pool.query(
+      `SELECT pa.id, pa.order_id, pa.amount::float AS amount, pa.method, pa.reference, pa.note, pa.payment_date, pa.created_at,
+              o.order_number, u.name AS client_name
+       FROM payments pa
+       JOIN orders o ON o.id = pa.order_id
+       LEFT JOIN users u ON u.id = o.client_id
+       WHERE pa.portfolio_id = $1
+       ORDER BY pa.payment_date DESC, pa.created_at DESC LIMIT 50`, [pf]);
+    res.json(rows);
+  } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
+});
+
 router.delete('/payments/:id', async (req: AuthRequest, res: Response) => {
   try {
     const pf = pfOf(req);

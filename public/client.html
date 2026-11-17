@@ -136,6 +136,7 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
   <a href="/" class="brand">🛍️ Tu <span>Live Shop</span></a>
   <div class="nav-right">
     <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn">🌙</button>
+    <select id="storeSwitch" onchange="switchStore(this.value)" title="Cambiar de tienda" style="display:none;max-width:160px;padding:6px 8px;border-radius:10px"></select>
     <span id="userName" style="font-weight:600"></span>
     <button class="btn btn-ghost" onclick="logout()">Salir</button>
   </div>
@@ -185,12 +186,12 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
     <p style="color:var(--text-muted);font-size:14px;margin-bottom:16px">Por seguridad, debes crear un nuevo PIN antes de continuar.</p>
     <form onsubmit="changePin(event)">
       <div class="form-group">
-        <label>Nuevo PIN (mín. 4 dígitos)</label>
-        <input id="newPin" type="password" inputmode="numeric" minlength="4" required>
+        <label>Nuevo PIN (6 a 8 dígitos)</label>
+        <input id="newPin" type="password" inputmode="numeric" title="El PIN debe tener de 6 a 8 dígitos, solo números" pattern="[0-9]{6,8}" minlength="6" maxlength="8" placeholder="Solo números" autocomplete="new-password" required>
       </div>
       <div class="form-group">
         <label>Confirma el PIN</label>
-        <input id="newPin2" type="password" inputmode="numeric" minlength="4" required>
+        <input id="newPin2" type="password" inputmode="numeric" title="El PIN debe tener de 6 a 8 dígitos, solo números" pattern="[0-9]{6,8}" minlength="6" maxlength="8" autocomplete="new-password" required>
       </div>
       <div id="pinErr" style="color:var(--danger);font-size:13px;text-align:center"></div>
       <div class="modal-actions">
@@ -241,14 +242,14 @@ function init() {
 }
 
 function showLogin() {
-  $('view-login').style.display = 'block';
-  $('view-dashboard').style.display = 'none';
+  location.replace('/?login=client'); // el acceso de clientes vive en la página principal
 }
 
 function showDashboard() {
   $('view-login').style.display = 'none';
   $('view-dashboard').style.display = 'block';
   $('userName').textContent = '👋 ' + (user.name || 'Cliente');
+  renderStoreSwitch();
   $('welcomeName').textContent = user.name || 'Cliente';
   loadOrders();
   if (user.must_change_pin) $('pinModal').classList.add('open');
@@ -268,11 +269,33 @@ async function clientLogin(e) {
 }
 
 function logout() {
+  fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
   token = ''; user = null;
-  localStorage.removeItem('pk_token');
-  localStorage.removeItem('pk_user');
-  localStorage.removeItem('pk_slug');
-  showLogin();
+  ['pk_token', 'pk_user', 'pk_slug', 'pk_stores'].forEach(k => localStorage.removeItem(k));
+  location.replace('/?login=client');
+}
+
+/* ---------- Varias tiendas ---------- */
+function getStores() { try { return JSON.parse(localStorage.getItem('pk_stores') || '[]'); } catch (e) { return []; } }
+function renderStoreSwitch() {
+  const stores = getStores(), sel = $('storeSwitch');
+  if (!sel || stores.length < 2) return;
+  sel.innerHTML = stores.map(s => `<option value="${String(s.slug).replace(/"/g, '&quot;')}" ${s.slug === slug ? 'selected' : ''}>🏪 ${String(s.name).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))}</option>`).join('');
+  sel.style.display = '';
+}
+function switchStore(newSlug) {
+  const s = getStores().find(x => x.slug === newSlug);
+  if (!s) return;
+  localStorage.setItem('pk_token', s.token);
+  localStorage.setItem('pk_user', JSON.stringify(s.user));
+  localStorage.setItem('pk_slug', s.slug);
+  location.href = '/client.html?t=' + encodeURIComponent(s.slug);
+}
+// Tras cambiar el PIN, las tiendas que el servidor actualizó ya no piden cambiarlo otra vez
+function markPinChanged(ids) {
+  const stores = getStores();
+  stores.forEach(s => { if (ids.includes(s.user.id)) s.user.must_change_pin = false; });
+  localStorage.setItem('pk_stores', JSON.stringify(stores));
 }
 
 async function loadOrders() {
@@ -305,10 +328,11 @@ async function loadOrders() {
 async function changePin(e) {
   e.preventDefault();
   const a = $('newPin').value, b = $('newPin2').value;
-  if (a.length < 4) { $('pinErr').textContent = 'El PIN debe tener al menos 4 dígitos'; return; }
+  if (!/^\d{6,8}$/.test(a)) { $('pinErr').textContent = 'El PIN debe tener de 6 a 8 dígitos (solo números)'; return; }
   if (a !== b) { $('pinErr').textContent = 'Los PIN no coinciden'; return; }
   try {
-    await api('/api/auth/client/change-pin', { method: 'POST', body: { new_pin: a } });
+    const r = await api('/api/auth/client/change-pin', { method: 'POST', body: { new_pin: a } });
+    markPinChanged(r.updated || []);
     $('pinModal').classList.remove('open');
     toast('✔ PIN actualizado');
     user.must_change_pin = false;

@@ -314,15 +314,16 @@ footer a { color: var(--brand); text-decoration: none; }
       </div>
       <div class="form-group">
         <label>PIN</label>
-        <input type="password" id="cliPin" inputmode="numeric" placeholder="••••" minlength="4" required>
+        <input type="password" id="cliPin" inputmode="numeric" placeholder="••••••" minlength="4" maxlength="8" required>
       </div>
+      <p class="subtitle" style="font-size:12px;margin:-2px 0 10px">¿Ya eres cliente de una tienda pero nunca has ingresado? Tu PIN inicial es <b>1234</b>; al entrar crearás uno nuevo.</p>
       <div class="form-error" id="cliLoginErr"></div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" onclick="closeAllModals()">Cancelar</button>
         <button type="submit" class="btn btn-primary">Ingresar</button>
       </div>
     </form>
-    <button class="link-text" onclick="switchAuthView('client-register')">¿No tienes cuenta? Regístrate aquí</button>
+    <button class="link-text" onclick="switchAuthView('client-reg-step1')">¿No tienes cuenta? Regístrate aquí</button>
     <button class="link-text" onclick="switchAuthView('client-forgot-pin')" style="color:var(--orange);">¿Olvidaste tu PIN?</button>
   </div>
 </div>
@@ -355,8 +356,12 @@ footer a { color: var(--brand); text-decoration: none; }
         <input id="regAddress">
       </div>
       <div class="form-group">
-        <label>Crea tu PIN (4 a 8 dígitos)</label>
-        <input type="password" id="regPin" inputmode="numeric" minlength="4" maxlength="8" required>
+        <label>Crea tu PIN (6 a 8 dígitos)</label>
+        <input type="password" id="regPin" inputmode="numeric" title="El PIN debe tener de 6 a 8 dígitos, solo números" pattern="[0-9]{6,8}" minlength="6" maxlength="8" placeholder="Solo números" autocomplete="new-password" required>
+      </div>
+      <div class="form-group">
+        <label>Confirma tu PIN</label>
+        <input type="password" id="regPin2" inputmode="numeric" title="El PIN debe tener de 6 a 8 dígitos, solo números" pattern="[0-9]{6,8}" minlength="6" maxlength="8" autocomplete="new-password" required>
       </div>
       <div class="form-error" id="regStep1Err"></div>
       <div class="modal-actions">
@@ -375,7 +380,7 @@ footer a { color: var(--brand); text-decoration: none; }
     <p class="subtitle">Marca las tiendas a las que deseas tener acceso</p>
     <form onsubmit="handleClientRegStep2(event)">
       <div class="form-group">
-        <label>Tiendas disponibles</label>
+        <label>Tiendas disponibles (puedes elegir una o varias)</label>
         <div id="storeSelectionList" class="store-checkbox-group">
           <!-- Se llena dinámicamente -->
         </div>
@@ -386,6 +391,16 @@ footer a { color: var(--brand); text-decoration: none; }
         <button type="submit" class="btn btn-primary">Crear usuario</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- CLIENTE: ELEGIR TIENDA AL INGRESAR -->
+<div class="modal-overlay" id="clientStorePickModal">
+  <div class="modal-box">
+    <h3>🏪 ¿A qué tienda quieres entrar?</h3>
+    <p class="subtitle">Tu cuenta está en varias tiendas. Podrás cambiar de tienda dentro de tu cuenta.</p>
+    <div id="storePickList" style="display:grid;gap:10px;margin:14px 0"></div>
+    <button class="link-text" onclick="closeAllModals()">Cancelar</button>
   </div>
 </div>
 
@@ -509,9 +524,34 @@ function switchAuthView(viewId) {
 }
 
 // --- LÓGICA CLIENTE ---
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+
+// Guarda la sesión (una por tienda donde el cliente tiene cuenta) y entra a su área
+function saveClientSession(data, chosen) {
+  const stores = (data.stores && data.stores.length)
+    ? data.stores
+    : [{ slug: data.portfolio.slug, name: data.portfolio.name, token: data.token, user: data.user }];
+  const cur = chosen || stores[0];
+  localStorage.setItem('pk_stores', JSON.stringify(stores));
+  localStorage.setItem('pk_token', cur.token);
+  localStorage.setItem('pk_user', JSON.stringify(cur.user));
+  localStorage.setItem('pk_slug', cur.slug);
+  closeAllModals();
+  window.location.href = '/client.html';
+}
+
+function showStorePicker(data) {
+  window.__loginData = data;
+  closeAllModals();
+  document.getElementById('storePickList').innerHTML = data.stores.map((s, i) =>
+    `<button class="btn btn-outline" style="padding:14px;font-size:15px" onclick="saveClientSession(window.__loginData, window.__loginData.stores[${i}])">🏪 ${esc(s.name)}</button>`).join('');
+  document.getElementById('clientStorePickModal').classList.add('open');
+}
+
 async function handleClientLogin(e) {
   e.preventDefault();
   const err = document.getElementById('cliLoginErr');
+  err.className = 'form-error';
   err.textContent = 'Verificando...';
   try {
     const res = await fetch('/api/auth/client/login', {
@@ -524,12 +564,8 @@ async function handleClientLogin(e) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error al ingresar');
-    
-    localStorage.setItem('pk_token', data.token);
-    localStorage.setItem('pk_user', JSON.stringify(data.user));
-    localStorage.setItem('pk_slug', data.portfolio.slug);
-    closeAllModals();
-    window.location.href = '/?t=' + data.portfolio.slug;
+    if (data.stores && data.stores.length > 1) { showStorePicker(data); return; }
+    saveClientSession(data);
   } catch (e) {
     err.textContent = e.message;
   }
@@ -539,37 +575,37 @@ let regDataTemp = {};
 async function handleClientRegStep1(e) {
   e.preventDefault();
   const err = document.getElementById('regStep1Err');
-  err.textContent = 'Guardando datos...';
+  const pin = document.getElementById('regPin').value.trim();
+  const pin2 = document.getElementById('regPin2').value.trim();
+  if (!/^\d{6,8}$/.test(pin)) { err.textContent = 'El PIN debe tener de 6 a 8 dígitos (solo números).'; return; }
+  if (pin !== pin2) { err.textContent = 'Los PIN no coinciden.'; return; }
   regDataTemp = {
-    name: document.getElementById('regName').value,
-    whatsapp: document.getElementById('regWa').value,
-    email: document.getElementById('regEmail').value,
-    city: document.getElementById('regCity').value,
-    address: document.getElementById('regAddress').value,
-    pin: document.getElementById('regPin').value
+    name: document.getElementById('regName').value.trim(),
+    whatsapp: document.getElementById('regWa').value.trim(),
+    email: document.getElementById('regEmail').value.trim(),
+    city: document.getElementById('regCity').value.trim(),
+    address: document.getElementById('regAddress').value.trim(),
+    pin
   };
-  // Cargar tiendas para el paso 2
-  switchAuthView('client-reg-step2');
+  switchAuthView('client-reg-step2'); // carga las tiendas
 }
 
 async function loadAvailableStores() {
   const list = document.getElementById('storeSelectionList');
   list.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:10px;">Cargando tiendas...</p>';
   try {
-    // Usamos el endpoint de portfolios públicos o el mismo de auth si no hay uno específico
-    const res = await fetch('/api/auth/client/portfolios'); // Asumimos que este endpoint existe o usamos un fallback
+    const res = await fetch('/api/auth/client/portfolios');
     const data = await res.json();
-    const stores = res.ok ? data : []; // Fallback si el endpoint no existe aún, se manejará en backend
-    
+    const stores = res.ok && Array.isArray(data) ? data : [];
     if (stores.length === 0) {
       list.innerHTML = '<p style="text-align:center; color:var(--danger); padding:10px;">No hay tiendas disponibles.</p>';
       return;
     }
-    
+    const pre = new URLSearchParams(location.search).get('t'); // si llegó por el enlace de una tienda, viene marcada
     list.innerHTML = stores.map(s => `
       <label class="store-checkbox-label">
-        <input type="checkbox" name="store" value="${s.slug}">
-        <span>🏪 ${s.name}</span>
+        <input type="checkbox" name="store" value="${esc(s.slug)}" ${s.slug === pre ? 'checked' : ''}>
+        <span>🏪 ${esc(s.name)}</span>
       </label>
     `).join('');
   } catch (e) {
@@ -580,33 +616,22 @@ async function loadAvailableStores() {
 async function handleClientRegStep2(e) {
   e.preventDefault();
   const err = document.getElementById('regStep2Err');
-  err.textContent = 'Creando cuenta...';
-  
   const selectedStores = Array.from(document.querySelectorAll('input[name="store"]:checked')).map(cb => cb.value);
   if (selectedStores.length === 0) {
     err.textContent = 'Debes seleccionar al menos una tienda.';
     return;
   }
-
+  err.textContent = 'Creando cuenta...';
   try {
     const res = await fetch('/api/auth/client/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...regDataTemp,
-        portfolios: selectedStores
-      })
+      body: JSON.stringify({ ...regDataTemp, portfolios: selectedStores })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error al registrarse');
-    
-    // Auto-login con la primera tienda seleccionada
-    localStorage.setItem('pk_token', data.token);
-    localStorage.setItem('pk_user', JSON.stringify(data.user));
-    localStorage.setItem('pk_slug', selectedStores[0]);
-    
-    closeAllModals();
-    window.location.href = '/?t=' + selectedStores[0];
+    regDataTemp = {};
+    saveClientSession(data); // entra a la primera tienda elegida
   } catch (e) {
     err.textContent = e.message;
   }
@@ -685,6 +710,8 @@ async function handleStoreForgotPass(e) {
     err.textContent = e.message;
   }
 }
+
+if (new URLSearchParams(location.search).get('login') === 'client') openAuthModal('client');
 </script>
 </body>
 </html>

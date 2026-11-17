@@ -102,123 +102,185 @@ router.post('/admin/forgot-password', async (req: Request, res: Response) => {
   } catch (e: any) { console.error(e); res.status(500).json({ error: 'No se pudo procesar la solicitud' }); }
 });
 
-/* ── Cliente: login ── */
+/* ═══════════════ CLIENTES ═══════════════
+   Un cliente se identifica por su WhatsApp. Si está en varias tiendas, hay una fila en `users`
+   por tienda (así pedidos, abonos y logística de cada tienda siguen separados).        */
+
+const COOKIE_OPTS = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' as const, maxAge: 30 * 24 * 60 * 60 * 1000 };
+const digits = (v: any) => String(v ?? '').replace(/\D/g, '');
+const PIN_DEFAULT = '1234'; // PIN inicial de clientes que ya existen en una tienda y nunca han ingresado
+
+/** Datos del cliente que ve el navegador */
+const clientView = (u: any, mustChange = false) => ({
+  id: u.id, role: 'client', name: u.name, whatsapp: u.whatsapp, city: u.city, address: u.address, email: u.email,
+  must_change_pin: mustChange || !!u.must_change_pin,
+});
+
+/** PIN demasiado fácil: repetido (111111) o secuencia (123456 / 654321) */
+const weakPin = (p: string) => /^(\d)\1+$/.test(p) || '01234567890'.includes(p) || '09876543210'.includes(p);
+
+/* ── Cliente: tiendas disponibles para darse de alta ── */
+router.get('/client/portfolios', async (_req: Request, res: Response) => {
+  try {
+    const { rows } = await pool.query(`SELECT name, slug FROM portfolios ORDER BY name`);
+    res.json(rows);
+  } catch (e: any) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
+});
+
+/* ── Cliente: login ──
+   WhatsApp + PIN, sin elegir tienda: se entra a todas las tiendas donde ese WhatsApp ya tiene cuenta
+   con ese PIN. Si el cliente existe en una tienda pero nunca había ingresado, su PIN inicial es 1234
+   y la app lo obliga a crear uno nuevo. */
 router.post('/client/login', validate(clientLoginSchema), async (req: Request, res: Response) => {
   try {
     const { whatsapp, pin, portfolio_slug } = req.body;
-    const { rows: [pf] } = await pool.query(`SELECT id FROM portfolios WHERE slug=$1`, [portfolio_slug]);
-    if (!pf) return res.status(404).json({ error: 'Tienda no encontrada' });
-    
-    const tel = String(whatsapp).replace(/\D/g, '');
-    let { rows: [user] } = await pool.query(
-      `SELECT * FROM users WHERE whatsapp=$1 AND portfolio_id=$2 AND role='client' AND status='Activo'`, [tel, pf.id]);
-    
-    if (!user) return res.status(401).json({ error: 'WhatsApp o PIN incorrectos' });
+    const tel = digits(whatsapp);
+    const { rows } = await pool.query(
+      `SELECT u.*, p.slug AS p_slug, p.name AS p_name FROM users u JOIN portfolios p ON p.id = u.portfolio_id
+       WHERE u.whatsapp=$1 AND u.role='client' AND u.status='Activo' ORDER BY p.name`, [tel]);
 
-    // Cliente importado sin PIN: acepta 1234 y lo obliga a cambiarlo
-    if (!user.pin_hash) {
-      if (String(pin) !== '1234') return res.status(401).json({ error: 'Tu PIN inicial es 1234. Ingresa con él y cámbialo.' });
-      await pool.query(`UPDATE users SET pin_hash=$2, must_change_pin=TRUE WHERE id=$1`, [user.id, await bcrypt.hash('1234', 10)]);
-      user.must_change_pin = true; 
-      user.pin_hash = await bcrypt.hash('1234', 10);
+    const matches: any[] = [];
+    let hash1234: string | null = null;
+    for (const u of rows) {
+      if (!u.pin_hash) {
+        // Nunca había ingresado: acepta 1234 y queda obligado a cambiarlo
+        if (String(pin) !== PIN_DEFAULT) continue;
+        hash1234 = hash1234 || await bcrypt.hash(PIN_DEFAULT, 10);
+        await pool.query(`UPDATE users SET pin_hash=$2, must_change_pin=TRUE WHERE id=$1`, [u.id, hash1234]);
+        u.pin_hash = hash1234; u.must_change_pin = true;
+        matches.push(u);
+      } else if (await bcrypt.compare(String(pin), u.pin_hash)) {
+        matches.push(u);
+      }
     }
-    
-    if (!(await bcrypt.compare(String(pin), user.pin_hash)))
-      return res.status(401).json({ error: 'WhatsApp o PIN incorrectos' });
+    if (!matches.length) return res.status(401).json({ error: 'WhatsApp o PIN incorrectos' });
 
-    const token = sign(user);
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 30 * 24 * 60 * 60 * 1000
-    });
-
+    const stores = matches.map(u => ({ slug: u.p_slug, name: u.p_name, token: sign(u), user: clientView(u) }));
+    const primary = (portfolio_slug && stores.find(s => s.slug === portfolio_slug)) || stores[0];
+    res.cookie('token', primary.token, COOKIE_OPTS);
     res.json({
-      token,
-      user: { id: user.id, role: 'client', name: user.name, whatsapp: user.whatsapp, city: user.city, address: user.address, email: user.email },
-      portfolio: { id: pf.id, slug: portfolio_slug },
-      must_change_pin: !!user.must_change_pin
+      token: primary.token,
+      user: primary.user,
+      portfolio: { id: matches[stores.indexOf(primary)].portfolio_id, slug: primary.slug, name: primary.name },
+      must_change_pin: !!primary.user.must_change_pin,
+      stores,
     });
   } catch (e: any) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 
 /* ── Cliente: registro ──
-   WhatsApp y correo se guardan en texto plano: son la llave de login y de búsqueda.
-   Una cuenta que ya tiene PIN NO se puede "re-registrar" (antes cualquiera con el WhatsApp
-   de otro cliente podía cambiarle el PIN y entrar a su cuenta). Solo se activa una cuenta
-   importada por la administradora que aún no tiene PIN. */
+   Datos personales + correo + PIN de 6 a 8 dígitos + una o varias tiendas.
+   Si el WhatsApp ya existe en cualquier tienda NO se crea de nuevo (evita robar cuentas): debe iniciar
+   sesión (PIN inicial 1234 si nunca ha ingresado) o usar "Olvidé mi PIN". */
 router.post('/client/register', validate(clientRegisterSchema), async (req: Request, res: Response) => {
+  const db = await pool.connect();
   try {
-    const { whatsapp, pin, name, city, address, email, portfolio_slug } = req.body;
-    const { rows: [pf] } = await pool.query(`SELECT id FROM portfolios WHERE slug=$1`, [portfolio_slug]);
-    if (!pf) return res.status(404).json({ error: 'Tienda no encontrada' });
+    const { name, whatsapp, email, pin, city, address } = req.body;
+    const slugs: string[] = [...new Set<string>(req.body.portfolios?.length ? req.body.portfolios : [req.body.portfolio_slug])];
+    const tel = digits(whatsapp);
+    if (tel.length < 8) return res.status(400).json({ error: 'WhatsApp inválido' });
+    if (weakPin(String(pin))) return res.status(400).json({ error: 'Ese PIN es muy fácil de adivinar. Elige otro (evita 123456 o 111111).' });
 
-    const tel = String(whatsapp).replace(/\D/g, '');
-    const em = email ? String(email).toLowerCase().trim() : null;
+    const { rows: stores } = await db.query(`SELECT id, slug, name FROM portfolios WHERE slug = ANY($1)`, [slugs]);
+    if (stores.length !== slugs.length) return res.status(404).json({ error: 'Alguna de las tiendas elegidas no existe' });
 
-    const { rows: [existing] } = await pool.query(
-      `SELECT * FROM users WHERE whatsapp=$1 AND portfolio_id=$2 AND role='client'`, [tel, pf.id]);
-
-    if (existing && existing.pin_hash)
-      return res.status(409).json({ error: 'Este WhatsApp ya está registrado. Inicia sesión o usa "Olvidé mi PIN".' });
+    const { rows: [dup] } = await db.query(`SELECT 1 AS x FROM users WHERE whatsapp=$1 AND role='client' LIMIT 1`, [tel]);
+    if (dup) return res.status(409).json({ error: 'Este WhatsApp ya tiene cuenta. Inicia sesión; si nunca has ingresado, tu PIN inicial es 1234. Si lo olvidaste, usa "¿Olvidaste tu PIN?".' });
 
     const pinHash = await bcrypt.hash(String(pin), 10);
-    const cookieOpts = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' as const, maxAge: 30 * 24 * 60 * 60 * 1000 };
-
-    if (existing) {
-      const { rows: [user] } = await pool.query(
-        `UPDATE users SET pin_hash=$2, name=$3, city=COALESCE($4,city), address=COALESCE($5,address), email=COALESCE($6,email), status='Activo', must_change_pin=FALSE
-         WHERE id=$1 RETURNING id,name,whatsapp,city,address,email,role,portfolio_id`,
-        [existing.id, pinHash, String(name).trim(), city || null, address || null, em]);
-      const token = sign(user);
-      res.cookie('token', token, cookieOpts);
-      return res.json({ token, user: { ...user, role: 'client' }, portfolio: { id: pf.id, slug: portfolio_slug } });
+    const em = String(email).toLowerCase().trim();
+    await db.query('BEGIN');
+    const created: any[] = [];
+    for (const st of stores) {
+      const { rows: [u] } = await db.query(
+        `INSERT INTO users (portfolio_id, role, whatsapp, pin_hash, name, city, address, email, status)
+         VALUES ($1,'client',$2,$3,$4,$5,$6,$7,'Activo')
+         RETURNING id,name,whatsapp,city,address,email,role,portfolio_id`,
+        [st.id, tel, pinHash, String(name).trim(), city || null, address || null, em]);
+      created.push({ st, u });
     }
+    await db.query('COMMIT');
 
-    const { rows: [user] } = await pool.query(
-      `INSERT INTO users (portfolio_id, role, whatsapp, pin_hash, name, city, address, email, status)
-       VALUES ($1,'client',$2,$3,$4,$5,$6,$7,'Activo') RETURNING id,name,whatsapp,city,address,email,role,portfolio_id`,
-      [pf.id, tel, pinHash, String(name).trim(), city || null, address || null, em]);
+    // Se mantiene el orden en que el cliente eligió las tiendas
+    created.sort((a, b) => slugs.indexOf(a.st.slug) - slugs.indexOf(b.st.slug));
+    const list = created.map(({ st, u }) => ({ slug: st.slug, name: st.name, token: sign(u), user: clientView(u) }));
+    const first = list[0]!, firstStore = created[0]!.st;
+    res.cookie('token', first.token, COOKIE_OPTS);
+    res.json({
+      token: first.token, user: first.user,
+      portfolio: { id: firstStore.id, slug: first.slug, name: first.name },
+      stores: list,
+    });
+  } catch (e: any) {
+    try { await db.query('ROLLBACK'); } catch { /* sin transacción abierta */ }
+    if (e.code === '23505') {
+      // Restricción única en la base de datos (p. ej. WhatsApp o correo únicos a nivel global)
+      console.error('Registro: restricción única violada →', e.constraint, e.detail);
+      return res.status(409).json({ error: 'No se pudo crear la cuenta porque el WhatsApp o el correo ya existen en el sistema.' });
+    }
+    console.error(e);
+    res.status(500).json({ error: 'Error del servidor' });
+  } finally { db.release(); }
+});
 
-    const token = sign(user);
-    res.cookie('token', token, cookieOpts);
-    res.json({ token, user: { ...user, role: 'client' }, portfolio: { id: pf.id, slug: portfolio_slug } });
+/* ── Cliente: cambiar PIN (obligatorio en el primer ingreso): 6 a 8 dígitos ── */
+router.post('/client/change-pin', async (req: Request, res: Response) => {
+  let u: any;
+  try { u = authUser(req); } catch (e: any) { return res.status(401).json({ error: 'No autenticado' }); }
+  try {
+    if (u.role !== 'client') return res.status(403).json({ error: 'Solo para clientes' });
+    const np = String(req.body.new_pin || '');
+    if (!/^\d{6,8}$/.test(np)) return res.status(400).json({ error: 'El PIN debe tener de 6 a 8 dígitos (solo números)' });
+    if (weakPin(np)) return res.status(400).json({ error: 'Ese PIN es muy fácil de adivinar. Elige otro (evita 123456 o 111111).' });
+
+    const hash = await bcrypt.hash(np, 10);
+    const { rows: [me] } = await pool.query(`UPDATE users SET pin_hash=$2, must_change_pin=FALSE WHERE id=$1 RETURNING whatsapp`, [u.id, hash]);
+
+    // Sus otras tiendas que SIGUEN con el PIN inicial 1234 reciben el mismo PIN nuevo (para no pedirle
+    // cambiarlo tienda por tienda). Nunca se tocan las que ya tienen un PIN propio o temporal.
+    const updated: string[] = [u.id];
+    if (me?.whatsapp) {
+      const { rows: sibs } = await pool.query(
+        `SELECT id, pin_hash FROM users WHERE whatsapp=$1 AND role='client' AND id<>$2 AND must_change_pin=TRUE AND pin_hash IS NOT NULL`,
+        [me.whatsapp, u.id]);
+      for (const s of sibs) {
+        if (await bcrypt.compare(PIN_DEFAULT, s.pin_hash)) {
+          await pool.query(`UPDATE users SET pin_hash=$2, must_change_pin=FALSE WHERE id=$1`, [s.id, hash]);
+          updated.push(s.id);
+        }
+      }
+    }
+    res.json({ ok: true, updated });
   } catch (e: any) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 
-/* ── Cliente: cambiar PIN ── */
-router.post('/client/change-pin', async (req: Request, res: Response) => {
-  try {
-    const u = authUser(req);
-    const np = String(req.body.new_pin || '');
-    if (np.length < 4) return res.status(400).json({ error: 'El PIN debe tener al menos 4 dígitos' });
-    await pool.query(`UPDATE users SET pin_hash=$2, must_change_pin=FALSE WHERE id=$1`, [u.id, await bcrypt.hash(np, 10)]);
-    res.json({ ok: true });
-  } catch (e: any) { res.status(401).json({ error: e.message || 'No autenticado' }); }
-});
-
 /* ── Cliente: olvidé mi PIN ──
-   Antes dejaba el PIN en 1234 (cualquiera con WhatsApp + correo entraba al instante).
-   Ahora se genera un PIN aleatorio que solo le llega al correo del dueño. */
+   WhatsApp + correo registrado → PIN temporal aleatorio SOLO al correo del dueño; al ingresar con él
+   la app obliga a crear uno nuevo. Aplica a todas sus tiendas que tengan ese correo. */
 router.post('/client/forgot-pin', async (req: Request, res: Response) => {
   try {
-    const tel = String(req.body.whatsapp || '').replace(/\D/g, '');
+    const tel = digits(req.body.whatsapp);
     const em = String(req.body.email || '').toLowerCase().trim();
-    const slug = String(req.body.portfolio_slug || '').trim();
-    const { rows: [user] } = await pool.query(
-      `SELECT u.* FROM users u JOIN portfolios p ON p.id = u.portfolio_id
-       WHERE u.whatsapp=$1 AND u.role='client' AND LOWER(u.email)=LOWER($2)
-         AND ($3 = '' OR p.slug = $3)`, [tel, em, slug]);
+    const ok = { ok: true, message: 'Si el WhatsApp y el correo coinciden, enviaremos un PIN temporal.' };
+    if (tel.length < 8 || !em) return res.json(ok);
 
-    if (user && user.email) {
-      const tempPin = String(randomInt(1000, 10000));
-      await sendMail(user.email, 'Tu Live Shop · PIN temporal',
-        `<p>Tu PIN temporal es: <b>${tempPin}</b></p><p>Ingresa con tu WhatsApp y este PIN; la app te pedirá crear uno nuevo.</p>`);
-      await pool.query(`UPDATE users SET pin_hash=$2, must_change_pin=TRUE WHERE id=$1`, [user.id, await bcrypt.hash(tempPin, 10)]);
+    const { rows } = await pool.query(
+      `SELECT id, email FROM users WHERE whatsapp=$1 AND role='client' AND status='Activo' AND LOWER(email)=$2`, [tel, em]);
+    if (rows.length) {
+      const tempPin = String(randomInt(100000, 1000000));
+      await sendMail(rows[0].email, 'Tu Live Shop · PIN temporal',
+        `<p>Tu PIN temporal es: <b>${tempPin}</b></p><p>Ingresa con tu WhatsApp y este PIN; la app te pedirá crear uno nuevo de 6 a 8 dígitos.</p><p>Si no lo pediste tú, ignora este mensaje.</p>`);
+      const hash = await bcrypt.hash(tempPin, 10);
+      await pool.query(`UPDATE users SET pin_hash=$2, must_change_pin=TRUE WHERE id = ANY($1)`, [rows.map(r => r.id), hash]);
     }
-    res.json({ ok: true, message: 'Si el WhatsApp y el correo coinciden, enviaremos un PIN temporal.' });
-  } catch (e: any) { console.error(e); res.status(500).json({ error: 'No se pudo procesar la solicitud' }); }
+    res.json(ok);
+  } catch (e: any) { console.error(e); res.status(500).json({ error: 'No se pudo enviar el correo. Intenta más tarde.' }); }
+});
+
+/* ── Cerrar sesión: borra la cookie (el JS no puede, es httpOnly) ── */
+router.post('/logout', (_req: Request, res: Response) => {
+  res.clearCookie('token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
+  res.json({ ok: true });
 });
 
 export default router;

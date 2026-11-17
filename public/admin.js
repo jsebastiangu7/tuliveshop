@@ -176,12 +176,6 @@ function ensureXLSX() {
 }
 function ensureExtraUI() {
   injectStyleOnce(); ensureXLSX();
-  if ($('dashSummary') && !$('sumBaseWrap')) {
-    const wrap = document.createElement('div');
-    wrap.id = 'sumBaseWrap'; wrap.className = 'toolbar'; wrap.style.marginBottom = '10px';
-    wrap.innerHTML = `<label class="note" style="display:flex;gap:6px;align-items:center">Base del resumen <select id="sumBase" onchange="renderSummary()"><option value="cobrado" selected>Lo cobrado (como tu app original)</option><option value="vendido">Lo vendido</option></select></label>`;
-    $('dashSummary').parentNode.insertBefore(wrap, $('dashSummary'));
-  }
   const invTb = document.querySelector('#view-inv .toolbar');
   if (invTb && !$('btnInvTpl')) {
     invTb.insertAdjacentHTML('beforeend', `<button class="btn" id="btnInvTpl" onclick="downloadInventoryTemplate()">Plantilla Excel</button><button class="btn" id="btnInvLoad" onclick="$('invImportFile').click()">📥 Cargar inventario</button><input type="file" id="invImportFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleInventoryFile(event)"><button class="btn" onclick="exportInventoryExcel()">⬇ Excel</button>`);
@@ -531,6 +525,118 @@ function renderTax(keepInputs) {
     : `Tus ingresos brutos del año no superan 1.400 UVT (${money(tope)}). Aun así, podrías estar obligado a declarar por patrimonio, consumos con tarjeta, compras o consignaciones.`;
 }
 
+/* ---------- Panel del dueño (rango de fechas) ---------- */
+let OVR = null;
+const addDaysStr = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+function presetRange(p) {
+  const t = today(), y = t.slice(0, 4), ym = t.slice(0, 7);
+  if (p === 'hoy') return [t, t];
+  if (p === '7d') return [addDaysStr(t, -6), t];
+  if (p === '30d') return [addDaysStr(t, -29), t];
+  if (p === 'mes') return [ym + '-01', t];
+  if (p === 'mesant') { const k = monthKeysBack(2, ym)[0]; const last = addDaysStr(ym + '-01', -1); return [k + '-01', last]; }
+  if (p === 'anio') return [y + '-01-01', t];
+  return ['2020-01-01', t]; // todo
+}
+function opPreset(p) {
+  const [f, t] = presetRange(p);
+  $('opFrom').value = f; $('opTo').value = t;
+  document.querySelectorAll('#opPresets button').forEach(b => b.classList.toggle('primary', b.dataset.p === p));
+  loadOverview();
+}
+function opApply() {
+  document.querySelectorAll('#opPresets button').forEach(b => b.classList.remove('primary'));
+  loadOverview();
+}
+async function loadOverview() {
+  if (!$('opFrom')) return;
+  if (!$('opFrom').value) { const [f, t] = presetRange('mes'); $('opFrom').value = f; $('opTo').value = t; const b = document.querySelector('#opPresets button[data-p="mes"]'); if (b) b.classList.add('primary'); }
+  const from = $('opFrom').value, to = $('opTo').value;
+  if (!from || !to || from > to) { toast('⚠ Revisa el rango de fechas'); return; }
+  try {
+    const d = await api('/api/admin/overview?from=' + from + '&to=' + to);
+    OVR = d; renderOverview(d);
+  } catch (e) { toast('⚠ ' + e.message); }
+}
+function deltaNote(cur, prev, label) {
+  if (!prev) return `<div class="note">${cur ? 'Sin datos en el periodo anterior' : '—'}</div>`;
+  const p = (cur - prev) / Math.abs(prev) * 100;
+  return `<div class="note" style="color:${p >= 0 ? 'var(--ok, #16a34a)' : 'var(--danger)'}">${p >= 0 ? '▲ ' : '▼ '}${Math.abs(p).toFixed(1)}% vs periodo anterior${label ? ' (' + label(prev) + ')' : ''}</div>`;
+}
+function renderOverview(d) {
+  const k = d.kpis, pv = d.prev;
+  put('opRange', `Del <b>${d.from}</b> al <b>${d.to}</b> · comparado con ${pv.from} → ${pv.to}. “Por cobrar” y las alertas son el estado de hoy.`);
+  const al = d.alerts;
+  const pill = (n, txt, tab, warn) => n > 0 ? `<button class="btn ${warn ? 'danger' : ''}" onclick="showTab('${tab}')">${txt}: <b>${n}</b></button>` : '';
+  const pills = [pill(al.reportesPendientes, '💰 Abonos por confirmar', 'abonos', true), pill(al.porEnviar, '🚚 Por enviar', 'logis'), pill(al.porVencer, '⏳ Bolsitas por vencer (48 h)', 'orders', true), pill(al.agotados, '📦 Agotados', 'inv', true), pill(al.stockBajo - al.agotados, '📉 Stock bajo', 'inv')].join('');
+  put('opAlerts', '<div class="toolbar" style="margin:10px 0">' + (pills || '<span class="note">✔ Sin pendientes urgentes.</span>') + '</div>');
+  const card = (label, val, note) => `<div class="card"><div class="label">${label}</div><div class="metric">${val}</div>${note || ''}</div>`;
+  put('opKpis',
+    card('Ventas', money(k.ventas), deltaNote(k.ventas, pv.ventas, money)) +
+    card('Cobrado (abonos recibidos)', money(k.cobrado), deltaNote(k.cobrado, pv.cobrado, money)) +
+    card('Por cobrar hoy', money(k.porCobrar), `<div class="note">${k.pedidosPorCobrar} bolsita(s) con saldo</div>`) +
+    card('Utilidad bruta', `<span style="${k.utilidad < 0 ? 'color:var(--danger)' : ''}">${money(k.utilidad)}</span>`, `<div class="note">Margen ${k.margen.toFixed(1)}%</div>` + deltaNote(k.utilidad, pv.utilidad)) +
+    card('Pedidos', k.pedidos.toLocaleString('es-CO'), deltaNote(k.pedidos, pv.pedidos)) +
+    card('Ticket promedio', money(k.ticket), `<div class="note">${k.unidades.toLocaleString('es-CO')} unidades vendidas</div>`) +
+    card('Clientes', k.clientesActivos.toLocaleString('es-CO') + ' activos', `<div class="note">${k.clientesNuevos} nuevo(s) en el rango</div>`));
+  const s = d.series;
+  const lab = s.unit === 'd' ? s.labels.map(x => x.slice(8, 10) + '/' + x.slice(5, 7)) : s.unit === 'm' ? s.labels.map(mesLabel) : s.labels;
+  chartBars('opSeries', lab, [{ name: 'Ventas', values: s.ventas, color: CH_COLORS[0] }, { name: 'Cobrado', values: s.cobrado, color: CH_COLORS[2] }], { label: 'Ventas y cobrado' });
+  chartDonut('opStatus', d.byStatus.map(r => ({ label: STATUS_LABEL[r.status] || r.status, value: r.n })), { fmt: n => String(Math.round(n)), full: n => n + ' pedido(s)' });
+  chartHBars('opTopProd', d.topProducts.map(r => ({ label: r.label, value: r.venta, extra: r.qty + ' uds' })), { full: money });
+  chartHBars('opTopCli', d.topClients.map(r => ({ label: r.label, value: r.venta })), { full: money });
+  chartDonut('opCat', d.byCategory, { full: money });
+  chartDonut('opMethod', d.byMethod, { full: money });
+  chartHBars('opAging', d.aging.map((a, i) => ({ label: a.label, value: a.v, color: CH_COLORS[i === 3 ? 3 : 0] })), { full: money });
+  put('opDebts', d.debts.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Bolsita</th><th>Cliente</th><th>Días</th><th>Saldo</th></tr></thead><tbody>' +
+    d.debts.map(x => `<tr><td><b>${esc(x.order_number)}</b></td><td>${esc(x.client_name || '')}</td><td>${x.age}</td><td><b>${money(x.balance)}</b></td></tr>`).join('') + '</tbody></table></div>' : '<p class="note">No hay saldos pendientes. ✔</p>');
+}
+
+/* ---------- Descarga consolidada en Excel ---------- */
+const EXPORT_OPTS = [
+  ['resumen', 'Resumen del periodo (KPIs)'], ['pedidos', 'Pedidos'], ['lineas', 'Detalle de pedidos (producto por producto)'], ['abonos', 'Abonos'],
+  ['clientes', 'Clientes'], ['inventario', 'Inventario (foto de hoy)'], ['logistica', 'Logística / envíos'], ['cartera', 'Cartera por cobrar (foto de hoy)'],
+];
+const EXPORT_NAMES = { resumen: 'Resumen', pedidos: 'Pedidos', lineas: 'Detalle de pedidos', abonos: 'Abonos', clientes: 'Clientes', inventario: 'Inventario', logistica: 'Logística', cartera: 'Cartera por cobrar' };
+function openExport() {
+  ensureXLSX();
+  $('exFrom').value = $('opFrom') && $('opFrom').value || presetRange('mes')[0];
+  $('exTo').value = $('opTo') && $('opTo').value || today();
+  $('exChecks').innerHTML = EXPORT_OPTS.map(([id, t]) => `<label style="display:flex;gap:8px;align-items:center;padding:5px 0"><input type="checkbox" class="exChk" value="${id}" checked> ${esc(t)}</label>`).join('');
+  openModal('exportModal');
+}
+function exToggle(on) { document.querySelectorAll('.exChk').forEach(c => { c.checked = on; }); }
+const xlsxSafe = v => {
+  if (typeof v !== 'string') return v;
+  return /^[=@\t\r]/.test(v) || (/^[+-]/.test(v) && !/^[+-]\d[\d\s().-]*$/.test(v)) ? "'" + v : v;
+};
+async function downloadFullExcel() {
+  const from = $('exFrom').value, to = $('exTo').value;
+  const sections = [...document.querySelectorAll('.exChk:checked')].map(c => c.value);
+  if (!from || !to || from > to) return toast('⚠ Revisa el rango de fechas');
+  if (!sections.length) return toast('⚠ Marca al menos un tipo de dato');
+  if (!window.XLSX) return toast('⚠ La librería de Excel aún carga; intenta en unos segundos');
+  const btn = $('exGo'); btn.disabled = true; btn.textContent = 'Generando…';
+  try {
+    const r = await api('/api/admin/export-data?from=' + from + '&to=' + to + '&sections=' + sections.join(','));
+    const wb = XLSX.utils.book_new();
+    for (const id of EXPORT_OPTS.map(o => o[0])) {
+      if (!(id in r.sheets)) continue;
+      let rows = r.sheets[id].map(row => {
+        const o = {}; for (const [kk, v] of Object.entries(row)) o[kk] = xlsxSafe((['pedidos', 'lineas', 'cartera'].includes(id) && (kk === 'Estado' || kk === 'Estado del pedido')) ? (STATUS_LABEL[v] || v) : v); return o;
+      });
+      if (!rows.length) rows = [{ Info: 'Sin datos en este rango' }];
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const keys = Object.keys(rows[0]);
+      ws['!cols'] = keys.map(kk => ({ wch: Math.min(40, Math.max(kk.length, ...rows.slice(0, 200).map(x => String(x[kk] ?? '').length)) + 2) }));
+      XLSX.utils.book_append_sheet(wb, ws, EXPORT_NAMES[id]);
+    }
+    XLSX.writeFile(wb, 'TuLiveShop_' + from + '_a_' + to + '.xlsx');
+    closeModal('exportModal'); toast('✔ Excel descargado');
+  } catch (e) { toast('⚠ ' + e.message); }
+  btn.disabled = false; btn.textContent = '⬇ Descargar';
+}
+
 /* ---------- Dashboard ---------- */
 async function loadDash() {
   const [d, an, goals, dons, logis, clients, orders] = await Promise.all([
@@ -542,7 +648,7 @@ async function loadDash() {
   const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
   set('mVentas', money(d.ventas)); set('mAbonos', money(d.abonos)); set('mSaldo', money(d.saldo));
   set('mAbiertos', d.abiertos); set('mStock', d.stockBajo);
-  renderSummary(); renderResumenCharts();
+  renderSummary();
   renderUtilidad();
   renderProfitBox(); renderGoalsBox(); renderInventoryValue();
   renderLogisDash(); fillDashboardClients(); renderClientOrders(); renderRecent(); renderLow();
@@ -550,7 +656,7 @@ async function loadDash() {
 function renderSummary() {
   const box = $('dashSummary'); if (!box) return;
   const pc = profitConfig();
-  const base = $('sumBase') ? $('sumBase').value : 'cobrado';
+  const base = 'cobrado';
   const nowK = today().slice(0, 7), prevK = monthKeysBack(2, nowK)[0];
   const utilOf = k => monthUtilBase(k, base);
   const rate = y => computeTax(y).efectiva;
@@ -569,7 +675,7 @@ function renderSummary() {
   const entregado = DONATIONS.filter(d => String(d.donation_date || '').slice(0, 4) === y).reduce((a, d) => a + d.amount, 0);
   const keys = monthKeysBack(6, nowK);
   box.innerHTML = `
-<div class="note" style="margin-bottom:8px">Resumen ${MONTHS_ES[Number(nowK.slice(5, 7)) - 1]} ${y} · base: <b>${base === 'cobrado' ? 'lo cobrado' : 'lo vendido'}</b></div>
+<div class="note" style="margin-bottom:8px">Resumen ${MONTHS_ES[Number(nowK.slice(5, 7)) - 1]} ${y} · sobre lo cobrado</div>
 <div class="grid cards3">
   <div class="card"><div class="label">Utilidad neta del mes</div><div class="metric">${money(utilM)}</div>
     <div class="note">${delta === null ? 'Sin mes anterior para comparar' : (delta >= 0 ? '▲ ' : '▼ ') + Math.abs(delta).toFixed(1) + '% vs mes anterior (' + money(utilP) + ')'}</div></div>
@@ -608,16 +714,6 @@ function renderSummary() {
     { name: 'Reinversión sugerida', values: keys.map(k => monthUtilBase(k, base) * pc.reinvPct / 100), color: CH_COLORS[0] },
     { name: 'Invertido en inventario', values: keys.map(k => investmentOf(k)), color: CH_COLORS[2] },
   ], { label: 'Reinversión sugerida vs real' });
-}
-function renderResumenCharts() {
-  const act = ORDERS.filter(o => o.status !== 'canceled');
-  const keys = monthKeysBack(6, today().slice(0, 7));
-  const ven = Object.fromEntries(keys.map(k => [k, 0])), abo = Object.fromEntries(keys.map(k => [k, 0]));
-  (ANALYTICS.salesLines || []).forEach(r => { const k = String(r.fecha).slice(0, 7); if (k in ven) ven[k] += r.venta; });
-  (ANALYTICS.paysMonth || []).forEach(p => { if (p.month in abo) abo[p.month] = p.amount; });
-  chartBars('chResumen', keys.map(mesLabel), [{ name: 'Ventas', values: keys.map(k => ven[k]), color: CH_COLORS[0] }, { name: 'Abonos', values: keys.map(k => abo[k] || 0), color: CH_COLORS[2] }], { label: 'Ventas y abonos por mes' });
-  const total = act.reduce((a, o) => a + o.total, 0), cobrado = act.reduce((a, o) => a + Math.min(o.paid, o.total), 0);
-  chartDonut('chCobro', [{ label: 'Cobrado', value: cobrado, color: CH_COLORS[0] }, { label: 'Pendiente', value: Math.max(0, total - cobrado), color: CH_COLORS[1] }], { label: 'Cobrado frente a pendiente' });
 }
 function renderUtilidad() {
   if (!$('utilView')) return;
@@ -1905,7 +2001,7 @@ async function executeWipe() {
     };
   }
   function safeRender() {
-    [renderSummary, renderResumenCharts, renderUtilidad, renderProfitBox, renderGoalsBox,
+    [renderSummary, function () { if (OVR) renderOverview(OVR); }, renderUtilidad, renderProfitBox, renderGoalsBox,
       renderInventoryValue, renderLogisDash, fillDashboardClients, renderClientOrders, renderRecent, renderLow]
       .forEach(function (fn) { try { fn(); } catch (e) { console.warn('Render parcial:', e); } });
   }
@@ -1928,6 +2024,7 @@ async function executeWipe() {
   }
   loadDash = async function () {
     var fails = [], dashOk = false;
+    loadOverview();
     ANALYTICS = normAnalytics(ANALYTICS);
     if (!Array.isArray(GOALS)) GOALS = []; if (!Array.isArray(DONATIONS)) DONATIONS = [];
     if (!Array.isArray(LOGIS)) LOGIS = []; if (!Array.isArray(CLIENTS)) CLIENTS = []; if (!Array.isArray(ORDERS)) ORDERS = [];

@@ -22,6 +22,8 @@
   --text-muted: #94a3b8;
   --shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   --ok: #22c55e; --warn: #f59e0b; --danger: #ef4444;
+  --muted: var(--text-muted); --thead-bg: rgba(255,255,255,.07);
+  --c1:#7C9BE8; --c2:#D9B84A; --c3:#4FD06A; --c4:#FF7B8C; --c5:#E8ECFB; --c6:#59C2D9; --c7:#B08AE8; --c8:#9AA3C0;
 }
 [data-theme="light"] {
   --bg: #f0f9ff;
@@ -35,6 +37,8 @@
   --text: #0f172a;
   --text-muted: #475569;
   --shadow: 0 8px 32px rgba(2, 132, 199, 0.1);
+  --thead-bg: rgba(0,0,0,.06);
+  --c1:#2C44B8; --c2:#B8952C; --c3:#2CB848; --c4:#B82C41; --c5:#394063; --c6:#0891b2; --c7:#8A63C9; --c8:#6b7280;
 }
 * { box-sizing: border-box; }
 body {
@@ -139,6 +143,21 @@ table.adm th:hover { color: var(--brand); }
 .card .label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
 .card .metric { font-size: 26px; font-weight: 800; color: var(--brand); }
 .dashboard-grid { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); }
+.dashboard-grid > *, .grid.cards3 > * { min-width: 0; }
+/* Gráficos del panel */
+.chart { width: 100%; min-width: 0; }
+.chart svg { width: 100%; height: auto; display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; margin-top: 6px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+.donutwrap { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.donutwrap svg { width: 170px; height: 170px; flex: 0 0 auto; }
+.donutwrap .legend { flex: 1; min-width: 150px; flex-direction: column; flex-wrap: nowrap; gap: 4px; margin: 0; }
+.hbars { display: flex; flex-direction: column; gap: 6px; }
+.hbars .row { display: grid; grid-template-columns: minmax(80px, 32%) 1fr auto; gap: 8px; align-items: center; font-size: 12px; }
+.hbars .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbars .bar { background: var(--thead-bg); border-radius: 999px; height: 10px; overflow: hidden; }
+.hbars .bar b { display: block; height: 100%; border-radius: 999px; }
+.hbars .val { font-weight: 700; white-space: nowrap; }
 .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
 .pill.ok { background: rgba(34, 197, 94, 0.15); color: var(--ok); }
 .pill.warn { background: rgba(245, 158, 11, 0.15); color: var(--warn); }
@@ -187,7 +206,7 @@ table.adm th:hover { color: var(--brand); }
 <body>
 
 <header id="hdr" class="hidden glass">
-  <div class="brand" onclick="location.href='/'" title="Ir a la tienda">Tu <span>Live Shop</span> · Admin</div>
+  <a class="brand" href="/admin.html" onclick="showTab('dash');return false" title="Ir al dashboard" style="color:inherit;text-decoration:none;cursor:pointer">Tu <span>Live Shop</span> · Admin</a>
   <nav id="tabs" class="chips"></nav>
   <div class="header-right">
     <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn">🌙</button>
@@ -222,11 +241,45 @@ table.adm th:hover { color: var(--brand); }
   <section id="view-dash" class="view">
     <h1>Dashboard</h1>
     <p class="note">Control rápido de ventas, pedidos, pagos, logística e inventario.</p>
-    <div id="dashSummary" class="grid cards3"></div>
-    <div class="grid dashboard-grid" style="margin-top:14px">
-      <div class="panel glass"><h2>Ventas vs abonos (últimos 6 meses)</h2><div id="chResumen"></div></div>
-      <div class="panel glass"><h2>Cobrado vs pendiente</h2><div id="chCobro"></div></div>
+    <div class="panel glass" id="ownerPanel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <h2 style="margin:0">Panel del dueño</h2>
+        <button class="btn primary" onclick="openExport()">⬇ Descargar Excel</button>
+      </div>
+      <div class="toolbar" style="margin-top:10px">
+        <span id="opPresets" style="display:contents">
+          <button class="btn" data-p="hoy" onclick="opPreset('hoy')">Hoy</button>
+          <button class="btn" data-p="7d" onclick="opPreset('7d')">7 días</button>
+          <button class="btn" data-p="30d" onclick="opPreset('30d')">30 días</button>
+          <button class="btn primary" data-p="mes" onclick="opPreset('mes')">Este mes</button>
+          <button class="btn" data-p="mesant" onclick="opPreset('mesant')">Mes anterior</button>
+          <button class="btn" data-p="anio" onclick="opPreset('anio')">Este año</button>
+          <button class="btn" data-p="todo" onclick="opPreset('todo')">Todo</button>
+        </span>
+        <input id="opFrom" type="date" aria-label="Desde"><input id="opTo" type="date" aria-label="Hasta">
+        <button class="btn" onclick="opApply()">Aplicar</button>
+      </div>
+      <div id="opRange" class="note"></div>
+      <div id="opAlerts"></div>
+      <div id="opKpis" class="grid cards3"></div>
+      <div class="grid dashboard-grid" style="margin-top:14px">
+        <div><h3>Ventas y cobrado</h3><div id="opSeries"></div></div>
+        <div><h3>Pedidos por estado</h3><div id="opStatus"></div></div>
+      </div>
+      <div class="grid dashboard-grid" style="margin-top:14px">
+        <div><h3>Productos más vendidos</h3><div id="opTopProd"></div></div>
+        <div><h3>Mejores clientes</h3><div id="opTopCli"></div></div>
+      </div>
+      <div class="grid dashboard-grid" style="margin-top:14px">
+        <div><h3>Ventas por categoría</h3><div id="opCat"></div></div>
+        <div><h3>Cobrado por medio de pago</h3><div id="opMethod"></div></div>
+      </div>
+      <div class="grid dashboard-grid" style="margin-top:14px">
+        <div><h3>Cartera por cobrar (antigüedad)</h3><div id="opAging"></div></div>
+        <div><h3>Mayores saldos pendientes</h3><div id="opDebts"></div></div>
+      </div>
     </div>
+    <div id="dashSummary" style="margin-top:14px"></div>
     <div class="panel glass" style="margin-top:14px">
       <h2>Utilidad bruta</h2>
       <div class="toolbar">
@@ -295,7 +348,6 @@ table.adm th:hover { color: var(--brand); }
       <div class="tablewrap" style="margin-top:10px"><table class="adm"><thead id="catHead"></thead><tbody id="catBody"></tbody></table></div>
       <div class="grid dashboard-grid" style="margin-top:14px">
         <div><h3>Participación en inventario</h3><div id="chCatInv"></div></div>
-        <div><h3>Participación en ventas</h3><div id="chCatVen"></div></div>
       </div>
     </div>
     <div class="grid dashboard-grid" style="margin-top:14px">
@@ -603,6 +655,19 @@ table.adm th:hover { color: var(--brand); }
   <div class="modal-actions"><button class="btn" onclick="closeModal('shipModal')">Cancelar</button><button class="btn" onclick="saveShipment('save')">Guardar</button><button class="btn primary" id="shSendBtn" onclick="saveShipment('send')">Enviar</button></div>
 </div></div>
 
+<!-- MODAL: Descargar Excel consolidado -->
+<div id="exportModal" class="modal-backdrop"><div class="modal">
+  <h2>Descargar Excel de la tienda</h2>
+  <p class="note">Elige el rango de fechas y qué datos incluir. Cada tipo de dato va en su propia hoja.</p>
+  <div class="fgrid">
+    <div class="field"><label>Desde</label><input id="exFrom" type="date"></div>
+    <div class="field"><label>Hasta</label><input id="exTo" type="date"></div>
+  </div>
+  <div style="display:flex;gap:8px;margin:10px 0"><button class="btn" onclick="exToggle(true)">Marcar todo</button><button class="btn" onclick="exToggle(false)">Quitar todo</button></div>
+  <div id="exChecks"></div>
+  <div class="modal-actions"><button class="btn" onclick="closeModal('exportModal')">Cancelar</button><button class="btn primary" id="exGo" onclick="downloadFullExcel()">⬇ Descargar</button></div>
+</div></div>
+
 <!-- MODAL: Aporte a objetivo -->
 <div id="goalPayModal" class="modal-backdrop"><div class="modal">
   <h2>Registrar aporte a objetivo</h2>
@@ -646,7 +711,7 @@ table.adm th:hover { color: var(--brand); }
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="/admin.js?v=4"></script>
+<script src="/admin.js?v=5"></script>
 <script>
 // Toggle de tema
 function toggleTheme() {

@@ -144,6 +144,12 @@ table.adm th:hover { color: var(--brand); }
 .card .metric { font-size: 26px; font-weight: 800; color: var(--brand); }
 .dashboard-grid { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); }
 .dashboard-grid > *, .grid.cards3 > * { min-width: 0; }
+/* Orden de tablas */
+th.sortable { cursor: pointer; user-select: none; }
+.sortarr { display: inline-flex; flex-direction: column; vertical-align: middle; margin-left: 6px; line-height: 7px; font-size: 8px; }
+.sortarr b { cursor: pointer; opacity: .35; font-weight: 400; padding: 1px 3px; border-radius: 3px; }
+.sortarr b:hover { opacity: .9; background: var(--surface-hover); }
+.sortarr b.on { opacity: 1; color: var(--brand); }
 /* Gráficos del panel */
 .chart { width: 100%; min-width: 0; }
 .chart svg { width: 100%; height: auto; display: block; }

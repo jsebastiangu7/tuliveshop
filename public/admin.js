@@ -2403,3 +2403,103 @@ async function saveVpAssignments() {
     toast('⚠ ' + e.message);
   }
 }
+
+
+/* ---------- Ordenar tablas (flechas ▲▼ junto a cada etiqueta) ---------- */
+(function () {
+  var SKIP_BODY = { vItems: 1, omItems: 1, omRows: 1, kComps: 1, vpClients: 1 };   // formularios de captura, no listados
+  var STATE = {};                                                                    // orden elegido por tabla; sobrevive a los re-render
+  var OBS = new WeakMap();                                                           // observador de filas por tbody
+
+  function keyOf(table, thead) {
+    var host = table.closest('[id]');
+    var idx = host ? [].indexOf.call(host.querySelectorAll('table.adm'), table) : 0;
+    var sig = [].map.call(thead.querySelectorAll('th'), function (t) { return t.textContent.trim(); }).join('|');
+    return (host ? host.id : 'x') + '#' + idx + '#' + sig;
+  }
+  function parseVal(raw) {
+    var s = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
+    if (!s || s === '—' || s === '-') return { t: 'e' };
+    var iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return { t: 'd', v: Date.UTC(+iso[1], +iso[2] - 1, +iso[3]) };
+    var dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (dmy) return { t: 'd', v: Date.UTC(+dmy[3], +dmy[2] - 1, +dmy[1]) };
+    var c = s.replace(/[$%\s]/g, '');
+    if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(c)) return { t: 'n', v: parseFloat(c.replace(/\./g, '').replace(',', '.')) };
+    if (/^-?\d+,\d+$/.test(c) && /\$/.test(s)) return { t: 'n', v: parseFloat(c.replace(',', '.')) };
+    if (/^-?\d+(\.\d+)?$/.test(c)) return { t: 'n', v: parseFloat(c) };
+    return { t: 's', v: s };
+  }
+  function cellText(tr, i) {
+    var td = tr.children[i];
+    return td ? (td.getAttribute('data-sort') != null ? td.getAttribute('data-sort') : td.textContent) : '';
+  }
+  function sortBody(table, col, dir) {
+    var tb = table.tBodies[0]; if (!tb) return;
+    var all = [].slice.call(tb.children);
+    var rows = all.filter(function (r) { return r.tagName === 'TR' && !(r.children.length === 1 && r.children[0].colSpan > 1); });
+    var extra = all.filter(function (r) { return rows.indexOf(r) < 0; });
+    var vals = rows.map(function (r, i) { return { r: r, i: i, p: parseVal(cellText(r, col)) }; });
+    var nonEmpty = vals.filter(function (x) { return x.p.t !== 'e'; });
+    var kind = nonEmpty.length && nonEmpty.every(function (x) { return x.p.t === 'n'; }) ? 'n'
+             : nonEmpty.length && nonEmpty.every(function (x) { return x.p.t === 'd'; }) ? 'd' : 's';
+    var coll = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
+    var m = dir === 'desc' ? -1 : 1;
+    vals.sort(function (a, b) {
+      if (a.p.t === 'e' || b.p.t === 'e') return a.p.t === b.p.t ? a.i - b.i : (a.p.t === 'e' ? 1 : -1);   // vacíos siempre al final
+      var c = kind === 's' ? coll.compare(String(a.p.v != null ? a.p.v : cellText(a.r, col)), String(b.p.v != null ? b.p.v : cellText(b.r, col))) : (a.p.v - b.p.v);
+      return c ? c * m : a.i - b.i;
+    });
+    vals.forEach(function (x) { tb.appendChild(x.r); });
+    extra.forEach(function (r) { tb.appendChild(r); });
+    var o = OBS.get(tb); if (o) o.takeRecords();                          // descarta los cambios propios para no entrar en bucle
+  }
+  function paint(thead, col, dir) {
+    [].forEach.call(thead.querySelectorAll('th'), function (th, i) {
+      [].forEach.call(th.querySelectorAll('.sortarr b'), function (b) {
+        b.classList.toggle('on', i === col && b.getAttribute('data-d') === dir);
+      });
+      th.setAttribute('aria-sort', i === col ? (dir === 'asc' ? 'ascending' : 'descending') : 'none');
+    });
+  }
+  function apply(table, thead, key, col, dir) {
+    STATE[key] = { col: col, dir: dir };
+    sortBody(table, col, dir); paint(thead, col, dir);
+  }
+  function enhance(table) {
+    var thead = table.tHead; if (!thead || thead.getAttribute('data-sortable')) return;
+    var tb = table.tBodies[0];
+    if (!tb || SKIP_BODY[tb.id] || table.classList.contains('imp-table')) return;
+    var ths = thead.querySelectorAll('th'); if (!ths.length) return;
+    thead.setAttribute('data-sortable', '1');
+    var key = keyOf(table, thead);
+    [].forEach.call(ths, function (th, i) {
+      var label = th.textContent.trim();
+      if (!label || /^acciones$/i.test(label)) return;               // columnas de botones: no se ordenan
+      th.classList.add('sortable');
+      th.insertAdjacentHTML('beforeend', '<span class="sortarr"><b data-d="asc" title="Ordenar de menor a mayor" role="button" aria-label="Ordenar ' + label.replace(/"/g, '') + ' ascendente">▲</b><b data-d="desc" title="Ordenar de mayor a menor" role="button" aria-label="Ordenar ' + label.replace(/"/g, '') + ' descendente">▼</b></span>');
+    });
+    thead.addEventListener('click', function (e) {
+      var th = e.target.closest('th.sortable'); if (!th) return;
+      var col = [].indexOf.call(thead.querySelectorAll('th'), th);
+      var arrow = e.target.closest('.sortarr b'), st = STATE[key];
+      var dir = arrow ? arrow.getAttribute('data-d') : (st && st.col === col && st.dir === 'asc' ? 'desc' : 'asc');
+      apply(table, thead, key, col, dir);
+    });
+    var st = STATE[key];
+    if (st) apply(table, thead, key, st.col, st.dir);                  // tabla redibujada: conserva el orden elegido
+    // si solo cambian las filas (misma tabla), vuelve a aplicar el orden
+    var obs = new MutationObserver(function () {
+      var s = STATE[key]; if (s) sortBody(table, s.col, s.dir);
+    });
+    OBS.set(tb, obs); obs.observe(tb, { childList: true });
+  }
+  var queued = false;
+  function scan() {
+    queued = false;
+    [].forEach.call(document.querySelectorAll('table.adm'), enhance);
+  }
+  function queue() { if (!queued) { queued = true; requestAnimationFrame(scan); } }
+  new MutationObserver(queue).observe(document.body, { childList: true, subtree: true });
+  queue();
+})();

@@ -6,9 +6,11 @@ export interface AuthRequest extends Request {
 }
 
 export function authenticate(req: AuthRequest, res: Response, next: NextFunction) {
-  // Prioriza la cookie, luego el header Authorization
+  // El header Authorization (token explícito de la sesión actual) manda sobre la cookie:
+  // con varias tiendas, la cookie podría pertenecer a otra tienda o estar vencida.
   const authHeader = req.headers.authorization;
-  const token = req.cookies?.token || (authHeader ? authHeader.split(' ')[1] : null);
+  const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const token = bearer || req.cookies?.token || null;
   
   if (!token) {
     return res.status(401).json({ error: 'No autenticado: token no proporcionado' });

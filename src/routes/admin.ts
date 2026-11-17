@@ -32,7 +32,7 @@ async function availabilityMap(pf: string): Promise<Map<string, number>> {
 router.get('/dashboard', async (req: AuthRequest, res: Response) => {
   try {
     const pf = pfOf(req);
-    const { rows: [v] } = await pool.query(`SELECT COALESCE(SUM(t.total),0) AS ventas FROM (SELECT SUM(oi.price*oi.quantity) AS total FROM orders o JOIN order_items oi ON oi.order_id = o.id WHERE o.portfolio_id=$1 AND o.status <> 'canceled' GROUP BY o.id) t`, [pf]);
+    const { rows: [v] } = await pool.query(`SELECT COALESCE(SUM(t.total),0) AS ventas FROM (SELECT SUM(oi.price*oi.quantity) AS total FROM orders o JOIN order_items oi ON oi.order_id = o.id WHERE o.portfolio_id=$1 AND o.status NOT IN ('canceled','expired') GROUP BY o.id) t`, [pf]);
     const { rows: [p] } = await pool.query(`SELECT COALESCE(SUM(pa.amount),0) AS abonos FROM payments pa JOIN orders o ON o.id = pa.order_id WHERE o.portfolio_id=$1 AND o.status <> 'canceled'`, [pf]);
     const { rows: [ab] } = await pool.query(`SELECT COUNT(*)::int AS n FROM orders WHERE portfolio_id=$1 AND status IN ('draft','pending_confirm','apartada','shipped')`, [pf]);
     const { rows: [rep] } = await pool.query(`SELECT COUNT(*)::int AS n FROM payment_reports WHERE portfolio_id=$1 AND status='pending'`, [pf]);
@@ -45,11 +45,218 @@ router.get('/dashboard', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { console.error('Dashboard error:', e); res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
 });
 
+/* ─────────────── Panel del dueño: resumen por rango de fechas ─────────────── */
+const TZ = `America/Bogota`;
+const isDay = (s: any) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s + 'T00:00:00Z'));
+const addDays = (d: string, n: number) => new Date(Date.parse(d + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+const bogotaToday = () => new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 10);
+function rangeOf(req: AuthRequest): { from: string; to: string } | null {
+  const t = bogotaToday();
+  const from = req.query.from ? String(req.query.from) : t.slice(0, 8) + '01';
+  const to = req.query.to ? String(req.query.to) : t;
+  if (!isDay(from) || !isDay(to) || from > to) return null;
+  if ((Date.parse(to) - Date.parse(from)) / 86400000 > 3700) return null;
+  return { from, to };
+}
+
+async function saleLines(pf: string, from: string, to: string) {
+  const { rows } = await pool.query(
+    `SELECT (COALESCE(oi.added_at, o.created_at) AT TIME ZONE '${TZ}')::date::text AS d, o.id AS oid, o.client_id, u.name AS client_name,
+            oi.quantity::int AS qty, (oi.price*oi.quantity)::float AS venta,
+            (COALESCE(p.cost, (SELECT SUM(kc.quantity*pp.cost) FROM kit_components kc JOIN products pp ON pp.id=kc.product_id WHERE kc.kit_id=oi.kit_id), 0) * oi.quantity)::float AS costo,
+            COALESCE(p.name, k.name, 'Sin nombre') AS producto, CASE WHEN oi.kit_id IS NOT NULL THEN 'Kits' ELSE COALESCE(c.name, 'Sin categoría') END AS categoria
+     FROM order_items oi
+     JOIN orders o ON o.id = oi.order_id
+     LEFT JOIN users u ON u.id = o.client_id
+     LEFT JOIN products p ON p.id = oi.product_id
+     LEFT JOIN categories c ON c.id = p.category_id
+     LEFT JOIN kits k ON k.id = oi.kit_id
+     WHERE o.portfolio_id = $1 AND o.status NOT IN ('canceled','expired')
+       AND (COALESCE(oi.added_at, o.created_at) AT TIME ZONE '${TZ}')::date BETWEEN $2 AND $3`, [pf, from, to]);
+  return rows;
+}
+async function payRows(pf: string, from: string, to: string) {
+  const { rows } = await pool.query(
+    `SELECT pa.payment_date::text AS d, pa.amount::float AS amount, COALESCE(pa.method,'Otro') AS method
+     FROM payments pa JOIN orders o ON o.id = pa.order_id
+     WHERE o.portfolio_id = $1 AND o.status <> 'canceled' AND pa.payment_date BETWEEN $2 AND $3`, [pf, from, to]);
+  return rows;
+}
+async function rangeKpis(pf: string, from: string, to: string) {
+  const [lines, pays] = await Promise.all([saleLines(pf, from, to), payRows(pf, from, to)]);
+  const ventas = lines.reduce((a, r) => a + r.venta, 0), costo = lines.reduce((a, r) => a + r.costo, 0);
+  const pedidos = new Set(lines.map(r => r.oid)).size;
+  const cobrado = pays.reduce((a, r) => a + r.amount, 0);
+  return { lines, pays, k: { ventas, costo, utilidad: ventas - costo, margen: ventas > 0 ? (ventas - costo) / ventas * 100 : 0, unidades: lines.reduce((a, r) => a + r.qty, 0), pedidos, ticket: pedidos ? ventas / pedidos : 0, cobrado, clientesActivos: new Set(lines.map(r => r.client_id).filter(Boolean)).size } };
+}
+function topBy(lines: any[], key: string, label: string, n: number) {
+  const m = new Map<string, { label: string; venta: number; qty: number }>();
+  for (const r of lines) { const k = String(r[key] ?? ''); const o = m.get(k) || { label: String(r[label] ?? 'Sin nombre'), venta: 0, qty: 0 }; o.venta += r.venta; o.qty += r.qty; m.set(k, o); }
+  return [...m.values()].sort((a, b) => b.venta - a.venta).slice(0, n);
+}
+
+router.get('/overview', async (req: AuthRequest, res: Response) => {
+  try {
+    const pf = pfOf(req);
+    const rg = rangeOf(req);
+    if (!rg) return res.status(400).json({ error: 'Rango de fechas inválido' });
+    const { from, to } = rg;
+    const days = Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1;
+    const prevTo = addDays(from, -1), prevFrom = addDays(from, -days);
+
+    const [cur, prev] = await Promise.all([rangeKpis(pf, from, to), rangeKpis(pf, prevFrom, prevTo)]);
+
+    // Serie temporal: por día (≤ 62 días), por mes (≤ 36 meses) o por año
+    const unit = days <= 62 ? 'd' : days <= 1100 ? 'm' : 'y';
+    const keyOf = (d: string) => unit === 'd' ? d : unit === 'm' ? d.slice(0, 7) : d.slice(0, 4);
+    const keys: string[] = [];
+    if (unit === 'd') for (let i = 0; i < days; i++) keys.push(addDays(from, i));
+    else if (unit === 'm') { let y = Number(from.slice(0, 4)), m = Number(from.slice(5, 7)); const ey = Number(to.slice(0, 4)), em = Number(to.slice(5, 7)); while (y < ey || (y === ey && m <= em)) { keys.push(y + '-' + String(m).padStart(2, '0')); m++; if (m > 12) { m = 1; y++; } } }
+    else for (let y = Number(from.slice(0, 4)); y <= Number(to.slice(0, 4)); y++) keys.push(String(y));
+    const sm = new Map(keys.map(k => [k, { ventas: 0, cobrado: 0 }]));
+    cur.lines.forEach(r => { const o = sm.get(keyOf(r.d)); if (o) o.ventas += r.venta; });
+    cur.pays.forEach(r => { const o = sm.get(keyOf(r.d)); if (o) o.cobrado += r.amount; });
+    const series = { unit, labels: keys, ventas: keys.map(k => sm.get(k)!.ventas), cobrado: keys.map(k => sm.get(k)!.cobrado) };
+
+    const { rows: byStatus } = await pool.query(
+      `SELECT o.status, COUNT(*)::int AS n, COALESCE(SUM(t.total),0)::float AS total
+       FROM orders o LEFT JOIN (SELECT order_id, SUM(price*quantity) AS total FROM order_items GROUP BY order_id) t ON t.order_id = o.id
+       WHERE o.portfolio_id = $1 AND (o.created_at AT TIME ZONE '${TZ}')::date BETWEEN $2 AND $3 GROUP BY o.status`, [pf, from, to]);
+    const { rows: [nc] } = await pool.query(
+      `SELECT COUNT(*)::int AS n FROM users WHERE role='client' AND portfolio_id=$1 AND (created_at AT TIME ZONE '${TZ}')::date BETWEEN $2 AND $3`, [pf, from, to]);
+    const byMethodMap = new Map<string, number>();
+    cur.pays.forEach(r => byMethodMap.set(r.method, (byMethodMap.get(r.method) || 0) + r.amount));
+    const catMap = new Map<string, number>();
+    cur.lines.forEach(r => catMap.set(r.categoria, (catMap.get(r.categoria) || 0) + r.venta));
+
+    // Cartera por cobrar (foto de hoy, no depende del rango)
+    const { rows: open } = await pool.query(
+      `SELECT o.id, o.order_number, o.status, u.name AS client_name,
+              ((now() AT TIME ZONE '${TZ}')::date - (o.created_at AT TIME ZONE '${TZ}')::date)::int AS age,
+              t.total::float AS total, COALESCE(pa.paid,0)::float AS paid
+       FROM orders o
+       LEFT JOIN users u ON u.id = o.client_id
+       JOIN (SELECT order_id, SUM(price*quantity) AS total FROM order_items GROUP BY order_id) t ON t.order_id = o.id
+       LEFT JOIN (SELECT order_id, SUM(amount) AS paid FROM payments GROUP BY order_id) pa ON pa.order_id = o.id
+       WHERE o.portfolio_id = $1 AND o.status NOT IN ('canceled','expired') AND t.total > COALESCE(pa.paid,0)`, [pf]);
+    const aging = [{ label: '0-7 días', v: 0 }, { label: '8-15 días', v: 0 }, { label: '16-30 días', v: 0 }, { label: 'Más de 30 días', v: 0 }];
+    let porCobrar = 0;
+    const debts = open.map(o => ({ order_number: o.order_number, client_name: o.client_name, status: o.status, age: o.age, balance: o.total - o.paid }));
+    debts.forEach(d => { porCobrar += d.balance; aging[d.age <= 7 ? 0 : d.age <= 15 ? 1 : d.age <= 30 ? 2 : 3]!.v += d.balance; });
+    debts.sort((a, b) => b.balance - a.balance);
+
+    // Alertas operativas (foto de hoy)
+    const { rows: [rep] } = await pool.query(`SELECT COUNT(*)::int AS n FROM payment_reports WHERE portfolio_id=$1 AND status='pending'`, [pf]);
+    const { rows: [lg] } = await pool.query(`SELECT COUNT(*) FILTER (WHERE status IN ('por_enviar','guardado'))::int AS por_enviar FROM shipments WHERE portfolio_id=$1`, [pf]);
+    const { rows: [ex] } = await pool.query(`SELECT COUNT(*)::int AS n FROM orders WHERE portfolio_id=$1 AND status IN ('draft','pending_confirm','apartada') AND expires_at IS NOT NULL AND expires_at > now() AND expires_at <= now() + interval '48 hours'`, [pf]);
+    const avail = await availabilityMap(pf);
+    const { rows: prods } = await pool.query(`SELECT id, min_stock FROM products WHERE portfolio_id=$1`, [pf]);
+    let stockBajo = 0, agotados = 0;
+    for (const pr of prods) { const a = avail.get(pr.id) ?? 0; if (a <= 0) agotados++; if (a <= Math.max(2, Number(pr.min_stock) || 0)) stockBajo++; }
+
+    res.json({
+      from, to, prev: { from: prevFrom, to: prevTo, ventas: prev.k.ventas, cobrado: prev.k.cobrado, pedidos: prev.k.pedidos, utilidad: prev.k.utilidad },
+      kpis: { ...cur.k, clientesNuevos: nc!.n, porCobrar, pedidosPorCobrar: debts.length },
+      series, byStatus,
+      byMethod: [...byMethodMap].map(([label, value]) => ({ label, value })),
+      byCategory: [...catMap].map(([label, value]) => ({ label, value })),
+      topProducts: topBy(cur.lines, 'producto', 'producto', 8),
+      topClients: topBy(cur.lines.filter(r => r.client_id), 'client_id', 'client_name', 8),
+      aging, debts: debts.slice(0, 8),
+      alerts: { reportesPendientes: rep!.n, porEnviar: lg!.por_enviar, porVencer: ex!.n, stockBajo, agotados },
+    });
+  } catch (e: any) { console.error('Overview error:', e); res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
+});
+
+/* ─────────────── Exportación consolidada (datos para el XLSX) ─────────────── */
+const EXPORT_SECTIONS = ['resumen', 'pedidos', 'lineas', 'abonos', 'clientes', 'inventario', 'logistica', 'cartera'] as const;
+router.get('/export-data', async (req: AuthRequest, res: Response) => {
+  try {
+    const pf = pfOf(req);
+    const rg = rangeOf(req);
+    if (!rg) return res.status(400).json({ error: 'Rango de fechas inválido' });
+    const { from, to } = rg;
+    const want = new Set(String(req.query.sections || '').split(',').filter(s => (EXPORT_SECTIONS as readonly string[]).includes(s)));
+    if (!want.size) return res.status(400).json({ error: 'Selecciona al menos un tipo de dato' });
+    const out: Record<string, any[]> = {};
+    const orderTotals = `LEFT JOIN (SELECT order_id, SUM(price*quantity) AS total, SUM(quantity) AS units FROM order_items GROUP BY order_id) t ON t.order_id = o.id
+       LEFT JOIN (SELECT order_id, SUM(amount) AS paid FROM payments GROUP BY order_id) pa ON pa.order_id = o.id`;
+
+    if (want.has('resumen')) {
+      const { k } = await rangeKpis(pf, from, to);
+      out.resumen = [
+        ['Desde', from], ['Hasta', to], ['Ventas', k.ventas], ['Cobrado (abonos recibidos)', k.cobrado], ['Pedidos', k.pedidos], ['Ticket promedio', Math.round(k.ticket)],
+        ['Unidades vendidas', k.unidades], ['Costo de lo vendido', k.costo], ['Utilidad bruta', k.utilidad], ['Margen bruto %', Number(k.margen.toFixed(1))], ['Clientes activos', k.clientesActivos],
+      ].map(([Concepto, Valor]) => ({ Concepto, Valor }));
+    }
+    if (want.has('pedidos')) {
+      const { rows } = await pool.query(
+        `SELECT o.order_number, (o.created_at AT TIME ZONE '${TZ}')::date::text AS fecha, u.name AS cliente, u.whatsapp, o.status, COALESCE(t.total,0)::float AS total, COALESCE(pa.paid,0)::float AS abonado, COALESCE(t.units,0)::int AS unidades, o.notes
+         FROM orders o LEFT JOIN users u ON u.id = o.client_id ${orderTotals}
+         WHERE o.portfolio_id = $1 AND (o.created_at AT TIME ZONE '${TZ}')::date BETWEEN $2 AND $3 ORDER BY o.created_at`, [pf, from, to]);
+      out.pedidos = rows.map(r => ({ Pedido: r.order_number, Fecha: r.fecha, Cliente: r.cliente || '', WhatsApp: decrypt(String(r.whatsapp || '')), Estado: r.status, Unidades: r.unidades, Total: r.total, Abonado: r.abonado, Saldo: Math.max(0, r.total - r.abonado), Notas: r.notes || '' }));
+    }
+    if (want.has('lineas')) {
+      const { rows } = await pool.query(
+        `SELECT o.order_number, (COALESCE(oi.added_at, o.created_at) AT TIME ZONE '${TZ}')::date::text AS fecha, u.name AS cliente, o.status, COALESCE(p.name, k.name, '') AS producto,
+                CASE WHEN oi.kit_id IS NOT NULL THEN 'Kits' ELSE COALESCE(c.name,'') END AS categoria, oi.quantity::int AS qty, oi.price::float AS price
+         FROM order_items oi JOIN orders o ON o.id = oi.order_id LEFT JOIN users u ON u.id = o.client_id
+         LEFT JOIN products p ON p.id = oi.product_id LEFT JOIN categories c ON c.id = p.category_id LEFT JOIN kits k ON k.id = oi.kit_id
+         WHERE o.portfolio_id = $1 AND (COALESCE(oi.added_at, o.created_at) AT TIME ZONE '${TZ}')::date BETWEEN $2 AND $3 ORDER BY o.created_at, o.order_number`, [pf, from, to]);
+      out.lineas = rows.map(r => ({ Pedido: r.order_number, Fecha: r.fecha, Cliente: r.cliente || '', 'Estado del pedido': r.status, Producto: r.producto, Categoría: r.categoria, Cantidad: r.qty, 'Precio unitario': r.price, Subtotal: r.qty * r.price }));
+    }
+    if (want.has('abonos')) {
+      const { rows } = await pool.query(
+        `SELECT pa.payment_date::text AS fecha, o.order_number, u.name AS cliente, pa.method, pa.reference, pa.note, pa.amount::float AS amount
+         FROM payments pa JOIN orders o ON o.id = pa.order_id LEFT JOIN users u ON u.id = o.client_id
+         WHERE o.portfolio_id = $1 AND pa.payment_date BETWEEN $2 AND $3 ORDER BY pa.payment_date, pa.created_at`, [pf, from, to]);
+      out.abonos = rows.map(r => ({ Fecha: r.fecha, Pedido: r.order_number, Cliente: r.cliente || '', Medio: r.method || '', Referencia: r.reference || '', Nota: r.note || '', Valor: r.amount }));
+    }
+    if (want.has('clientes')) {
+      const { rows } = await pool.query(
+        `SELECT u.name, u.whatsapp, u.email, u.city, u.address, u.status, (u.created_at AT TIME ZONE '${TZ}')::date::text AS registrado,
+                COALESCE(r.pedidos,0)::int AS pedidos, COALESCE(r.comprado,0)::float AS comprado, COALESCE(s.saldo,0)::float AS saldo
+         FROM users u
+         LEFT JOIN (SELECT o.client_id, COUNT(DISTINCT o.id) AS pedidos, SUM(oi.price*oi.quantity) AS comprado FROM orders o JOIN order_items oi ON oi.order_id = o.id
+                    WHERE o.portfolio_id=$1 AND o.status NOT IN ('canceled','expired') AND (o.created_at AT TIME ZONE '${TZ}')::date BETWEEN $2 AND $3 GROUP BY o.client_id) r ON r.client_id = u.id
+         LEFT JOIN (SELECT x.client_id, SUM(GREATEST(0, x.total - x.paid)) AS saldo FROM (
+                      SELECT o.client_id, COALESCE(t.total,0) AS total, COALESCE(pa.paid,0) AS paid FROM orders o ${orderTotals}
+                      WHERE o.portfolio_id=$1 AND o.status NOT IN ('canceled','expired')) x GROUP BY x.client_id) s ON s.client_id = u.id
+         WHERE u.role='client' AND u.portfolio_id=$1 AND ((u.created_at AT TIME ZONE '${TZ}')::date BETWEEN $2 AND $3 OR r.pedidos IS NOT NULL)
+         ORDER BY u.name`, [pf, from, to]);
+      out.clientes = rows.map(r => ({ Nombre: r.name, WhatsApp: decrypt(String(r.whatsapp || '')), Correo: decrypt(String(r.email || '')), Ciudad: r.city || '', Dirección: r.address || '', Estado: r.status || '', Registrado: r.registrado, 'Pedidos en el rango': r.pedidos, 'Comprado en el rango': r.comprado, 'Saldo pendiente actual': r.saldo }));
+    }
+    if (want.has('inventario')) {
+      const avail = await availabilityMap(pf);
+      const { rows } = await pool.query(`SELECT p.id, p.name, p.code, c.name AS categoria, p.cost::float AS cost, p.shipping_cost::float AS ship, p.price::float AS price, p.stock::int AS stock, p.min_stock::int AS min_stock, p.purchase_date::text AS fecha FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.portfolio_id=$1 ORDER BY p.name`, [pf]);
+      out.inventario = rows.map(p => { const a = avail.get(p.id) ?? 0; return { Producto: p.name, Código: p.code || '', Categoría: p.categoria || '', Costo: p.cost, 'Costo envío': p.ship, 'Precio venta': p.price, Stock: p.stock, Disponible: a, 'Stock mínimo': p.min_stock, Estado: stockStatus(a, p.min_stock), 'Valor a costo': a * (p.cost || 0), 'Fecha de compra': p.fecha || '' }; });
+    }
+    if (want.has('logistica')) {
+      const { rows } = await pool.query(
+        `SELECT s.status, s.carrier, s.carrier_other, s.pay_mode, s.amount::float AS amount, s.dimensions, s.city, s.address, o.order_number, (o.created_at AT TIME ZONE '${TZ}')::date::text AS fecha, u.name AS cliente
+         FROM shipments s JOIN orders o ON o.id = s.order_id LEFT JOIN users u ON u.id = o.client_id
+         WHERE s.portfolio_id = $1 AND (o.created_at AT TIME ZONE '${TZ}')::date BETWEEN $2 AND $3 ORDER BY o.created_at`, [pf, from, to]);
+      out.logistica = rows.map(r => ({ Pedido: r.order_number, 'Fecha del pedido': r.fecha, Cliente: r.cliente || '', Estado: r.status, Transportadora: r.carrier === 'otra' ? (r.carrier_other || 'otra') : (r.carrier || ''), 'Pago del envío': r.pay_mode || '', 'Valor envío': r.amount || 0, Dimensiones: r.dimensions || '', Ciudad: r.city || '', Dirección: r.address || '' }));
+    }
+    if (want.has('cartera')) {
+      const { rows } = await pool.query(
+        `SELECT o.order_number, (o.created_at AT TIME ZONE '${TZ}')::date::text AS fecha, u.name AS cliente, u.whatsapp, o.status, t.total::float AS total, COALESCE(pa.paid,0)::float AS paid,
+                ((now() AT TIME ZONE '${TZ}')::date - (o.created_at AT TIME ZONE '${TZ}')::date)::int AS age
+         FROM orders o LEFT JOIN users u ON u.id = o.client_id
+         JOIN (SELECT order_id, SUM(price*quantity) AS total FROM order_items GROUP BY order_id) t ON t.order_id = o.id
+         LEFT JOIN (SELECT order_id, SUM(amount) AS paid FROM payments GROUP BY order_id) pa ON pa.order_id = o.id
+         WHERE o.portfolio_id = $1 AND o.status NOT IN ('canceled','expired') AND t.total > COALESCE(pa.paid,0) ORDER BY age DESC`, [pf]);
+      out.cartera = rows.map(r => ({ Pedido: r.order_number, Fecha: r.fecha, 'Días abierta': r.age, Cliente: r.cliente || '', WhatsApp: decrypt(String(r.whatsapp || '')), Estado: r.status, Total: r.total, Abonado: r.paid, Saldo: r.total - r.paid }));
+    }
+    res.json({ from, to, sheets: out });
+  } catch (e: any) { console.error('Export error:', e); res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
+});
+
 /* ─────────────── Analítica ─────────────── */
 router.get('/analytics', async (req: AuthRequest, res: Response) => {
   try {
     const pf = pfOf(req);
-    const { rows: items } = await pool.query(`SELECT oi.price, oi.quantity, COALESCE(oi.added_at, o.created_at) AS fecha, p.name AS product_name, p.cost AS p_cost, p.shipping_cost AS p_ship, k.name AS kit_name FROM order_items oi JOIN orders o ON o.id = oi.order_id LEFT JOIN products p ON p.id = oi.product_id LEFT JOIN kits k ON k.id = oi.kit_id WHERE o.portfolio_id = $1 AND o.status <> 'canceled'`, [pf]);
+    const { rows: items } = await pool.query(`SELECT oi.price, oi.quantity, COALESCE(oi.added_at, o.created_at) AS fecha, p.name AS product_name, p.cost AS p_cost, p.shipping_cost AS p_ship, k.name AS kit_name FROM order_items oi JOIN orders o ON o.id = oi.order_id LEFT JOIN products p ON p.id = oi.product_id LEFT JOIN kits k ON k.id = oi.kit_id WHERE o.portfolio_id = $1 AND o.status NOT IN ('canceled','expired')`, [pf]);
     const { rows: comps } = await pool.query(`SELECT k.name AS kit_name, kc.quantity::float AS cq, p.cost::float AS c, p.shipping_cost::float AS s FROM kit_components kc JOIN kits k ON k.id = kc.kit_id JOIN products p ON p.id = kc.product_id WHERE k.portfolio_id = $1`, [pf]);
     const kitCost = new Map<string, { c: number; s: number }>();
     comps.forEach(c => { const o = kitCost.get(c.kit_name) || { c: 0, s: 0 }; o.c += c.cq * c.c; o.s += c.cq * c.s; kitCost.set(c.kit_name, o); });

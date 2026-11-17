@@ -804,8 +804,69 @@ function renderLow() {
   put('lowStock', low.length ? low.map(p => `<div class="statusbar"><span>${esc(p.name)}</span>${pillStock(p.status)} <b>${Math.max(0, p.available)}</b></div>`).join('') : '<div class="empty">No hay productos con stock bajo.</div>');
 }
 
+/* ---------- Abonos manuales (el administrador los registra) ---------- */
+let MP_ORDERS = [];
+async function loadManualPay() {
+  const [orders, pays] = await Promise.all([api('/api/admin/orders'), api('/api/admin/payments')]);
+  MP_ORDERS = orders.filter(o => !['canceled', 'expired'].includes(o.status) && Number(o.balance) > 0);
+  const clients = new Map();
+  MP_ORDERS.forEach(o => { if (o.client_id && !clients.has(o.client_id)) clients.set(o.client_id, o.client_name || 'Cliente'); });
+  const cOpts = '<option value="">— Todos los clientes —</option>' +
+    [...clients].sort((a, b) => a[1].localeCompare(b[1])).map(([id, n]) => `<option value="${esc(id)}">${esc(n)}</option>`).join('');
+  put('manualPay',
+    '<h2>Registrar abono</h2>' +
+    (MP_ORDERS.length ? '' : '<p class="note">No hay bolsitas con saldo pendiente.</p>') +
+    '<div class="fgrid">' +
+    `<div class="field"><label>Cliente</label><select id="mpClient" onchange="mpFilter()">${cOpts}</select></div>` +
+    '<div class="field"><label>Bolsita / pedido</label><select id="mpOrder" onchange="mpPick()"></select></div>' +
+    '<div class="field"><label>Monto (COP)</label><input id="mpAmount" type="number" min="1"></div>' +
+    `<div class="field"><label>Fecha</label><input id="mpDate" type="date" value="${today()}"></div>` +
+    `<div class="field"><label>Medio</label><select id="mpMethod">${['Efectivo', 'Transferencia', 'Bre-b', 'Nequi', 'Daviplata', 'Tarjeta', 'Otro'].map(m => `<option>${m}</option>`).join('')}</select></div>` +
+    '<div class="field"><label>Referencia / nota</label><input id="mpRef"></div>' +
+    '<div class="field"><label>&nbsp;</label><button class="btn primary" id="mpSave" onclick="saveManualPay()">Guardar abono</button></div>' +
+    '</div>' +
+    '<h3 style="margin-top:16px">Últimos abonos registrados</h3>' +
+    (pays.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Fecha</th><th>Cliente</th><th>Bolsita</th><th>Medio</th><th>Referencia</th><th>Valor</th><th></th></tr></thead><tbody>' +
+      pays.map(p => `<tr><td>${esc(String(p.payment_date).slice(0, 10))}</td><td>${esc(p.client_name || '')}</td><td><b>${esc(p.order_number)}</b></td><td>${esc(p.method || '')}</td><td>${esc(p.reference || p.note || '')}</td><td><b>${money(p.amount)}</b></td><td class="acts"><button class="btn danger" onclick="delManualPay('${p.id}')">✕</button></td></tr>`).join('') +
+      '</tbody></table></div>' : '<p class="note">Aún no hay abonos.</p>'));
+  mpFilter();
+}
+function mpFilter() {
+  const cid = $('mpClient').value;
+  const list = MP_ORDERS.filter(o => !cid || o.client_id === cid);
+  put('mpOrder', '<option value="">— Selecciona —</option>' + list.map(o =>
+    `<option value="${esc(o.id)}">${esc(o.order_number)}${cid ? '' : ' · ' + esc(o.client_name || '')} · saldo ${money(o.balance)}</option>`).join(''));
+  if (list.length === 1) { $('mpOrder').value = list[0].id; mpPick(); }
+}
+function mpPick() {
+  const o = MP_ORDERS.find(x => x.id === $('mpOrder').value);
+  if (!o) return;
+  if (o.client_id) $('mpClient').value = o.client_id;
+  $('mpAmount').value = Math.round(Number(o.balance));
+}
+async function saveManualPay() {
+  const o = MP_ORDERS.find(x => x.id === $('mpOrder').value);
+  const amount = Number($('mpAmount').value) || 0;
+  if (!o) return toast('⚠ Selecciona la bolsita');
+  if (amount <= 0) return toast('⚠ Indica un monto mayor a 0');
+  if (!$('mpDate').value) return toast('⚠ Indica la fecha');
+  if (amount > Number(o.balance) && !confirm('El monto (' + money(amount) + ') supera el saldo (' + money(o.balance) + '). ¿Registrarlo de todos modos?')) return;
+  const btn = $('mpSave'); btn.disabled = true;
+  try {
+    const r = await api('/api/admin/orders/' + o.id + '/payments', { method: 'POST', body: { amount, method: $('mpMethod').value, reference: $('mpRef').value.trim() || null, payment_date: $('mpDate').value } });
+    toast('✔ Abono guardado · ' + o.order_number + (r.new_status === 'paid' ? ' quedó PAGADA' : ' · saldo ' + money(r.balance)));
+    await loadManualPay();
+  } catch (e) { toast('⚠ ' + e.message); btn.disabled = false; }
+}
+async function delManualPay(id) {
+  if (!confirm('¿Eliminar este abono? Se descontará de la factura del cliente.')) return;
+  try { await api('/api/admin/payments/' + id, { method: 'DELETE' }); toast('Abono eliminado'); loadManualPay(); }
+  catch (e) { toast('⚠ ' + e.message); }
+}
+
 /* ---------- Abonos por confirmar ---------- */
 async function loadReports() {
+  loadManualPay().catch(e => toast('⚠ ' + e.message));
   const rows = await api('/api/orders/reports/pending');
   put('reports', rows.length ?
     '<div class="tablewrap"><table class="adm"><thead><tr><th>Bolsita</th><th>Cliente</th><th>WhatsApp</th><th>Abono</th><th>Reportado</th><th>Acciones</th></tr></thead><tbody>' +

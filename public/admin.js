@@ -66,6 +66,7 @@ function showLogin() {
 function enterPanel() {
   $('hdr').classList.remove('hidden');
   if ($('whoName')) $('whoName').textContent = user.name;
+  try { const pf = JSON.parse(localStorage.getItem('portfolio') || 'null'); if ($('brandStore')) $('brandStore').textContent = (pf && pf.name) || 'Admin'; } catch (e) {}
   ensureExtraUI();
   showTab('dash');
 }
@@ -108,17 +109,15 @@ document.addEventListener('click', (e) => { if (!e.target.closest('.who-wrap')) 
 
 /* ---------- Navegación ---------- */
 const TABS = [
-  ['dash', 'Dashboard'], 
-  ['ventas', 'Ventas'], 
-  ['ventas-prod', 'Ventas x Prod.'], 
-  ['abonos', 'Abonos'], 
-  ['inv', 'Inventario'], 
-  ['kits', 'Kits'], 
-  ['clients', 'Clientes'], 
+  ['dash', 'Dashboard'],
+  ['ventas', 'Ventas'],
+  ['ventas-prod', 'Ventas por producto'],
   ['orders', 'Pedidos'],
-  ['cats', 'Categorías'],
-  ['logis', 'Logística'] 
-];
+  ['inv', 'Inventario'],
+  ['clients', 'Clientes'],
+  ['abonos', 'Abonos'],
+  ['logis', 'Logística']
+];  // Kits y Categorías se abren desde el botón del perfil
 let currentTab = 'dash';
 function renderTabs() { const t = $('tabs'); if (t) t.innerHTML = TABS.map(([id, n]) => `<button class="chip ${currentTab === id ? 'active' : ''}" onclick="showTab('${id}')">${n}</button>`).join(''); }
 function showTab(id) {
@@ -1714,7 +1713,7 @@ async function executeWipe() {
   }
   function sync() {
     var sel = document.getElementById('pkMobileNavSel'); if (!sel) return;
-    // Configuración y Legal viven en el botón del perfil, no en esta lista. Si estás dentro de una de
+    // Configuración, Legal, Kits y Categorías viven en el botón del perfil, no en esta lista. Si estás dentro de una de
     // ellas se muestra su nombre en el selector con una opción oculta (no aparece al desplegar la lista).
     var extra = document.getElementById('pkExtraOpt');
     var inList = Array.prototype.some.call(sel.options, function (o) { return o.id !== 'pkExtraOpt' && o.value === currentTab; });
@@ -1722,7 +1721,7 @@ async function executeWipe() {
     else {
       if (!extra) { extra = document.createElement('option'); extra.id = 'pkExtraOpt'; extra.hidden = true; extra.disabled = true; sel.appendChild(extra); }
       extra.value = currentTab;
-      extra.textContent = currentTab === 'config' ? 'Configuración' : currentTab === 'legal' ? 'Legal' : String(currentTab);
+      extra.textContent = ({ config: 'Configuración', legal: 'Legal', kits: 'Kits', cats: 'Categorías' })[currentTab] || String(currentTab);
     }
     if (sel.value !== currentTab) sel.value = currentTab;
     var ico = document.getElementById('pkMnavIco'); if (ico) ico.textContent = ICONS[currentTab] || '🧭';

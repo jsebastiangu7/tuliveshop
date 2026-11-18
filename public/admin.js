@@ -971,7 +971,7 @@ async function loadReports() {
 async function resolveReport(id, decision) {
   try {
     const r = await api('/api/orders/reports/' + id + '/resolve', { method: 'POST', body: { decision } });
-    toast(decision === 'approve' ? '✔ Abono aprobado → bolsita ' + (r.new_status === 'paid' ? 'PAGADA' : 'APARTADA') : 'Abono rechazado → vuelve a borrador');
+    toast(decision === 'approve' ? '✔ Abono aprobado → bolsita ' + (r.new_status === 'paid' ? 'PAGADA' : 'APARTADA') : 'Abono rechazado → bolsita ' + (r.new_status === 'apartada' ? 'sigue APARTADA' : 'vuelve a borrador'));
     loadReports();
   } catch (e) { toast('⚠ ' + e.message); }
 }

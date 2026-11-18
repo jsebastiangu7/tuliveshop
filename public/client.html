@@ -123,6 +123,27 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
 }
 .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
 .modal-actions .btn { flex: 1; justify-content: center; }
+.bolsita-actions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.bolsita-actions .review { color: var(--warn); font-weight: 700; font-size: 13px; }
+.btn-wa { background: #16a34a; color: #fff; box-shadow: 0 4px 14px rgba(22,163,74,.35); }
+.btn-wa:hover { background: #15803d; transform: translateY(-1px); }
+.btn[disabled] { opacity: .55; cursor: not-allowed; transform: none; }
+.pay-box { text-align: left; max-height: 92vh; overflow-y: auto; }
+.pay-sum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; font-size: 12px; color: var(--text-muted); text-align: center; }
+.pay-sum b { display: block; font-size: 15px; color: var(--text); margin-top: 2px; }
+.pay-sum .saldo b { color: var(--danger); }
+.pay-step { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 14px; font-size: 14px; line-height: 1.4; }
+.pay-step .n { flex: 0 0 24px; height: 24px; border-radius: 50%; background: var(--brand); color: #fff; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+.pay-key { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--brand); background: var(--bg); }
+.pay-key code { flex: 1; font-size: 17px; font-weight: 800; letter-spacing: .03em; word-break: break-all; }
+.pay-key button { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.pay-amt { display: flex; gap: 8px; margin-top: 6px; }
+.pay-amt input { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; font-size: 18px; font-weight: 800; }
+.pay-amt button { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 10px; padding: 0 12px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.pay-err { color: var(--danger); font-size: 13px; min-height: 18px; margin-top: 8px; text-align: center; }
+.pay-warn { background: rgba(245,158,11,.14); color: var(--warn); border-radius: 10px; padding: 10px 12px; font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+.pay-done { text-align: center; }
+.pay-done .big { font-size: 46px; margin-bottom: 6px; }
 .tabs { display: flex; gap: 8px; margin: 0 0 20px; flex-wrap: wrap; }
 .tab { padding: 10px 18px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; }
 .tab.active { background: var(--brand); color: #fff; border-color: var(--brand); box-shadow: 0 4px 14px var(--brand-glow); }
@@ -235,6 +256,11 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
     <div id="storesView"></div>
     <button class="btn" style="margin-top:14px;width:100%;justify-content:center" onclick="$('storesModal').classList.remove('open')">Cerrar</button>
   </div>
+</div>
+
+<!-- Modal reportar pago (Bre-B + WhatsApp) -->
+<div class="modal-overlay" id="payModal" onclick="if(event.target===this)closePay()">
+  <div class="modal-box pay-box" id="payBody"></div>
 </div>
 
 <div class="modal-overlay" id="pinModal">
@@ -496,12 +522,78 @@ async function loadOrders(quiet) {
           <span>Abonado: ${money(o.paid)}</span>
           <span class="saldo">Saldo: ${money(o.balance)}</span>
         </div>
+        ${o.status === 'pending_confirm'
+          ? '<div class="bolsita-actions"><span class="review">⏳ Tu pago está en revisión por la tienda</span></div>'
+          : (['draft', 'apartada'].includes(o.status) && Number(o.total) > 0 && Number(o.balance) > 0
+            ? `<div class="bolsita-actions"><button class="btn btn-wa" onclick="openPay('${escH(o.id)}')">💸 Reportar pago</button></div>` : '')}
       </div>`;
     }).join('');
   } catch (e) {
     if (!quiet) $('ordersList').innerHTML = '<div class="empty">No se pudieron cargar tus bolsitas.</div>';
   }
 }
+
+/* ---------- Reportar pago: Bre-B + WhatsApp ---------- */
+let PAY = null;
+function closePay() { $('payModal').classList.remove('open'); PAY = null; loadOrders(true); }
+async function copyKey() {
+  const k = PAY && PAY.cfg && PAY.cfg.bre_b_key; if (!k) return;
+  try { await navigator.clipboard.writeText(k); toast('✔ Llave copiada'); }
+  catch (_) { const r = document.createRange(); r.selectNodeContents($('payKey')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('Selecciona y copia la llave'); }
+}
+function payFull() { $('payAmt').value = Number(PAY.o.balance).toLocaleString('es-CO'); }
+function payAmtFmt(el) { const d = el.value.replace(/\D/g, ''); el.value = d ? Number(d).toLocaleString('es-CO') : ''; }
+
+async function openPay(orderId) {
+  const o = ORDERS.find(x => x.id === orderId); if (!o) return;
+  PAY = { o, cfg: null };
+  $('payBody').innerHTML = '<h3>💸 Reportar pago</h3><p style="color:var(--text-muted)">Cargando datos de la tienda…</p>';
+  $('payModal').classList.add('open');
+  try { PAY.cfg = await api('/api/products/config/' + encodeURIComponent(slug)); }
+  catch (e) { $('payBody').innerHTML = `<h3>💸 Reportar pago</h3><div class="pay-warn">⚠ ${escH(e.message)}</div><div class="modal-actions"><button class="btn btn-ghost" onclick="closePay()">Cerrar</button></div>`; return; }
+  renderPay();
+}
+function renderPay() {
+  const { o, cfg } = PAY;
+  const key = String(cfg.bre_b_key || '').trim(), wa = String(cfg.whatsapp_number || '').replace(/\D/g, '');
+  const warn = (!key ? '<div class="pay-warn">⚠ La tienda aún no configuró su llave Bre-B. Escríbele por otro medio.</div>' : '') +
+               (!wa ? '<div class="pay-warn">⚠ La tienda aún no configuró su WhatsApp.</div>' : '');
+  $('payBody').innerHTML = `
+    <h3>💸 Reportar pago · ${escH(o.order_number)}</h3>
+    <div class="pay-sum"><div>Total<b>${money(o.total)}</b></div><div>Abonado<b>${money(o.paid)}</b></div><div class="saldo">Saldo<b>${money(o.balance)}</b></div></div>
+    ${warn}
+    <div class="pay-step"><span class="n">1</span><div>Transfiere por <b>Bre-B</b> a la llave de <b>${escH(cfg.name || 'la tienda')}</b>:
+      <div class="pay-key"><code id="payKey">${escH(key || '—')}</code>${key ? '<button type="button" onclick="copyKey()">Copiar</button>' : ''}</div></div></div>
+    <div class="pay-step"><span class="n">2</span><div style="flex:1;min-width:0">Escribe el monto que transferiste:
+      <div class="pay-amt"><input id="payAmt" inputmode="numeric" autocomplete="off" placeholder="$ 0" value="${Number(o.balance).toLocaleString('es-CO')}" oninput="payAmtFmt(this)"><button type="button" onclick="payFull()">Saldo completo</button></div></div></div>
+    <div class="pay-step"><span class="n">3</span><div>Toca <b>Reportar por WhatsApp</b>, envía el mensaje y <b>adjunta la captura del comprobante</b> en el chat. La tienda lo revisará y aprobará tu pago.</div></div>
+    <div class="pay-err" id="payErr"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="closePay()">Cancelar</button>
+      <button type="button" class="btn btn-wa" id="payGo" onclick="submitPay()" ${wa ? '' : 'disabled'}>Reportar por WhatsApp</button>
+    </div>`;
+}
+async function submitPay() {
+  const amount = Number(String($('payAmt').value).replace(/\D/g, '')) || 0;
+  if (amount <= 0) { $('payErr').textContent = 'Escribe el monto que transferiste'; return; }
+  const btn = $('payGo'); btn.disabled = true; $('payErr').textContent = '';
+  try {
+    const r = await api('/api/orders/' + PAY.o.id + '/separar', { method: 'POST', body: { amount } });
+    if (!r.whatsapp_link) throw new Error('La tienda no tiene WhatsApp configurado');
+    const w = window.open(r.whatsapp_link, '_blank');   // puede bloquearse tras el await: por eso el enlace queda visible abajo
+    $('payBody').innerHTML = `<div class="pay-done"><div class="big">✅</div>
+      <h3>Reporte registrado</h3>
+      <p style="color:var(--text-muted);font-size:14px;line-height:1.5">Reportaste <b style="color:var(--text)">${money(amount)}</b>. Falta un paso: <b style="color:var(--text)">envía el mensaje por WhatsApp y adjunta la captura del comprobante</b>. Sin el soporte la tienda no puede aprobarlo.</p>
+      <div class="modal-actions" style="flex-direction:column">
+        <a class="btn btn-wa" href="${escH(r.whatsapp_link)}" target="_blank" rel="noopener">${w ? 'Abrir WhatsApp de nuevo' : 'Abrir WhatsApp'}</a>
+        <button type="button" class="btn btn-ghost" onclick="closePay()">Listo</button>
+      </div></div>`;
+    loadOrders(true);
+  } catch (e) {
+    btn.disabled = false; $('payErr').textContent = e.message;
+  }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && token && typeof loadOrders === 'function') loadOrders(true); });
 
 async function changePin(e) {
   e.preventDefault();

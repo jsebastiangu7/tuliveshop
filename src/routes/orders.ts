@@ -172,6 +172,11 @@ router.post('/:id/separar', authenticate, requireRole('client'), async (req: Aut
     if (amount < minPay) return res.status(400).json({ error: `El abono mínimo es ${money(minPay)}` });
     if (amount > totals.balance) return res.status(400).json({ error: 'El abono supera el saldo pendiente' });
 
+    // Un solo reporte pendiente por bolsita: evita duplicados (doble clic / reintentos) que el admin aprobaría dos veces
+    const { rows: [dup] } = await pool.query(
+      `SELECT 1 FROM payment_reports WHERE order_id = $1 AND status = 'pending' LIMIT 1`, [order.id]);
+    if (dup) return res.status(409).json({ error: 'Ya tienes un pago en revisión para esta bolsita. Espera la respuesta de la tienda.' });
+
     await pool.query(
       `INSERT INTO payment_reports (portfolio_id, order_id, amount, status) VALUES ($1,$2,$3,'pending')`,
       [order.portfolio_id, order.id, amount]);
@@ -187,11 +192,16 @@ router.post('/:id/separar', authenticate, requireRole('client'), async (req: Aut
     });
 
     const { rows: [pf] } = await pool.query(`SELECT * FROM portfolios WHERE id = $1`, [order.portfolio_id]);
-    const message = (pf.whatsapp_template || '')
-      .replace('{ORDER_NUMBER}', order.order_number)
-      .replace('{TOTAL}', money(totals.total))
-      .replace('{AMOUNT}', money(amount));
-    const whatsapp_link = `https://wa.me/${String(pf.whatsapp_number).replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    const tpl = String(pf.whatsapp_template || '').trim() ||
+      'Hola, te reporto el pago de {AMOUNT} de mi bolsita {ORDER_NUMBER} (total {TOTAL}). Adjunto el comprobante.';
+    const message = tpl
+      .replace(/\{ORDER_NUMBER\}/g, order.order_number)
+      .replace(/\{TOTAL\}/g, money(totals.total))
+      .replace(/\{AMOUNT\}/g, money(amount));
+    // wa.me exige indicativo de país: un celular colombiano de 10 dígitos (3xx…) se completa con 57
+    let waNum = String(pf.whatsapp_number || '').replace(/\D/g, '');
+    if (waNum.length === 10 && waNum.startsWith('3')) waNum = '57' + waNum;
+    const whatsapp_link = waNum ? `https://wa.me/${waNum}?text=${encodeURIComponent(message)}` : '';
 
     res.json({ ok: true, bre_b_key: pf.bre_b_key, whatsapp_link, message, ...totals });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
@@ -262,13 +272,22 @@ router.post('/reports/:id/resolve', authenticate, requireRole('admin', 'super_ad
         [newStatus, report.order_id]);
       if (newStatus === 'paid') await ensureShipmentFor(report.order_id, report.portfolio_id);
     } else {
-      newStatus = 'draft';
       await pool.query(
         `UPDATE payment_reports SET status = 'rejected', resolved_at = NOW() WHERE id = $1::uuid`,
         [report.id]);
-      await pool.query(
-        `UPDATE orders SET status = 'draft', expires_at = NOW() + INTERVAL '12 hours', updated_at = NOW() WHERE id = $1::uuid`,
-        [report.order_id]);
+      // Si la bolsita ya tiene abonos aprobados, sigue Apartada (sin vencimiento); si no, vuelve a borrador con 12 h
+      const tRej = await getOrderTotals(report.order_id);
+      if (tRej.paid > 0) {
+        newStatus = 'apartada';
+        await pool.query(
+          `UPDATE orders SET status = 'apartada', expires_at = NULL, updated_at = NOW() WHERE id = $1::uuid`,
+          [report.order_id]);
+      } else {
+        newStatus = 'draft';
+        await pool.query(
+          `UPDATE orders SET status = 'draft', expires_at = NOW() + INTERVAL '12 hours', updated_at = NOW() WHERE id = $1::uuid`,
+          [report.order_id]);
+      }
     }
 
     const { rows: [ord] } = await pool.query(

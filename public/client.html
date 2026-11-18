@@ -123,7 +123,30 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
 }
 .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
 .modal-actions .btn { flex: 1; justify-content: center; }
+.tabs { display: flex; gap: 8px; margin: 0 0 20px; flex-wrap: wrap; }
+.tab { padding: 10px 18px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; }
+.tab.active { background: var(--brand); color: #fff; border-color: var(--brand); box-shadow: 0 4px 14px var(--brand-glow); }
+.tab .cnt { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 6px; border-radius: 999px; background: rgba(255,255,255,.22); font-size: 12px; }
+.shop-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.shop-bar input, .shop-bar select { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; font-size: 14px; }
+.shop-count { color: var(--text-muted); font-size: 13px; margin-bottom: 12px; }
+.pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; margin-bottom: 28px; }
+.pcard { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 16px; border: 1px solid var(--border); background: var(--surface); }
+.pcard img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; background: var(--bg); }
+.pcard .cat { font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--text-muted); text-transform: uppercase; }
+.pcard .name { font-weight: 700; font-size: 15px; line-height: 1.25; }
+.pcard .comp { font-size: 12px; color: var(--text-muted); }
+.pcard .price { font-size: 18px; font-weight: 800; color: var(--brand); }
+.pcard .stock { font-size: 12px; font-weight: 700; color: var(--ok); }
+.pcard .stock.low { color: var(--warn); }
+.pcard .btn { margin-top: auto; justify-content: center; }
+.rm { border: 0; background: var(--danger); color: #fff; border-radius: 8px; padding: 4px 9px; cursor: pointer; font-weight: 700; }
 @media (max-width: 640px) {
+  .shop-bar { grid-template-columns: 1fr; }
+  .hm { display: none; }
+  .bolsita { padding: 14px; }
+  .bolsita th, .bolsita td { padding: 8px 6px; }
+  .pgrid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   header { padding: 12px 16px; }
   .nav-right { width: 100%; justify-content: center; }
   main { padding: 24px 16px 60px; }
@@ -133,7 +156,7 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
 <body>
 
 <header class="glass">
-  <a href="/" class="brand">🛍️ Tu <span>Live Shop</span></a>
+  <a href="#" class="brand" onclick="openStorePicker();return false" title="Mis tiendas">🛍️ Tu <span>Live Shop</span></a>
   <div class="nav-right">
     <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn">🌙</button>
     <select id="storeSwitch" onchange="switchStore(this.value)" title="Cambiar de tienda" style="display:none;max-width:160px;padding:6px 8px;border-radius:10px"></select>
@@ -173,13 +196,47 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
   </section>
 
   <section id="view-dashboard" class="view" style="display:none">
-    <h1>🎀 Mis Bolsitas</h1>
-    <p class="subtitle">Hola, <span id="welcomeName"></span>. Aquí están tus pedidos.</p>
-    <div id="ordersList"></div>
+    <h1 id="storeTitle">🛍️ Tienda</h1>
+    <p class="subtitle">Hola, <span id="welcomeName"></span>.</p>
+    <div class="tabs">
+      <button class="tab active" id="tabBtn-shop" onclick="setTab('shop')">🛍️ Tienda</button>
+      <button class="tab" id="tabBtn-orders" onclick="setTab('orders')">🎀 Mis bolsitas<span class="cnt" id="bagCnt" style="display:none"></span></button>
+    </div>
+
+    <div id="tab-shop">
+      <div class="shop-bar">
+        <input id="shopSearch" type="search" placeholder="🔎 Buscar producto o código" oninput="renderCatalog()">
+        <select id="shopCat" onchange="renderCatalog()"><option value="">Todas las categorías</option></select>
+        <select id="shopSort" onchange="renderCatalog()">
+          <option value="alpha">Orden: A–Z</option>
+          <option value="priceAsc">Precio: menor a mayor</option>
+          <option value="priceDesc">Precio: mayor a menor</option>
+          <option value="avail">Más disponibles</option>
+        </select>
+      </div>
+      <div class="shop-count" id="shopCount"></div>
+      <div class="pgrid" id="catalog"></div>
+      <div id="kitsBox" style="display:none">
+        <h2 style="font-size:18px;margin:6px 0 12px">🎁 Kits</h2>
+        <div class="pgrid" id="kits"></div>
+      </div>
+    </div>
+
+    <div id="tab-orders" style="display:none">
+      <div id="ordersList"></div>
+    </div>
   </section>
 </main>
 
 <!-- Modal cambio de PIN -->
+<div class="modal-overlay" id="storesModal">
+  <div class="modal-box" style="text-align:center">
+    <h3>🏪 Mis tiendas</h3>
+    <div id="storesView"></div>
+    <button class="btn" style="margin-top:14px;width:100%;justify-content:center" onclick="$('storesModal').classList.remove('open')">Cerrar</button>
+  </div>
+</div>
+
 <div class="modal-overlay" id="pinModal">
   <div class="modal-box">
     <h3>🔐 Cambia tu PIN</h3>
@@ -251,6 +308,9 @@ function showDashboard() {
   $('userName').textContent = '👋 ' + (user.name || 'Cliente');
   renderStoreSwitch();
   $('welcomeName').textContent = user.name || 'Cliente';
+  const cur = myStores().find(x => x.slug === slug);
+  $('storeTitle').textContent = '🛍️ ' + (cur && cur.name && cur.name !== cur.slug ? cur.name : 'Tienda');
+  loadCatalog();
   loadOrders();
   if (user.must_change_pin) $('pinModal').classList.add('open');
 }
@@ -273,6 +333,48 @@ function logout() {
   token = ''; user = null;
   ['pk_token', 'pk_user', 'pk_slug', 'pk_stores'].forEach(k => localStorage.removeItem(k));
   location.replace('/?login=client');
+}
+
+/* ---------- Selector de tiendas (clic en "Tu Live Shop") ---------- */
+const escH = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function myStores() {
+  const st = getStores();
+  if (st.length) return st;
+  return slug && token ? [{ slug, name: slug, token, user }] : [];
+}
+function openStorePicker() {
+  const st = myStores();
+  $('storesView').innerHTML = '<p style="color:var(--text-muted);margin-bottom:12px">Elige la tienda a la que quieres entrar:</p>' +
+    st.map(s => `<button class="btn ${s.slug === slug ? 'btn-primary' : 'btn-ghost'}" style="width:100%;justify-content:center;margin-bottom:8px" onclick="switchStore('${escH(s.slug)}')">🏪 ${escH(s.name)}${s.slug === slug ? ' (actual)' : ''}</button>`).join('') +
+    '<button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:6px;border:1px dashed var(--border)" onclick="showNewStores()">➕ Registrarme en una nueva tienda</button>';
+  $('storesModal').classList.add('open');
+}
+async function showNewStores() {
+  $('storesView').innerHTML = '<p style="color:var(--text-muted)">Cargando tiendas…</p>';
+  try {
+    const all = await api('/api/auth/client/portfolios');
+    const mine = new Set(myStores().map(s => s.slug));
+    const free = all.filter(p => !mine.has(p.slug));
+    $('storesView').innerHTML = free.length
+      ? '<p style="color:var(--text-muted);margin-bottom:10px">Marca las tiendas donde quieres comprar:</p><div style="text-align:left;max-height:260px;overflow:auto;margin-bottom:12px">' +
+        free.map(p => `<label style="display:flex;gap:10px;align-items:center;padding:8px 4px"><input type="checkbox" class="nsChk" value="${escH(p.slug)}"> 🏪 ${escH(p.name)}</label>`).join('') +
+        '</div><div id="nsErr" style="color:var(--danger);font-size:13px;min-height:18px"></div><button class="btn btn-primary" style="width:100%;justify-content:center" onclick="addNewStores()">Registrarme</button>' +
+        '<button class="link-text" style="background:none;border:0;color:var(--brand);margin-top:10px;cursor:pointer" onclick="openStorePicker()">← Volver</button>'
+      : '<p style="color:var(--text-muted)">Ya estás inscrito en todas las tiendas disponibles. ✔</p><button class="link-text" style="background:none;border:0;color:var(--brand);margin-top:10px;cursor:pointer" onclick="openStorePicker()">← Volver</button>';
+  } catch (e) { $('storesView').innerHTML = '<p style="color:var(--danger)">' + escH(e.message) + '</p>'; }
+}
+async function addNewStores() {
+  const picks = [...document.querySelectorAll('.nsChk:checked')].map(c => c.value);
+  if (!picks.length) { $('nsErr').textContent = 'Selecciona al menos una tienda.'; return; }
+  try {
+    const r = await api('/api/auth/client/add-stores', { method: 'POST', body: { portfolios: picks } });
+    const merged = myStores().slice();
+    (r.added || []).forEach(n => { if (!merged.find(x => x.slug === n.slug)) merged.push(n); });
+    localStorage.setItem('pk_stores', JSON.stringify(merged));
+    toast && toast('✔ Te registraste en ' + (r.added || []).length + ' tienda(s)');
+    openStorePicker();
+    renderStoreSwitch();
+  } catch (e) { $('nsErr').textContent = e.message; }
 }
 
 /* ---------- Varias tiendas ---------- */
@@ -298,21 +400,97 @@ function markPinChanged(ids) {
   localStorage.setItem('pk_stores', JSON.stringify(stores));
 }
 
-async function loadOrders() {
+/* ---------- Tienda (catálogo) ---------- */
+let PRODUCTS = [], KITS = [], CATS = [], ORDERS = [];
+const ACTIVE = ['draft', 'pending_confirm', 'apartada'];
+function setTab(t) {
+  ['shop', 'orders'].forEach(k => {
+    $('tab-' + k).style.display = k === t ? 'block' : 'none';
+    $('tabBtn-' + k).classList.toggle('active', k === t);
+  });
+  if (t === 'orders') loadOrders();
+}
+async function loadCatalog() {
+  $('catalog').innerHTML = '<p style="color:var(--text-muted)">Cargando productos…</p>';
+  try {
+    const [p, k, c] = await Promise.all([
+      api('/api/products/portfolio/' + encodeURIComponent(slug)),
+      api('/api/products/kits/' + encodeURIComponent(slug)),
+      api('/api/products/categories/' + encodeURIComponent(slug)),
+    ]);
+    PRODUCTS = p; KITS = k; CATS = c;
+    const sel = $('shopCat'), prev = sel.value;
+    sel.innerHTML = '<option value="">Todas las categorías</option>' + CATS.map(x => `<option value="${escH(x.name)}">${escH(x.name)}</option>`).join('');
+    sel.value = prev;
+    renderCatalog();
+  } catch (e) {
+    $('catalog').innerHTML = '<p style="color:var(--danger)">No se pudo cargar la tienda: ' + escH(e.message) + '</p>';
+  }
+}
+function renderCatalog() {
+  const q = ($('shopSearch').value || '').toLowerCase().trim(), cat = $('shopCat').value, mode = $('shopSort').value;
+  let list = PRODUCTS.filter(p => Number(p.available) > 0 && (!cat || (p.category || '') === cat) &&
+    (!q || String(p.name).toLowerCase().includes(q) || String(p.code || '').toLowerCase().includes(q)));
+  list.sort((a, b) => mode === 'priceAsc' ? Number(a.price) - Number(b.price) : mode === 'priceDesc' ? Number(b.price) - Number(a.price)
+    : mode === 'avail' ? Number(b.available) - Number(a.available) : String(a.name).localeCompare(String(b.name), 'es'));
+  $('shopCount').textContent = list.length + ' producto(s) disponible(s)';
+  $('catalog').innerHTML = list.length ? list.map(p => `<div class="pcard">
+      ${p.image_url ? `<img src="${escH(p.image_url)}" alt="" loading="lazy">` : ''}
+      <div class="cat">${escH(p.category || 'Sin categoría')}</div>
+      <div class="name">${escH(p.name)}</div>
+      <div class="price">${money(p.price)}</div>
+      <div class="stock ${Number(p.available) <= 2 ? 'low' : ''}">Disponibles: ${Number(p.available)}</div>
+      <button class="btn btn-primary" onclick="addToBag('product','${escH(p.id)}',this)">Agregar</button></div>`).join('')
+    : '<p style="color:var(--text-muted)">No hay productos disponibles con esos filtros.</p>';
+  const ks = KITS.filter(k => Number(k.available) > 0);
+  $('kitsBox').style.display = ks.length ? 'block' : 'none';
+  $('kits').innerHTML = ks.map(k => `<div class="pcard">
+      <div class="cat">Kit</div><div class="name">🎁 ${escH(k.name)}</div>
+      <div class="comp">${(k.components || []).map(c => Number(c.quantity) + '× ' + escH(c.product_name)).join(' · ')}</div>
+      <div class="price">${money(k.price)}</div>
+      <div class="stock ${Number(k.available) <= 2 ? 'low' : ''}">Disponibles: ${Number(k.available)}</div>
+      <button class="btn btn-primary" onclick="addToBag('kit','${escH(k.id)}',this)">Agregar</button></div>`).join('');
+}
+async function addToBag(kind, id, btn) {
+  const body = kind === 'kit' ? { kit_id: id, quantity: 1 } : { product_id: id, quantity: 1 };
+  if (btn) btn.disabled = true;
+  try {
+    let o = await api('/api/orders', { method: 'POST' });
+    try { await api('/api/orders/' + o.id + '/items', { method: 'POST', body }); }
+    catch (e) {
+      if (!/no encontrada|ya no puede modificarse/i.test(e.message)) throw e;
+      o = await api('/api/orders', { method: 'POST' });
+      await api('/api/orders/' + o.id + '/items', { method: 'POST', body });
+    }
+    toast('✔ Agregado a tu bolsita');
+  } catch (e) { toast('⚠ ' + e.message); }
+  await Promise.all([loadCatalog(), loadOrders(true)]);   // refresca el stock real y la bolsita
+}
+async function removeFromBag(orderId, itemId) {
+  try { await api('/api/orders/' + orderId + '/items/' + itemId, { method: 'DELETE' }); toast('Producto quitado'); }
+  catch (e) { toast('⚠ ' + e.message); }
+  await Promise.all([loadCatalog(), loadOrders(true)]);
+}
+
+async function loadOrders(quiet) {
   try {
     const orders = await api('/api/orders/mine');
+    ORDERS = orders || [];
+    const cur = ORDERS.filter(o => ACTIVE.includes(o.status)).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))[0];
+    const n = cur ? (cur.items || []).reduce((a, i) => a + Number(i.quantity), 0) : 0;
+    $('bagCnt').textContent = n; $('bagCnt').style.display = n ? '' : 'none';
     if (!orders || !orders.length) {
-      $('ordersList').innerHTML = '<div class="empty"><div class="big">🎀</div>Aún no tienes bolsitas.<br><a href="/" class="btn btn-primary" style="margin-top:16px">Ir a la tienda</a></div>';
+      $('ordersList').innerHTML = '<div class="empty"><div class="big">🎀</div>Aún no tienes bolsitas.<br><button class="btn btn-primary" style="margin-top:16px" onclick="setTab(\'shop\')">Ir a la tienda</button></div>';
       return;
     }
     $('ordersList').innerHTML = orders.map(o => {
-      const items = (o.items || []).map(i => `<tr><td>${i.product_name || i.kit_name || '—'}</td><td>${i.quantity}</td><td>${money(i.price)}</td><td>${money(i.price * i.quantity)}</td></tr>`).join('');
+      const items = (o.items || []).map(i => `<tr><td>${escH(i.product_name || i.kit_name || '—')}</td><td>${i.quantity}</td><td class="hm">${money(i.price)}</td><td>${money(i.price * i.quantity)}</td><td>${o.status === 'draft' ? `<button class="rm" title="Quitar" onclick="removeFromBag('${escH(o.id)}','${escH(i.id)}')">✕</button>` : ''}</td></tr>`).join('');
       return `<div class="bolsita">
         <div class="bolsita-header">
-          <span class="bolsita-num">${o.order_number}</span>
+          <span class="bolsita-num">${escH(o.order_number)}</span>
           <span class="badge ${STATUS_CLASS[o.status] || 'badge-muted'}">${STATUS[o.status] || o.status}</span>
         </div>
-        <table><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Total</th></tr></thead><tbody>${items || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Sin productos</td></tr>'}</tbody></table>
+        <table><thead><tr><th>Producto</th><th>Cant.</th><th class="hm">Precio</th><th>Total</th><th></th></tr></thead><tbody>${items || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Sin productos</td></tr>'}</tbody></table>
         <div class="totals">
           <span>Total: ${money(o.total)}</span>
           <span>Abonado: ${money(o.paid)}</span>
@@ -321,7 +499,7 @@ async function loadOrders() {
       </div>`;
     }).join('');
   } catch (e) {
-    $('ordersList').innerHTML = '<div class="empty">No se pudieron cargar tus bolsitas.</div>';
+    if (!quiet) $('ordersList').innerHTML = '<div class="empty">No se pudieron cargar tus bolsitas.</div>';
   }
 }
 

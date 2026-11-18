@@ -1879,13 +1879,6 @@ async function executeWipe() {
   }
   function ensureUi() {
     injectCss();
-    if (!document.getElementById('pkDiagFab')) {
-      var fab = document.createElement('button');
-      fab.id = 'pkDiagFab'; fab.type = 'button';
-      fab.innerHTML = '<span class="pk-dot"></span><span id="pkDiagFabText">Diagnóstico</span>';
-      fab.addEventListener('click', function () { togglePanel(true); });
-      document.body.appendChild(fab);
-    }
     if (!document.getElementById('pkDiagPanel')) {
       var p = document.createElement('div'); p.id = 'pkDiagPanel';
       p.innerHTML =
@@ -2018,7 +2011,7 @@ async function executeWipe() {
   }
   function failBanner(view, fails) {
     banner(view, fails.length
-      ? '⚠ No se pudo cargar: <b>' + fails.map(esc).join(', ') + '</b>. Se muestra lo que sí llegó. <button class="btn" onclick="pkOpenDiag()">Ver diagnóstico</button> <button class="btn" onclick="loadTab(currentTab)">↻ Reintentar</button>'
+      ? '⚠ No se pudo cargar: <b>' + fails.map(esc).join(', ') + '</b>. Se muestra lo que sí llegó. <button class="btn" onclick="loadTab(currentTab)">↻ Reintentar</button>'
       : null);
   }
   loadDash = async function () {
@@ -2103,7 +2096,7 @@ async function executeWipe() {
     if (typeof orig !== 'function') return;
     var wrapped = function () {
       return orig().then(function () { banner(view, null); }).catch(function (e) {
-        banner(view, '⚠ ' + esc(e.message) + ' <button class="btn" onclick="pkOpenDiag()">Diagnóstico</button> <button class="btn" onclick="loadTab(currentTab)">↻ Reintentar</button>');
+        banner(view, '⚠ ' + esc(e.message) + ' <button class="btn" onclick="loadTab(currentTab)">↻ Reintentar</button>');
       });
     };
     window[name] = wrapped;

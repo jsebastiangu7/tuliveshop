@@ -69,10 +69,15 @@ router.get('/categories/:slug', async (req, res) => {
 router.get('/config/:slug', async (req, res) => {
   const pf = await portfolioBySlug(req.params.slug);
   if (!pf) return res.status(404).json({ error: 'Tienda no encontrada' });
+  const { rows: sets } = await pool.query(
+    `SELECT key, value FROM settings WHERE portfolio_id = $1 AND key IN ('bags_label','shipping_template','help_template')`, [pf.id]);
+  const st: Record<string, string> = {};
+  sets.forEach((r: any) => { st[r.key] = r.value; });
   res.json({
     id: pf.id, name: pf.name, slug: pf.slug,
     bre_b_key: pf.bre_b_key, whatsapp_number: pf.whatsapp_number,
     whatsapp_template: pf.whatsapp_template, order_prefix: pf.order_prefix,
+    bags_label: (st.bags_label || '').trim() || 'Mis bolsitas',
   });
 });
 

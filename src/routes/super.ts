@@ -6,6 +6,29 @@ import type { AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
+const DOC_TYPES: Record<string, string> = { 'application/pdf': 'pdf', 'image/jpeg': 'jpg', 'image/png': 'png' };
+const MAX_DOC = 5 * 1024 * 1024; // 5 MB
+
+/** Valida y decodifica el documento recibido como { name, type, data(base64) } */
+function parseDoc(doc: any) {
+  if (!doc) return null;
+  const type = String(doc.type || '').toLowerCase();
+  if (!DOC_TYPES[type]) throw new Error('El documento debe ser PDF, JPG o PNG');
+  const b64 = String(doc.data || '').replace(/^data:[^;]+;base64,/, '');
+  const buf = Buffer.from(b64, 'base64');
+  if (!buf.length) throw new Error('El documento está vacío');
+  if (buf.length > MAX_DOC) throw new Error('El documento supera los 5 MB');
+  const name = String(doc.name || 'documento').replace(/[^\w.\- ]/g, '_').slice(0, 120);
+  return { name, type, buf };
+}
+
+async function saveDoc(db: any, userId: string, portfolioId: string, d: { name: string; type: string; buf: Buffer }) {
+  await db.query(`DELETE FROM admin_documents WHERE user_id = $1`, [userId]); // un documento vigente por administrador
+  await db.query(
+    `INSERT INTO admin_documents (user_id, portfolio_id, file_name, mime_type, size_bytes, data) VALUES ($1,$2,$3,$4,$5,$6)`,
+    [userId, portfolioId, d.name, d.type, d.buf.length, d.buf]);
+}
+
 // Todo lo de este archivo es exclusivo del Super administrador
 router.use(authenticate, requireRole('super_admin'));
 
@@ -24,31 +47,63 @@ router.get('/portfolios', async (_req: AuthRequest, res) => {
 });
 
 router.post('/portfolios', async (req: AuthRequest, res) => {
+  const { name, slug, bre_b_key, whatsapp_number, order_prefix, admin } = req.body;
+  const cleanSlug = String(slug || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  if (!String(name || '').trim()) return res.status(400).json({ error: 'El nombre de la tienda es obligatorio' });
+  // Sin valores por defecto: antes una tienda nueva cobraba en el Bre-b/WhatsApp de otra tienda
+  if (!String(bre_b_key || '').trim()) return res.status(400).json({ error: 'La llave Bre-b de la tienda es obligatoria' });
+  if (!String(whatsapp_number || '').trim()) return res.status(400).json({ error: 'El WhatsApp de la tienda es obligatorio' });
+  if (!/^[a-z0-9-]{3,30}$/.test(cleanSlug)) return res.status(400).json({ error: 'El enlace debe tener 3-30 caracteres (a-z, 0-9, guiones)' });
+
+  // Administrador de la tienda (opcional aquí; el formulario lo exige junto con su documento)
+  let adm: any = null, doc: any = null;
   try {
-    const { name, slug, bre_b_key, whatsapp_number, order_prefix } = req.body;
-    const cleanSlug = String(slug || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-    if (!String(name || '').trim()) return res.status(400).json({ error: 'El nombre de la tienda es obligatorio' });
-    // Sin valores por defecto: antes una tienda nueva cobraba en el Bre-b/WhatsApp de Pandala Kawaii
-    if (!String(bre_b_key || '').trim()) return res.status(400).json({ error: 'La llave Bre-b de la tienda es obligatoria' });
-    if (!String(whatsapp_number || '').trim()) return res.status(400).json({ error: 'El WhatsApp de la tienda es obligatorio' });
-    if (!/^[a-z0-9-]{3,30}$/.test(cleanSlug)) return res.status(400).json({ error: 'El enlace debe tener 3-30 caracteres (a-z, 0-9, guiones)' });
-    const { rows: [dup] } = await pool.query(`SELECT id FROM portfolios WHERE slug = $1`, [cleanSlug]);
-    if (dup) return res.status(400).json({ error: 'Ese enlace ya está en uso por otra tienda' });
-    const { rows: [pf] } = await pool.query(
+    if (admin && (admin.name || admin.email || admin.password)) {
+      const aname = String(admin.name || '').trim(), mail = String(admin.email || '').toLowerCase().trim();
+      if (!aname || !/^\S+@\S+\.\S+$/.test(mail)) throw new Error('Indica el nombre y un correo válido del administrador');
+      if (String(admin.password || '').length < 8) throw new Error('La contraseña del administrador debe tener mínimo 8 caracteres');
+      adm = { name: aname, mail, password: String(admin.password) };
+      doc = parseDoc(admin.id_document);
+    }
+  } catch (e: any) { return res.status(400).json({ error: e.message }); }
+
+  const db = await pool.connect();
+  try {
+    await db.query('BEGIN');
+    const { rows: [dup] } = await db.query(`SELECT id FROM portfolios WHERE slug = $1`, [cleanSlug]);
+    if (dup) { await db.query('ROLLBACK'); return res.status(400).json({ error: 'Ese enlace ya está en uso por otra tienda' }); }
+    if (adm) {
+      const { rows: [d2] } = await db.query(`SELECT id FROM users WHERE email = $1`, [adm.mail]);
+      if (d2) { await db.query('ROLLBACK'); return res.status(400).json({ error: 'Ese correo ya está registrado' }); }
+    }
+    const { rows: [pf] } = await db.query(
       `INSERT INTO portfolios (name, slug, bre_b_key, whatsapp_number, order_prefix)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [String(name).trim(), cleanSlug,
-       String(bre_b_key).trim(),
-       String(whatsapp_number).trim(),
+      [String(name).trim(), cleanSlug, String(bre_b_key).trim(), String(whatsapp_number).trim(),
        String(order_prefix || 'BOL').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) || 'BOL']);
     for (const [key, value] of [['inventory_reserve_hours', '12'], ['payment_confirm_hours', '48'], ['min_payment_amount', '10000']]) {
-      await pool.query(
+      await db.query(
         `INSERT INTO settings (portfolio_id, key, value) VALUES ($1, $2, $3)
          ON CONFLICT (portfolio_id, key) DO UPDATE SET value = EXCLUDED.value`,
         [pf.id, key, value]);
     }
-    res.json(pf);
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
+    let adminOut: any = null;
+    if (adm) {
+      const hash = await bcrypt.hash(adm.password, 10);
+      const { rows: [u] } = await db.query(
+        `INSERT INTO users (portfolio_id, role, email, password_hash, name, status)
+         VALUES ($1, 'admin', $2, $3, $4, 'Activo') RETURNING id, name, email, status`,
+        [pf.id, adm.mail, hash, adm.name]);
+      if (doc) await saveDoc(db, u.id, pf.id, doc);
+      adminOut = { ...u, has_document: !!doc };
+    }
+    await db.query('COMMIT');
+    res.json({ ...pf, admin: adminOut });
+  } catch (e: any) {
+    try { await db.query('ROLLBACK'); } catch { /* ya cerrada */ }
+    console.error(e);
+    res.status(500).json({ error: 'No se pudo crear la tienda: ' + e.message });
+  } finally { db.release(); }
 });
 
 router.put('/portfolios/:id', async (req: AuthRequest, res) => {
@@ -74,15 +129,18 @@ router.put('/portfolios/:id', async (req: AuthRequest, res) => {
 router.get('/portfolios/:id/admins', async (req: AuthRequest, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT id, name, email, status, created_at FROM users
-       WHERE portfolio_id = $1 AND role = 'admin' ORDER BY name`, [req.params.id]);
+      `SELECT u.id, u.name, u.email, u.status, u.created_at,
+              EXISTS (SELECT 1 FROM admin_documents d WHERE d.user_id = u.id) AS has_document
+       FROM users u WHERE u.portfolio_id = $1 AND u.role = 'admin' ORDER BY u.name`, [req.params.id]);
     res.json(rows);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 
 router.post('/portfolios/:id/admins', async (req: AuthRequest, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, id_document } = req.body;
+    let doc: any = null;
+    try { doc = parseDoc(id_document); } catch (e: any) { return res.status(400).json({ error: e.message }); }
     if (!String(name || '').trim() || !String(email || '').trim() || String(password || '').length < 8)
       return res.status(400).json({ error: 'Nombre, correo y contraseña (mínimo 8 caracteres) son obligatorios' });
     const { rows: [pf] } = await pool.query(`SELECT id FROM portfolios WHERE id = $1`, [req.params.id]);
@@ -95,7 +153,8 @@ router.post('/portfolios/:id/admins', async (req: AuthRequest, res) => {
       `INSERT INTO users (portfolio_id, role, email, password_hash, name, status)
        VALUES ($1, 'admin', $2, $3, $4, 'Activo') RETURNING id, name, email, status`,
       [pf.id, mail, hash, String(name).trim()]);
-    res.json(u);
+    if (doc) await saveDoc(pool, u.id, pf.id, doc);
+    res.json({ ...u, has_document: !!doc });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 
@@ -117,6 +176,34 @@ router.put('/admins/:id', async (req: AuthRequest, res) => {
       [req.params.id, name !== undefined ? String(name).trim() : null, status !== undefined ? status : null, hash]);
     if (!u) return res.status(404).json({ error: 'Administrador no encontrado' });
     res.json(u);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
+});
+
+/* ── Documento de identidad del administrador (solo super administrador) ── */
+router.put('/admins/:id/document', async (req: AuthRequest, res) => {
+  try {
+    const doc = parseDoc(req.body.id_document || req.body);
+    if (!doc) return res.status(400).json({ error: 'Adjunta el documento' });
+    const { rows: [u] } = await pool.query(`SELECT id, portfolio_id FROM users WHERE id = $1 AND role = 'admin'`, [req.params.id]);
+    if (!u) return res.status(404).json({ error: 'Administrador no encontrado' });
+    await saveDoc(pool, u.id, u.portfolio_id, doc);
+    res.json({ ok: true });
+  } catch (e: any) {
+    const bad = /documento|PDF|MB/.test(String(e.message));
+    if (!bad) console.error(e);
+    res.status(bad ? 400 : 500).json({ error: bad ? e.message : 'Error del servidor' });
+  }
+});
+
+router.get('/admins/:id/document', async (req: AuthRequest, res) => {
+  try {
+    const { rows: [d] } = await pool.query(
+      `SELECT file_name, mime_type, data FROM admin_documents WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`, [req.params.id]);
+    if (!d) return res.status(404).json({ error: 'Este administrador no tiene documento cargado' });
+    res.setHeader('Content-Type', d.mime_type);
+    res.setHeader('Content-Disposition', `inline; filename="${String(d.file_name).replace(/"/g, '')}"`);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.send(d.data);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 

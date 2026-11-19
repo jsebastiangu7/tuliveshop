@@ -41,7 +41,9 @@ router.get('/mine', authenticate, requireRole('client'), async (req: AuthRequest
          LEFT JOIN products p ON p.id = oi.product_id
          LEFT JOIN kits k ON k.id = oi.kit_id
          WHERE oi.order_id = $1 ORDER BY oi.added_at`, [o.id]);
-      result.push({ ...o, items, ...(await getOrderTotals(o.id)) });
+      const { rows: [pend] } = await pool.query(
+        `SELECT amount::float AS amount FROM payment_reports WHERE order_id = $1 AND status = 'pending' ORDER BY reported_at DESC LIMIT 1`, [o.id]);
+      result.push({ ...o, items, pending_amount: pend ? pend.amount : null, ...(await getOrderTotals(o.id)) });
     }
     res.json(result);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
@@ -153,6 +155,58 @@ router.delete('/:id/items/:itemId', authenticate, requireRole('client'), async (
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 
+
+// Enlace wa.me hacia el WhatsApp de la tienda
+function waLink(pf: any, message: string) {
+  // wa.me exige indicativo de país: un celular colombiano de 10 dígitos (3xx…) se completa con 57
+  let waNum = String(pf.whatsapp_number || '').replace(/\D/g, '');
+  if (waNum.length === 10 && waNum.startsWith('3')) waNum = '57' + waNum;
+  return waNum ? `https://wa.me/${waNum}?text=${encodeURIComponent(message)}` : '';
+}
+const fillTpl = (tpl: string, order: any, totals: any, amount = 0) => tpl
+  .replace(/\{ORDER_NUMBER\}/g, order.order_number)
+  .replace(/\{TOTAL\}/g, money(totals.total))
+  .replace(/\{AMOUNT\}/g, money(amount));
+
+// Mensaje + enlace con la plantilla de reporte de pago (Configuración → Plantilla de WhatsApp)
+function buildWhatsapp(pf: any, order: any, totals: any, amount: number) {
+  const tpl = String(pf.whatsapp_template || '').trim() ||
+    'Hola, te reporto el pago de {AMOUNT} de mi bolsita {ORDER_NUMBER} (total {TOTAL}). Adjunto el comprobante.';
+  const message = fillTpl(tpl, order, totals, amount);
+  return { message, whatsapp_link: waLink(pf, message) };
+}
+
+const DEFAULT_TPL: Record<string, string> = {
+  shipping: 'Hola. Por favor, procedamos con el envío del pedido {ORDER_NUMBER}.',
+  help: 'Hola. Necesito ayuda con el pedido {ORDER_NUMBER}',
+};
+
+// Solicitar envío / pedir ayuda: arma el chat de WhatsApp con la plantilla de la tienda.
+// El envío solo se habilita cuando la bolsita está totalmente pagada (se valida aquí, no solo en pantalla).
+router.get('/:id/wa/:kind', authenticate, requireRole('client'), async (req: AuthRequest, res) => {
+  try {
+    const kind = String(req.params.kind);
+    if (!['shipping', 'help'].includes(kind)) return res.status(400).json({ error: 'Tipo inválido' });
+    const { rows: [order] } = await pool.query(`SELECT * FROM orders WHERE id = $1`, [req.params.id]);
+    if (!order || order.client_id !== req.user!.id) return res.status(404).json({ error: 'Bolsita no encontrada' });
+    const totals = await getOrderTotals(order.id);
+    if (kind === 'shipping') {
+      if (['canceled', 'expired'].includes(order.status)) return res.status(400).json({ error: 'Esta bolsita está cerrada' });
+      if (['shipped', 'delivered'].includes(order.status)) return res.status(400).json({ error: 'Esta bolsita ya fue enviada' });
+      if (!(totals.total > 0) || totals.balance > 0)
+        return res.status(403).json({ error: 'Podrás solicitar el envío cuando la bolsita esté totalmente pagada' });
+    }
+    const { rows: [pf] } = await pool.query(`SELECT * FROM portfolios WHERE id = $1`, [order.portfolio_id]);
+    const { rows: [st] } = await pool.query(
+      `SELECT value FROM settings WHERE portfolio_id = $1 AND key = $2`, [order.portfolio_id, kind === 'shipping' ? 'shipping_template' : 'help_template']);
+    const tpl = String(st?.value || '').trim() || DEFAULT_TPL[kind]!;
+    const message = fillTpl(tpl, order, totals);
+    const whatsapp_link = waLink(pf, message);
+    if (!whatsapp_link) return res.status(400).json({ error: 'La tienda aún no configuró su WhatsApp' });
+    res.json({ ok: true, whatsapp_link, message });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
+});
+
 // SEPARAR / ABONAR: reporta el abono por Bre-b y notifica al panel en tiempo real
 router.post('/:id/separar', authenticate, requireRole('client'), async (req: AuthRequest, res) => {
   try {
@@ -192,18 +246,25 @@ router.post('/:id/separar', authenticate, requireRole('client'), async (req: Aut
     });
 
     const { rows: [pf] } = await pool.query(`SELECT * FROM portfolios WHERE id = $1`, [order.portfolio_id]);
-    const tpl = String(pf.whatsapp_template || '').trim() ||
-      'Hola, te reporto el pago de {AMOUNT} de mi bolsita {ORDER_NUMBER} (total {TOTAL}). Adjunto el comprobante.';
-    const message = tpl
-      .replace(/\{ORDER_NUMBER\}/g, order.order_number)
-      .replace(/\{TOTAL\}/g, money(totals.total))
-      .replace(/\{AMOUNT\}/g, money(amount));
-    // wa.me exige indicativo de país: un celular colombiano de 10 dígitos (3xx…) se completa con 57
-    let waNum = String(pf.whatsapp_number || '').replace(/\D/g, '');
-    if (waNum.length === 10 && waNum.startsWith('3')) waNum = '57' + waNum;
-    const whatsapp_link = waNum ? `https://wa.me/${waNum}?text=${encodeURIComponent(message)}` : '';
+    const { message, whatsapp_link } = buildWhatsapp(pf, order, totals, amount);
 
     res.json({ ok: true, bre_b_key: pf.bre_b_key, whatsapp_link, message, ...totals });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
+});
+
+
+// Reenviar: devuelve el enlace de WhatsApp del reporte pendiente (el cliente cerró el chat sin enviar el soporte)
+router.get('/:id/report-link', authenticate, requireRole('client'), async (req: AuthRequest, res) => {
+  try {
+    const { rows: [order] } = await pool.query(`SELECT * FROM orders WHERE id = $1`, [req.params.id]);
+    if (!order || order.client_id !== req.user!.id) return res.status(404).json({ error: 'Bolsita no encontrada' });
+    const { rows: [rep] } = await pool.query(
+      `SELECT amount::float AS amount FROM payment_reports WHERE order_id = $1 AND status = 'pending' ORDER BY reported_at DESC LIMIT 1`, [order.id]);
+    if (!rep) return res.status(404).json({ error: 'No tienes un pago en revisión en esta bolsita' });
+    const totals = await getOrderTotals(order.id);
+    const { rows: [pf] } = await pool.query(`SELECT * FROM portfolios WHERE id = $1`, [order.portfolio_id]);
+    const { message, whatsapp_link } = buildWhatsapp(pf, order, totals, rep.amount);
+    res.json({ ok: true, amount: rep.amount, bre_b_key: pf.bre_b_key, whatsapp_link, message, ...totals });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 

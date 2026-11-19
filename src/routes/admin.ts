@@ -294,7 +294,7 @@ router.get('/analytics', async (req: AuthRequest, res: Response) => {
 router.get('/products', async (req: AuthRequest, res: Response) => {
   try {
     const pf = pfOf(req);
-    const { rows } = await pool.query(`SELECT p.*, c.name AS category FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.portfolio_id=$1 ORDER BY p.name`, [pf]);
+    const { rows } = await pool.query(`SELECT p.*, to_char(p.purchase_date, 'YYYY-MM-DD') AS purchase_date, c.name AS category FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.portfolio_id=$1 ORDER BY p.name`, [pf]);
     const avail = await availabilityMap(pf);
     res.json(rows.map(p => {
       const available = avail.get(p.id) ?? 0;
@@ -321,6 +321,7 @@ router.post('/products', async (req: AuthRequest, res: Response) => {
 });
 
 const PRODUCT_FIELDS = ['name', 'code', 'category_id', 'cost', 'shipping_cost', 'price', 'stock', 'min_stock', 'purchase_date'];
+// Cambiar el precio NO toca order_items: cada línea de bolsita guarda el precio con que se agregó (activas, apartadas y pagadas quedan congeladas)
 router.put('/products/:id', async (req: AuthRequest, res: Response) => {
   try {
     const pf = pfOf(req);
@@ -588,6 +589,8 @@ router.post('/orders/:id/items', async (req: AuthRequest, res: Response) => {
     if (['canceled', 'expired'].includes(order.status)) { await db.query('ROLLBACK'); return res.status(400).json({ error: 'Pedido cerrado' }); }
 
     let price = 0;
+    // Solo el administrador puede fijar un precio distinto al de lista para esta línea (queda congelado en la bolsita)
+    const priceOverride = req.body.price !== undefined && req.body.price !== null && req.body.price !== '' && Number(req.body.price) >= 0 ? Number(req.body.price) : null;
     if (product_id) {
       const { rows: [p] } = await db.query(`SELECT price FROM products WHERE id=$1 AND portfolio_id=$2`, [product_id, pf]);
       if (!p) { await db.query('ROLLBACK'); return res.status(404).json({ error: 'Producto no encontrado' }); }
@@ -604,6 +607,7 @@ router.post('/orders/:id/items', async (req: AuthRequest, res: Response) => {
       price = Number(k.price);
     }
 
+    if (priceOverride !== null) price = priceOverride;
     await db.query(`INSERT INTO order_items (order_id, product_id, kit_id, quantity, price) VALUES ($1,$2,$3,$4,$5)`, [order.id, product_id || null, kit_id || null, qty, price]);
     await db.query('COMMIT');
     res.json({ ok: true, ...(await getOrderTotals(order.id)) });
@@ -652,7 +656,7 @@ router.get('/payments', async (req: AuthRequest, res: Response) => {
   try {
     const pf = pfOf(req);
     const { rows } = await pool.query(
-      `SELECT pa.id, pa.order_id, pa.amount::float AS amount, pa.method, pa.reference, pa.note, pa.payment_date, pa.created_at,
+      `SELECT pa.id, pa.order_id, pa.amount::float AS amount, pa.method, pa.reference, pa.note, to_char(pa.payment_date, 'YYYY-MM-DD') AS payment_date, pa.created_at,
               o.order_number, u.name AS client_name
        FROM payments pa
        JOIN orders o ON o.id = pa.order_id
@@ -660,6 +664,42 @@ router.get('/payments', async (req: AuthRequest, res: Response) => {
        WHERE pa.portfolio_id = $1
        ORDER BY pa.payment_date DESC, pa.created_at DESC LIMIT 50`, [pf]);
     res.json(rows);
+  } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
+});
+
+/** Editar un abono (monto, fecha, medio, referencia). Recalcula el estado de la bolsita. */
+router.put('/payments/:id', async (req: AuthRequest, res: Response) => {
+  try {
+    const pf = pfOf(req);
+    const { rows: [pay] } = await pool.query(`SELECT * FROM payments WHERE id=$1 AND portfolio_id=$2`, [req.params.id, pf]);
+    if (!pay) return res.status(404).json({ error: 'Abono no encontrado' });
+    const amount = req.body.amount !== undefined ? Number(req.body.amount) : Number(pay.amount);
+    if (!(amount > 0)) return res.status(400).json({ error: 'El monto debe ser mayor a 0' });
+    const date = req.body.payment_date ? String(req.body.payment_date).slice(0, 10) : null;
+    if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Fecha inválida' });
+
+    const before = await getOrderTotals(pay.order_id);
+    const maxAllowed = before.total - (before.paid - Number(pay.amount));
+    if (amount > maxAllowed + 0.5) return res.status(400).json({ error: `El monto supera el saldo de la bolsita (máximo ${Math.round(maxAllowed)})` });
+
+    await pool.query(
+      `UPDATE payments SET amount=$2, method=COALESCE($3, method), reference=$4, note=$5, payment_date=COALESCE($6::date, payment_date) WHERE id=$1`,
+      [pay.id, amount, req.body.method ? String(req.body.method) : null,
+       req.body.reference !== undefined ? (String(req.body.reference).trim() || null) : pay.reference,
+       req.body.note !== undefined ? (String(req.body.note).trim() || null) : pay.note, date]);
+
+    const totals = await getOrderTotals(pay.order_id);
+    const { rows: [order] } = await pool.query(`SELECT status FROM orders WHERE id=$1`, [pay.order_id]);
+    let newStatus = order?.status;
+    if (order && totals.balance <= 0 && ['draft', 'pending_confirm', 'apartada'].includes(order.status)) {
+      newStatus = 'paid';
+      await pool.query(`UPDATE orders SET status='paid', expires_at=NULL, updated_at=NOW() WHERE id=$1`, [pay.order_id]);
+      await ensureShipmentFor(pay.order_id, pf);
+    } else if (order && order.status === 'paid' && totals.balance > 0) {
+      newStatus = 'apartada';
+      await pool.query(`UPDATE orders SET status='apartada', updated_at=NOW() WHERE id=$1`, [pay.order_id]);
+    }
+    res.json({ ok: true, new_status: newStatus, ...totals });
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
 });
 
@@ -821,6 +861,9 @@ router.get('/settings', async (req: AuthRequest, res: Response) => {
       bre_b_key: p.bre_b_key, whatsapp_number: p.whatsapp_number, whatsapp_template: p.whatsapp_template,
       order_prefix: p.order_prefix, order_digits: p.order_digits, order_start: p.order_start,
       min_payment_amount: Number(map.min_payment_amount || 10000),
+      bags_label: map.bags_label || '',
+      shipping_template: map.shipping_template || '',
+      help_template: map.help_template || '',
       invoice_config: map.invoice_config ? JSON.parse(map.invoice_config) : null,
       profit_config: map.profit_config ? JSON.parse(map.profit_config) : null,
     });
@@ -835,6 +878,9 @@ router.put('/settings', async (req: AuthRequest, res: Response) => {
       [pf, b.bre_b_key !== undefined ? String(b.bre_b_key).trim() : '', b.whatsapp_number !== undefined ? String(b.whatsapp_number).trim() : '', b.whatsapp_template !== undefined ? String(b.whatsapp_template) : null, b.order_prefix !== undefined ? String(b.order_prefix).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) : '', b.order_digits !== undefined ? Math.min(8, Math.max(3, Number(b.order_digits) || 5)) : null, b.order_start !== undefined ? Math.max(1, Number(b.order_start) || 1) : null]);
     const upsert = async (key: string, value: string) => pool.query(`INSERT INTO settings (portfolio_id, key, value) VALUES ($1,$2,$3) ON CONFLICT (portfolio_id, key) DO UPDATE SET value = EXCLUDED.value`, [pf, key, value]);
     if (b.min_payment_amount !== undefined) await upsert('min_payment_amount', String(Number(b.min_payment_amount) || 0));
+    if (b.bags_label !== undefined) await upsert('bags_label', String(b.bags_label).trim().slice(0, 30));
+    if (b.shipping_template !== undefined) await upsert('shipping_template', String(b.shipping_template).slice(0, 500));
+    if (b.help_template !== undefined) await upsert('help_template', String(b.help_template).slice(0, 500));
     if (b.invoice_config !== undefined) await upsert('invoice_config', JSON.stringify(b.invoice_config));
     if (b.profit_config !== undefined) await upsert('profit_config', JSON.stringify(b.profit_config));
     res.json({ ok: true });

@@ -254,6 +254,79 @@ router.post('/client/change-pin', async (req: Request, res: Response) => {
   } catch (e: any) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 
+/* ── Cliente con sesión: ver y actualizar sus datos ──
+   Se actualizan en TODAS las tiendas donde ese WhatsApp tiene cuenta, para que cada tienda tenga el dato vigente.
+   El WhatsApp no se edita aquí: es su llave de ingreso y de todas sus tiendas. */
+router.get('/client/me', async (req: Request, res: Response) => {
+  let u: any;
+  try { u = authUser(req); } catch { return res.status(401).json({ error: 'No autenticado' }); }
+  try {
+    if (u.role !== 'client') return res.status(403).json({ error: 'Solo para clientes' });
+    const { rows: [me] } = await pool.query(`SELECT name, whatsapp, email, city, address FROM users WHERE id=$1 AND role='client'`, [u.id]);
+    if (!me) return res.status(404).json({ error: 'Cuenta no encontrada' });
+    res.json(me);
+  } catch (e: any) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
+});
+
+router.put('/client/me', async (req: Request, res: Response) => {
+  let u: any;
+  try { u = authUser(req); } catch { return res.status(401).json({ error: 'No autenticado' }); }
+  try {
+    if (u.role !== 'client') return res.status(403).json({ error: 'Solo para clientes' });
+    const name = String(req.body.name ?? '').trim();
+    const email = String(req.body.email ?? '').trim().toLowerCase();
+    const city = String(req.body.city ?? '').trim();
+    const address = String(req.body.address ?? '').trim();
+    if (name.length < 2 || name.length > 100) return res.status(400).json({ error: 'Escribe tu nombre completo' });
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: 'Correo electrónico inválido' });
+    if (city.length > 100 || address.length > 300) return res.status(400).json({ error: 'Ciudad o dirección demasiado largas' });
+    const { rows: [me] } = await pool.query(`SELECT whatsapp FROM users WHERE id=$1 AND role='client'`, [u.id]);
+    if (!me) return res.status(404).json({ error: 'Cuenta no encontrada' });
+    const { rows } = await pool.query(
+      `UPDATE users SET name=$2, email=COALESCE(NULLIF($3,''), email), city=NULLIF($4,''), address=NULLIF($5,'')
+       WHERE role='client' AND whatsapp=$1 RETURNING id, name, whatsapp, email, city, address, portfolio_id`,
+      [me.whatsapp, name, email, city, address]);
+    const mine = rows.find((r: any) => r.id === u.id) || rows[0];
+    res.json({ ok: true, stores_updated: rows.length, user: { id: mine.id, role: 'client', name: mine.name, whatsapp: mine.whatsapp, email: mine.email, city: mine.city, address: mine.address } });
+  } catch (e: any) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
+});
+
+/* ── Cliente con sesión: darse de alta en otras tiendas ──
+   Copia sus datos y su PIN actual a una fila nueva por tienda. Devuelve solo las tiendas agregadas. */
+router.post('/client/add-stores', async (req: Request, res: Response) => {
+  let u: any;
+  try { u = authUser(req); } catch { return res.status(401).json({ error: 'No autenticado' }); }
+  const db = await pool.connect();
+  try {
+    if (u.role !== 'client') return res.status(403).json({ error: 'Solo para clientes' });
+    const slugs: string[] = [...new Set<string>(Array.isArray(req.body.portfolios) ? req.body.portfolios.map(String) : [])].slice(0, 30);
+    if (!slugs.length) return res.status(400).json({ error: 'Selecciona al menos una tienda' });
+
+    const { rows: [me] } = await db.query(`SELECT * FROM users WHERE id=$1 AND role='client'`, [u.id]);
+    if (!me) return res.status(404).json({ error: 'Cuenta no encontrada' });
+    const { rows: stores } = await db.query(`SELECT id, slug, name FROM portfolios WHERE slug = ANY($1)`, [slugs]);
+    if (stores.length !== slugs.length) return res.status(404).json({ error: 'Alguna de las tiendas elegidas no existe' });
+
+    await db.query('BEGIN');
+    const added: any[] = [];
+    for (const st of stores) {
+      const { rows: [ex] } = await db.query(`SELECT 1 AS x FROM users WHERE whatsapp=$1 AND role='client' AND portfolio_id=$2`, [me.whatsapp, st.id]);
+      if (ex) continue; // ya está inscrito en esa tienda
+      const { rows: [n] } = await db.query(
+        `INSERT INTO users (portfolio_id, role, whatsapp, pin_hash, name, city, address, email, status, must_change_pin)
+         VALUES ($1,'client',$2,$3,$4,$5,$6,$7,'Activo',$8)
+         RETURNING id,name,whatsapp,city,address,email,role,portfolio_id,must_change_pin`,
+        [st.id, me.whatsapp, me.pin_hash, me.name, me.city, me.address, me.email, !!me.must_change_pin]);
+      added.push({ slug: st.slug, name: st.name, token: sign(n), user: clientView(n) });
+    }
+    await db.query('COMMIT');
+    res.json({ added });
+  } catch (e: any) {
+    try { await db.query('ROLLBACK'); } catch { /* sin transacción abierta */ }
+    console.error(e); res.status(500).json({ error: 'Error del servidor' });
+  } finally { db.release(); }
+});
+
 /* ── Cliente: olvidé mi PIN ──
    WhatsApp + correo registrado → PIN temporal aleatorio SOLO al correo del dueño; al ingresar con él
    la app obliga a crear uno nuevo. Aplica a todas sus tiendas que tengan ese correo. */

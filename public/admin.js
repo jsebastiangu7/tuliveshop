@@ -10,6 +10,10 @@ let impRows = [], impFileName = '';
 const $ = (id) => document.getElementById(id);
 const put = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
 const money = (n) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Number(n) || 0);
+/** Fecha AAAA-MM-DD (sin hora) → dd-mm-aaaa */
+const fmtDMY = (v) => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3] + '-' + m[2] + '-' + m[1] : ''; };
+/** dd-mm-aaaa (o dd/mm/aaaa) → AAAA-MM-DD; '' si no es válida */
+const parseDMY = (v) => { const m = String(v || '').trim().match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/); if (!m) return ''; const d = +m[1], mo = +m[2], y = +m[3]; const t = new Date(Date.UTC(y, mo - 1, d)); return (t.getUTCFullYear() === y && t.getUTCMonth() === mo - 1 && t.getUTCDate() === d) ? y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0') : ''; };
 const pdfMoney = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-CO');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 const STATUS_LABEL = { draft: 'Borrador', pending_confirm: 'Por confirmar', apartada: 'Apartada', paid: 'Pagada', shipped: 'Enviada', delivered: 'Entregada', canceled: 'Cancelada', expired: 'Vencida' };
@@ -900,9 +904,11 @@ function renderLow() {
 }
 
 /* ---------- Abonos manuales (el administrador los registra) ---------- */
-let MP_ORDERS = [];
+let MP_ORDERS = [], MP_PAYS = [];
+const MP_METHODS = ['Efectivo', 'Transferencia', 'Bre-b', 'Nequi', 'Daviplata', 'Tarjeta', 'Otro'];
 async function loadManualPay() {
   const [orders, pays] = await Promise.all([api('/api/admin/orders'), api('/api/admin/payments')]);
+  MP_PAYS = pays;
   MP_ORDERS = orders.filter(o => !['canceled', 'expired'].includes(o.status) && Number(o.balance) > 0);
   const clients = new Map();
   MP_ORDERS.forEach(o => { if (o.client_id && !clients.has(o.client_id)) clients.set(o.client_id, o.client_name || 'Cliente'); });
@@ -922,7 +928,7 @@ async function loadManualPay() {
     '</div>' +
     '<h3 style="margin-top:16px">Últimos abonos registrados</h3>' +
     (pays.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Fecha</th><th>Cliente</th><th>Bolsita</th><th>Medio</th><th>Referencia</th><th>Valor</th><th></th></tr></thead><tbody>' +
-      pays.map(p => `<tr><td>${esc(String(p.payment_date).slice(0, 10))}</td><td>${esc(p.client_name || '')}</td><td><b>${esc(p.order_number)}</b></td><td>${esc(p.method || '')}</td><td>${esc(p.reference || p.note || '')}</td><td><b>${money(p.amount)}</b></td><td class="acts"><button class="btn danger" onclick="delManualPay('${p.id}')">✕</button></td></tr>`).join('') +
+      pays.map(p => `<tr><td>${esc(fmtDMY(p.payment_date) || String(p.payment_date).slice(0, 10))}</td><td>${esc(p.client_name || '')}</td><td><b>${esc(p.order_number)}</b></td><td>${esc(p.method || '')}</td><td>${esc(p.reference || p.note || '')}</td><td><b>${money(p.amount)}</b></td><td class="acts"><button class="btn" onclick="editManualPay('${p.id}')">✏️ Editar</button><button class="btn danger" onclick="delManualPay('${p.id}')">✕</button></td></tr>`).join('') +
       '</tbody></table></div>' : '<p class="note">Aún no hay abonos.</p>'));
   mpFilter();
 }
@@ -952,6 +958,31 @@ async function saveManualPay() {
     toast('✔ Abono guardado · ' + o.order_number + (r.new_status === 'paid' ? ' quedó PAGADA' : ' · saldo ' + money(r.balance)));
     await loadManualPay();
   } catch (e) { toast('⚠ ' + e.message); btn.disabled = false; }
+}
+function editManualPay(id) {
+  const p = MP_PAYS.find(x => x.id === id); if (!p) return;
+  $('peId').value = p.id;
+  $('peTitle').textContent = 'Editar abono · ' + p.order_number;
+  $('peInfo').textContent = (p.client_name || 'Cliente') + ' · el cambio se refleja en la factura del cliente y recalcula el saldo de la bolsita.';
+  $('peAmount').value = Math.round(Number(p.amount));
+  $('peDate').value = String(p.payment_date || '').slice(0, 10);
+  const methods = MP_METHODS.includes(p.method) || !p.method ? MP_METHODS : [p.method, ...MP_METHODS];
+  $('peMethod').innerHTML = methods.map(m => `<option ${m === p.method ? 'selected' : ''}>${esc(m)}</option>`).join('');
+  $('peRef').value = p.reference || p.note || '';
+  openModal('payEditModal');
+}
+async function savePayEdit() {
+  const id = $('peId').value, amount = Number($('peAmount').value) || 0;
+  if (amount <= 0) return toast('⚠ Indica un monto mayor a 0');
+  if (!$('peDate').value) return toast('⚠ Indica la fecha');
+  const btn = $('peSave'); btn.disabled = true;
+  try {
+    const r = await api('/api/admin/payments/' + id, { method: 'PUT', body: { amount, payment_date: $('peDate').value, method: $('peMethod').value, reference: $('peRef').value.trim(), note: '' } });
+    closeModal('payEditModal');
+    toast('✔ Abono actualizado · saldo ' + money(r.balance) + (r.new_status === 'paid' ? ' · bolsita PAGADA' : ''));
+    loadManualPay();
+  } catch (e) { toast('⚠ ' + e.message); }
+  finally { btn.disabled = false; }
 }
 async function delManualPay(id) {
   if (!confirm('¿Eliminar este abono? Se descontará de la factura del cliente.')) return;
@@ -984,7 +1015,7 @@ function renderInventory() {
   put('invTable', '<div class="tablewrap"><table class="adm"><thead><tr><th>Producto</th><th>Código</th><th>Categoría</th><th>Costo</th><th>Envío</th><th>Stock</th><th>Disponible</th><th>Estado</th><th>Precio</th><th>Margen</th><th>Fecha compra</th><th>Acciones</th></tr></thead><tbody>' +
     (list.length ? list.map(p => {
       const marg = p.price > 0 ? (((Number(p.price) - Number(p.cost) - Number(p.shipping_cost)) / Number(p.price)) * 100).toFixed(1) + '%' : '—';
-      return `<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.code || '—')}</td><td>${esc(p.category || '—')}</td><td>${money(p.cost)}</td><td>${money(p.shipping_cost)}</td><td>${p.stock}</td><td>${p.available}</td><td>${pillStock(p.status)}</td><td>${money(p.price)}</td><td>${marg}</td><td>${esc(p.purchase_date || '—')}</td><td class="acts"><button class="btn" onclick="openStock('${p.id}')">+ Stock</button><button class="btn" onclick="openProduct('${p.id}')">Editar</button><button class="btn danger" onclick="delProduct('${p.id}')">Eliminar</button></td></tr>`;
+      return `<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.code || '—')}</td><td>${esc(p.category || '—')}</td><td>${money(p.cost)}</td><td>${money(p.shipping_cost)}</td><td>${p.stock}</td><td>${p.available}</td><td>${pillStock(p.status)}</td><td>${money(p.price)}</td><td>${marg}</td><td>${esc(fmtDMY(p.purchase_date) || '—')}</td><td class="acts"><button class="btn" onclick="openStock('${p.id}')">+ Stock</button><button class="btn" onclick="openProduct('${p.id}')">Editar</button><button class="btn danger" onclick="delProduct('${p.id}')">Eliminar</button></td></tr>`;
     }).join('') : '<tr><td colspan="12" class="empty">Sin productos.</td></tr>') + '</tbody></table></div>');
 }
 function openProduct(id) {
@@ -994,7 +1025,7 @@ function openProduct(id) {
   $('pName').value = p ? p.name : '';
   $('pCode').value = p ? (p.code || '') : '';
   $('pCat').innerHTML = '<option value="">Sin categoría</option>' + CATS.map(c => `<option value="${c.id}" ${p && p.category_id === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
-  $('pDate').value = p ? (p.purchase_date || '') : today();
+  $('pDate').value = p ? String(p.purchase_date || '').slice(0, 10) : today();
   $('pCost').value = p ? p.cost : 0; $('pShip').value = p ? p.shipping_cost : 0; $('pPrice').value = p ? p.price : 0;
   $('pStock').value = p ? p.stock : 0; $('pMin').value = p ? p.min_stock : 1;
   openModal('productModal');
@@ -1017,7 +1048,10 @@ async function openStock(id) {
   const p = PRODUCTS.find(x => x.id === id); if (!p) return;
   const qty = prompt(`Sumar stock a "${p.name}" (stock actual ${p.stock}).\nCantidad a sumar (o negativa para ajustar):`);
   if (qty === null || qty === '') return;
-  const fecha = prompt('Fecha de compra de esta reposición (AAAA-MM-DD). Enter = hoy:', today());
+  const fechaTxt = prompt('Fecha de compra de esta reposición (dd-mm-aaaa). Enter = hoy:', fmtDMY(today()));
+  if (fechaTxt === null) return;
+  const fecha = fechaTxt.trim() ? parseDMY(fechaTxt) : today();
+  if (!fecha) return toast('⚠ Fecha inválida. Usa el formato dd-mm-aaaa');
   try {
     await api('/api/admin/products/' + id + '/stock', { method: 'POST', body: { qty: Number(qty) || 0, fecha: fecha || null } });
     toast('✔ Stock actualizado'); loadInventory();
@@ -1338,6 +1372,7 @@ async function loadConfig() {
   const lp = $('iLogoPrev'); if (lp) { lp.src = logoData || ''; lp.style.display = logoData ? 'inline-block' : 'none'; }
   const wp = $('iWmPrev'); if (wp) { wp.src = wmData || ''; wp.style.display = wmData ? 'inline-block' : 'none'; }
   set('gBreb', CFG.bre_b_key || ''); set('gWa', CFG.whatsapp_number || ''); set('gTpl', CFG.whatsapp_template || '');
+  set('gBagsLabel', CFG.bags_label || ''); set('gShipTpl', CFG.shipping_template || ''); set('gHelpTpl', CFG.help_template || '');
   set('gPrefix', CFG.order_prefix || ''); set('gStart', CFG.order_start || 1); set('gDigits', CFG.order_digits || 5);
   set('gMin', CFG.min_payment_amount || 0);
   const pc = profitConfig();
@@ -1436,6 +1471,7 @@ async function saveGeneral() {
       bre_b_key: $('gBreb').value.trim(), whatsapp_number: $('gWa').value.trim(), whatsapp_template: $('gTpl').value,
       order_prefix: $('gPrefix').value.trim(), order_digits: Number($('gDigits').value) || 5, order_start: Number($('gStart').value) || 1,
       min_payment_amount: Number($('gMin').value) || 0,
+      bags_label: $('gBagsLabel').value.trim(), shipping_template: $('gShipTpl').value, help_template: $('gHelpTpl').value,
     } });
     toast('✔ Configuración guardada'); loadConfig();
   } catch (e) { toast('⚠ ' + e.message); }
@@ -2080,6 +2116,7 @@ async function executeWipe() {
       var lp = $('iLogoPrev'); if (lp) { lp.src = logoData || ''; lp.style.display = logoData ? 'inline-block' : 'none'; }
       var wp = $('iWmPrev'); if (wp) { wp.src = wmData || ''; wp.style.display = wmData ? 'inline-block' : 'none'; }
       set('gBreb', CFG.bre_b_key || ''); set('gWa', CFG.whatsapp_number || ''); set('gTpl', CFG.whatsapp_template || '');
+  set('gBagsLabel', CFG.bags_label || ''); set('gShipTpl', CFG.shipping_template || ''); set('gHelpTpl', CFG.help_template || '');
       set('gPrefix', CFG.order_prefix || ''); set('gStart', CFG.order_start || 1); set('gDigits', CFG.order_digits || 5);
       set('gMin', CFG.min_payment_amount || 0);
       var pc = profitConfig();
@@ -2226,6 +2263,14 @@ async function loadVentaView() {
     const opt = this.options[this.selectedIndex];
     if (opt.value) $('vPrice').value = opt.dataset.price;
   };
+  // Enter en cualquier campo de la fila agrega el producto y deja la fila nueva lista con el producto enfocado
+  ['vProd', 'vQty', 'vPrice'].forEach(id => {
+    $(id).onkeydown = function(e) {
+      if (e.key !== 'Enter' || e.isComposing) return;
+      e.preventDefault();
+      addVentaRow();
+    };
+  });
 }
 
 function addVentaRow() {
@@ -2242,6 +2287,7 @@ function addVentaRow() {
   const tr = document.createElement('tr');
   tr.dataset.productId = prodId;
   tr.dataset.qty = qty;
+  tr.dataset.price = price;
   tr.innerHTML = `
     <td>${esc(name)}</td>
     <td>${qty}</td>
@@ -2263,7 +2309,7 @@ function calcVentaTotal() {
   let total = 0;
   $('vItems').querySelectorAll('tr').forEach(tr => {
     const qty = parseInt(tr.dataset.qty);
-    const price = Number(tr.children[2].textContent.replace(/[^0-9.-]+/g,""));
+    const price = Number(tr.dataset.price) || 0;
     total += qty * price;
   });
   $('vTotal').textContent = money(total);
@@ -2297,7 +2343,7 @@ async function saveVenta() {
     for (const row of rows) {
       const pid = row.dataset.productId;
       const qty = parseInt(row.dataset.qty);
-      await api(`/api/admin/orders/${orderId}/items`, { method: 'POST', body: { product_id: pid, quantity: qty } });
+      await api(`/api/admin/orders/${orderId}/items`, { method: 'POST', body: { product_id: pid, quantity: qty, price: Number(row.dataset.price) } });
     }
 
     // 3. Agregar abono si aplica

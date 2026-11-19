@@ -1,0 +1,151 @@
+/* =====================================================================
+   Tu Live Shop · Botones "Liquid Glass" estilo iOS 26
+   Una sola hoja para todos los perfiles (landing, cliente, admin, super).
+   Se carga al final del <head> y usa !important a propósito: es la capa de
+   diseño de botones y debe ganar sobre los estilos propios de cada página.
+   Claro/oscuro: oscuro por defecto; claro con html[data-theme="light"].
+   ===================================================================== */
+
+:root {
+  --lgb-base: 255, 255, 255;          /* color del cristal */
+  --lgb-a: .10;                       /* opacidad del cristal */
+  --lgb-hi: rgba(255,255,255,.34);    /* brillo arriba y abajo (más claro que el centro) */
+  --lgb-lo: rgba(255,255,255,.06);    /* centro más transparente */
+  --lgb-rim-a: rgba(255,255,255,.95);
+  --lgb-rim-b: rgba(255,255,255,.10);
+  --lgb-text: var(--text, #f8fafc);
+  --lgb-shadow: 0 1px 2px rgba(0,0,0,.28), 0 10px 24px rgba(0,0,0,.30);
+  --lgb-inner: inset 0 0 16px rgba(255,255,255,.10);
+}
+html[data-theme="light"] {
+  --lgb-base: 255, 255, 255;
+  --lgb-a: .46;
+  --lgb-hi: rgba(255,255,255,.92);
+  --lgb-lo: rgba(255,255,255,.30);
+  --lgb-rim-a: rgba(255,255,255,1);
+  --lgb-rim-b: rgba(120,140,170,.28);
+  --lgb-shadow: 0 1px 2px rgba(15,23,42,.12), 0 8px 20px rgba(15,23,42,.14);
+  --lgb-inner: inset 0 0 14px rgba(255,255,255,.55);
+}
+
+/* ---------- Base: cápsula de cristal ---------- */
+html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button) {
+  position: relative !important;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 999px !important;
+  border: 1px solid transparent !important;
+  color: var(--lgb-text) !important;
+  background:
+    linear-gradient(180deg, var(--lgb-hi) 0%, var(--lgb-lo) 46%, var(--lgb-lo) 54%, var(--lgb-hi) 100%),
+    rgba(var(--lgb-base), var(--lgb-a)) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(190%);
+  backdrop-filter: blur(14px) saturate(190%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.60),
+    inset 0 -1px 0 rgba(255,255,255,.22),
+    var(--lgb-inner),
+    var(--lgb-shadow) !important;
+  text-shadow: none;
+  font-weight: 700;
+  letter-spacing: .005em;
+  transform: translateZ(0);
+  transition: transform .28s cubic-bezier(.2,.9,.3,1.35), box-shadow .28s ease, filter .2s ease, background .2s ease;
+}
+
+/* Borde especular: brilla en esquinas opuestas, como el vidrio de iOS 26 */
+html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button)::before {
+  content: "";
+  position: absolute; inset: 0; z-index: -1;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--lgb-rim-a) 0%, var(--lgb-rim-b) 34%, var(--lgb-rim-b) 66%, var(--lgb-rim-a) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+/* Reflejo superior */
+html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button)::after {
+  content: "";
+  position: absolute; z-index: -1; left: 9%; right: 9%; top: 1px; height: 46%;
+  border-radius: 999px 999px 60% 60% / 999px 999px 40% 40%;
+  background: linear-gradient(180deg, rgba(255,255,255,.30), rgba(255,255,255,0));
+  opacity: .55;
+  pointer-events: none;
+}
+html[data-theme="light"] body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button)::after { opacity: .38; }
+
+/* ---------- Interacción ---------- */
+html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button):hover:not([disabled]) {
+  transform: translateY(-1px) scale(1.025) !important;
+  filter: brightness(1.08) saturate(1.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.80),
+    inset 0 -1px 0 rgba(255,255,255,.30),
+    var(--lgb-inner),
+    0 2px 4px rgba(0,0,0,.20), 0 14px 30px rgba(0,0,0,.30) !important;
+}
+html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button):active:not([disabled]) {
+  transform: scale(.965) !important;
+  filter: brightness(.96);
+  transition-duration: .08s;
+}
+html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button):focus-visible {
+  outline: 2px solid rgba(255,255,255,.85) !important; outline-offset: 2px;
+}
+html body :is(.btn, .chip, .tab)[disabled], html body .btn.is-locked { opacity: .5 !important; cursor: not-allowed !important; filter: grayscale(.25); }
+
+/* ---------- Variantes con tinte (centro más profundo, extremos más claros) ---------- */
+html body :is(.btn-primary, .btn.primary, .chip.active, .tab.active) {
+  color: #fff !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,.35);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 42%, rgba(255,255,255,0) 58%, rgba(255,255,255,.38) 100%),
+    rgba(var(--lgb-tint, 59, 130, 246), .78) !important;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 42%, rgba(255,255,255,0) 58%, rgba(255,255,255,.38) 100%),
+    color-mix(in srgb, var(--brand, #3b82f6) 74%, transparent) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.75),
+    inset 0 -1px 0 rgba(255,255,255,.30),
+    inset 0 0 18px rgba(255,255,255,.16),
+    0 2px 4px rgba(0,0,0,.18),
+    0 10px 26px color-mix(in srgb, var(--brand, #3b82f6) 45%, transparent) !important;
+}
+html body :is(.btn-danger, .btn.danger) {
+  color: #fff !important; text-shadow: 0 1px 2px rgba(0,0,0,.35);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.50) 0%, rgba(255,255,255,0) 42%, rgba(255,255,255,0) 58%, rgba(255,255,255,.34) 100%),
+    rgba(239, 68, 68, .74) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.70), inset 0 -1px 0 rgba(255,255,255,.26), inset 0 0 16px rgba(255,255,255,.14), 0 10px 24px rgba(239,68,68,.35) !important;
+}
+html body :is(.btn-wa, .btn.wa) {
+  color: #fff !important; text-shadow: 0 1px 2px rgba(0,0,0,.35);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.50) 0%, rgba(255,255,255,0) 42%, rgba(255,255,255,0) 58%, rgba(255,255,255,.34) 100%),
+    rgba(22, 163, 74, .76) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.70), inset 0 -1px 0 rgba(255,255,255,.26), inset 0 0 16px rgba(255,255,255,.14), 0 10px 24px rgba(22,163,74,.35) !important;
+}
+
+/* En tablas (muchos botones a la vez) se omite el desenfoque: mismo aspecto, mucho más liviano */
+html body :is(td, th) :is(.btn, .chip) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+@media (max-width: 700px) {
+  html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button) { -webkit-backdrop-filter: blur(8px) saturate(160%); backdrop-filter: blur(8px) saturate(160%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button) { transition: none; }
+}
+/* Sin soporte de backdrop-filter: cristal algo más opaco para que el texto siga legible */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button) { --lgb-a: .30; }
+  html[data-theme="light"] body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button) { --lgb-a: .75; }
+}
+
+/* Botones auxiliares del modal de pago (Copiar / Saldo completo) */
+html body :is(.pay-key button, .pay-amt button) { padding: 7px 14px !important; font-size: 12px; cursor: pointer; }
+html body .pay-amt button { align-self: stretch; }
+
+/* Nombre del cliente en el encabezado: una sola línea, con puntos suspensivos si no cabe */
+html body .user-chip { white-space: nowrap; max-width: 46vw; text-overflow: ellipsis; }

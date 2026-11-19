@@ -311,6 +311,7 @@ input:focus, select:focus, textarea:focus { box-shadow: inset 0 1px 3px rgba(0,0
   .glass, .modal { background: var(--bg); } .btn, .chip { background: var(--surface-hover); }
 }
 </style>
+<link rel="stylesheet" href="/lg-buttons.css?v=3">
 </head>
 <body>
 
@@ -668,6 +669,9 @@ input:focus, select:focus, textarea:focus { box-shadow: inset 0 1px 3px rgba(0,0
         <div class="field"><label>Número de inicio</label><input id="gStart" type="number" min="1"></div>
         <div class="field"><label>Dígitos</label><input id="gDigits" type="number" min="3" max="8"></div>
         <div class="field" style="grid-column:1/-1"><label>Plantilla mensaje WhatsApp ({ORDER_NUMBER}, {TOTAL}, {AMOUNT})</label><input id="gTpl"></div>
+        <div class="field"><label>Nombre del botón «Mis bolsitas» (lo ven tus clientes)</label><input id="gBagsLabel" maxlength="30" placeholder="Mis bolsitas"></div>
+        <div class="field" style="grid-column:1/-1"><label>Mensaje de «Solicitar envío» del cliente ({ORDER_NUMBER}, {TOTAL})</label><input id="gShipTpl" placeholder="Hola. Por favor, procedamos con el envío del pedido {ORDER_NUMBER}."></div>
+        <div class="field" style="grid-column:1/-1"><label>Mensaje de «Ayuda» del cliente ({ORDER_NUMBER}, {TOTAL})</label><input id="gHelpTpl" placeholder="Hola. Necesito ayuda con el pedido {ORDER_NUMBER}"></div>
       </div>
       <div class="actions" style="margin-top:12px"><button class="btn primary" onclick="saveGeneral()">Guardar configuración</button></div>
     </div>
@@ -718,6 +722,19 @@ input:focus, select:focus, textarea:focus { box-shadow: inset 0 1px 3px rgba(0,0
     <div class="field"><label>Mínimo de reposición</label><input id="pMin" type="number" min="0"></div>
   </div>
   <div class="modal-actions"><button class="btn" onclick="closeModal('productModal')">Cancelar</button><button class="btn primary" onclick="saveProduct()">Guardar</button></div>
+</div></div>
+
+<!-- MODAL: Editar abono -->
+<div id="payEditModal" class="modal-backdrop"><div class="modal">
+  <h2 id="peTitle">Editar abono</h2><input type="hidden" id="peId">
+  <p class="note" id="peInfo"></p>
+  <div class="fgrid">
+    <div class="field"><label>Monto (COP)</label><input id="peAmount" type="number" min="1"></div>
+    <div class="field"><label>Fecha</label><input id="peDate" type="date"></div>
+    <div class="field"><label>Medio</label><select id="peMethod"></select></div>
+    <div class="field"><label>Referencia / nota</label><input id="peRef"></div>
+  </div>
+  <div class="modal-actions"><button class="btn" onclick="closeModal('payEditModal')">Cancelar</button><button class="btn primary" id="peSave" onclick="savePayEdit()">Guardar cambios</button></div>
 </div></div>
 
 <!-- MODAL: Kit -->
@@ -823,7 +840,7 @@ input:focus, select:focus, textarea:focus { box-shadow: inset 0 1px 3px rgba(0,0
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="/admin.js?v=5"></script>
+<script src="/admin.js?v=6"></script>
 <script>
 // Toggle de tema
 function toggleTheme() {

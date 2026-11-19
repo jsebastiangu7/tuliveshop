@@ -161,6 +161,16 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
 .pcard .stock { font-size: 12px; font-weight: 700; color: var(--ok); }
 .pcard .stock.low { color: var(--warn); }
 .pcard .btn { margin-top: auto; justify-content: center; }
+.btn-sm { padding: 8px 14px; font-size: 13px; }
+.user-chip { font: inherit; font-weight: 700; background: none; border: 0; color: var(--text); cursor: pointer; padding: 6px 10px; border-radius: 999px; }
+.user-chip:hover { background: rgba(127,127,127,.15); }
+.bagbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; margin: 0 0 18px; border-radius: 16px; border: 1px solid var(--border); background: var(--surface); }
+.bagbar .info { flex: 1; min-width: 180px; font-size: 14px; }
+.bagbar .info b { font-weight: 800; }
+.bagbar .saldo { color: var(--danger); font-weight: 800; }
+.bolsita-date { font-size: 12px; color: var(--text-muted); margin-left: 8px; }
+.bolsita-actions { justify-content: flex-start; }
+.btn[disabled], .btn.is-locked { opacity: .5; cursor: not-allowed; transform: none; }
 .rm { border: 0; background: var(--danger); color: #fff; border-radius: 8px; padding: 4px 9px; cursor: pointer; font-weight: 700; }
 @media (max-width: 640px) {
   .shop-bar { grid-template-columns: 1fr; }
@@ -173,6 +183,7 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
   main { padding: 24px 16px 60px; }
 }
 </style>
+<link rel="stylesheet" href="/lg-buttons.css?v=3">
 </head>
 <body>
 
@@ -181,7 +192,7 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
   <div class="nav-right">
     <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn">🌙</button>
     <select id="storeSwitch" onchange="switchStore(this.value)" title="Cambiar de tienda" style="display:none;max-width:160px;padding:6px 8px;border-radius:10px"></select>
-    <span id="userName" style="font-weight:600"></span>
+    <button type="button" id="userName" class="user-chip" onclick="openProfile()" title="Ver y editar mis datos"></button>
     <button class="btn btn-ghost" onclick="logout()">Salir</button>
   </div>
 </header>
@@ -221,8 +232,9 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
     <p class="subtitle">Hola, <span id="welcomeName"></span>.</p>
     <div class="tabs">
       <button class="tab active" id="tabBtn-shop" onclick="setTab('shop')">🛍️ Tienda</button>
-      <button class="tab" id="tabBtn-orders" onclick="setTab('orders')">🎀 Mis bolsitas<span class="cnt" id="bagCnt" style="display:none"></span></button>
+      <button class="tab" id="tabBtn-orders" onclick="setTab('orders')">🎀 <span id="bagsLabelTxt">Mis bolsitas</span><span class="cnt" id="bagCnt" style="display:none"></span></button>
     </div>
+    <div class="bagbar" id="bagBar" style="display:none"></div>
 
     <div id="tab-shop">
       <div class="shop-bar">
@@ -248,6 +260,26 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
     </div>
   </section>
 </main>
+
+<!-- Modal mis datos -->
+<div class="modal-overlay" id="profileModal" onclick="if(event.target===this)closeProfile()">
+  <div class="modal-box" style="text-align:left">
+    <h3>👤 Mis datos</h3>
+    <p style="color:var(--text-muted);font-size:13px;margin:-6px 0 14px">Se actualizan en todas las tiendas donde estás inscrito.</p>
+    <div class="form-group"><label>Nombre completo</label><input id="pfName" maxlength="100"></div>
+    <div class="form-group"><label>WhatsApp (tu llave de ingreso)</label><input id="pfWa" readonly style="opacity:.7"></div>
+    <div class="form-group"><label>Correo electrónico</label><input id="pfEmail" type="email" maxlength="120"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Ciudad</label><input id="pfCity" maxlength="100"></div>
+      <div class="form-group"><label>Dirección de envío</label><input id="pfAddr" maxlength="300"></div>
+    </div>
+    <div class="pay-err" id="pfErr"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="closeProfile()">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="pfSave" onclick="saveProfile()">Guardar</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal cambio de PIN -->
 <div class="modal-overlay" id="storesModal">
@@ -286,6 +318,7 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
 
 <div id="toast" class="toast"></div>
 
+<script src="/client-invoice.js"></script>
 <script>
 let token = localStorage.getItem('pk_token') || '';
 let user = JSON.parse(localStorage.getItem('pk_user') || 'null');
@@ -336,6 +369,7 @@ function showDashboard() {
   $('welcomeName').textContent = user.name || 'Cliente';
   const cur = myStores().find(x => x.slug === slug);
   $('storeTitle').textContent = '🛍️ ' + (cur && cur.name && cur.name !== cur.slug ? cur.name : 'Tienda');
+  loadCfg();
   loadCatalog();
   loadOrders();
   if (user.must_change_pin) $('pinModal').classList.add('open');
@@ -505,15 +539,17 @@ async function loadOrders(quiet) {
     const cur = ORDERS.filter(o => ACTIVE.includes(o.status)).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))[0];
     const n = cur ? (cur.items || []).reduce((a, i) => a + Number(i.quantity), 0) : 0;
     $('bagCnt').textContent = n; $('bagCnt').style.display = n ? '' : 'none';
+    renderBagBar(cur);
     if (!orders || !orders.length) {
-      $('ordersList').innerHTML = '<div class="empty"><div class="big">🎀</div>Aún no tienes bolsitas.<br><button class="btn btn-primary" style="margin-top:16px" onclick="setTab(\'shop\')">Ir a la tienda</button></div>';
+      renderBagBar(null);
+      $('ordersList').innerHTML = '<div class="empty"><div class="big">🎀</div>Aún no tienes pedidos.<br><button class="btn btn-primary" style="margin-top:16px" onclick="setTab(\'shop\')">Ir a la tienda</button></div>';
       return;
     }
     $('ordersList').innerHTML = orders.map(o => {
       const items = (o.items || []).map(i => `<tr><td>${escH(i.product_name || i.kit_name || '—')}</td><td>${i.quantity}</td><td class="hm">${money(i.price)}</td><td>${money(i.price * i.quantity)}</td><td>${o.status === 'draft' ? `<button class="rm" title="Quitar" onclick="removeFromBag('${escH(o.id)}','${escH(i.id)}')">✕</button>` : ''}</td></tr>`).join('');
       return `<div class="bolsita">
         <div class="bolsita-header">
-          <span class="bolsita-num">${escH(o.order_number)}</span>
+          <span><span class="bolsita-num">${escH(o.order_number)}</span><span class="bolsita-date">${fmtDMY(o.created_at)}</span></span>
           <span class="badge ${STATUS_CLASS[o.status] || 'badge-muted'}">${STATUS[o.status] || o.status}</span>
         </div>
         <table><thead><tr><th>Producto</th><th>Cant.</th><th class="hm">Precio</th><th>Total</th><th></th></tr></thead><tbody>${items || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Sin productos</td></tr>'}</tbody></table>
@@ -522,10 +558,7 @@ async function loadOrders(quiet) {
           <span>Abonado: ${money(o.paid)}</span>
           <span class="saldo">Saldo: ${money(o.balance)}</span>
         </div>
-        ${o.status === 'pending_confirm'
-          ? '<div class="bolsita-actions"><span class="review">⏳ Tu pago está en revisión por la tienda</span></div>'
-          : (['draft', 'apartada'].includes(o.status) && Number(o.total) > 0 && Number(o.balance) > 0
-            ? `<div class="bolsita-actions"><button class="btn btn-wa" onclick="openPay('${escH(o.id)}')">💸 Reportar pago</button></div>` : '')}
+        ${orderActions(o)}
       </div>`;
     }).join('');
   } catch (e) {
@@ -547,6 +580,7 @@ function payAmtFmt(el) { const d = el.value.replace(/\D/g, ''); el.value = d ? N
 async function openPay(orderId) {
   const o = ORDERS.find(x => x.id === orderId); if (!o) return;
   PAY = { o, cfg: null };
+  if (o.status === 'pending_confirm') return openResend(o);
   $('payBody').innerHTML = '<h3>💸 Reportar pago</h3><p style="color:var(--text-muted)">Cargando datos de la tienda…</p>';
   $('payModal').classList.add('open');
   try { PAY.cfg = await api('/api/products/config/' + encodeURIComponent(slug)); }
@@ -593,6 +627,103 @@ async function submitPay() {
     btn.disabled = false; $('payErr').textContent = e.message;
   }
 }
+
+/* ---------- Etiqueta configurable, fechas, barra de bolsita y acciones por pedido ---------- */
+let CFG = null;
+// Fecha y hora del servidor (timestamp) → dd-mm-aaaa en la hora local del cliente
+const fmtDMY = (v) => { const d = new Date(v); return isNaN(d) ? '' : [String(d.getDate()).padStart(2, '0'), String(d.getMonth() + 1).padStart(2, '0'), d.getFullYear()].join('-'); };
+const bagsLabel = () => (CFG && CFG.bags_label) || 'Mis bolsitas';
+function applyBagsLabel() { const t = $('bagsLabelTxt'); if (t) t.textContent = bagsLabel(); }
+async function loadCfg() {
+  try { CFG = await api('/api/products/config/' + encodeURIComponent(slug)); applyBagsLabel(); } catch (_) { /* usa la etiqueta por defecto */ }
+}
+
+function renderBagBar(cur) {
+  const b = $('bagBar'); if (!b) return;
+  if (!cur || !(Number(cur.total) > 0)) { b.style.display = 'none'; return; }
+  const n = (cur.items || []).reduce((a, i) => a + Number(i.quantity), 0);
+  const pending = cur.status === 'pending_confirm';
+  const canPay = !pending && ['draft', 'apartada'].includes(cur.status) && Number(cur.balance) > 0;
+  b.innerHTML = `<div class="info">🎀 <b>${escH(cur.order_number)}</b> · ${n} producto${n === 1 ? '' : 's'} · Saldo <span class="saldo">${money(cur.balance)}</span>${pending ? ' · <span style="color:var(--warn);font-weight:700">⏳ pago en revisión</span>' : ''}</div>` +
+    (pending ? `<button class="btn btn-wa btn-sm" onclick="openPay('${escH(cur.id)}')">📎 Reenviar comprobante</button>`
+      : canPay ? `<button class="btn btn-wa btn-sm" onclick="openPay('${escH(cur.id)}')">💸 Reportar pago</button>` : '') +
+    `<button class="btn btn-ghost btn-sm" onclick="setTab('orders')">Ver ${escH(bagsLabel().toLowerCase())}</button>`;
+  b.style.display = 'flex';
+}
+
+function orderActions(o) {
+  const total = Number(o.total), bal = Number(o.balance);
+  const id = escH(o.id);
+  const pending = o.status === 'pending_confirm';
+  const canReport = pending || (['draft', 'apartada'].includes(o.status) && total > 0 && bal > 0);
+  const closed = ['canceled', 'expired'].includes(o.status);
+  const sent = ['shipped', 'delivered'].includes(o.status);
+  const canShip = !closed && !sent && total > 0 && bal <= 0;
+  const shipTitle = sent ? 'Esta bolsita ya fue enviada' : closed ? 'Bolsita cerrada' : canShip ? 'Pedir el envío por WhatsApp' : 'Disponible cuando la bolsita esté totalmente pagada';
+  const reportTitle = canReport ? (pending ? 'Reenviar el comprobante a la tienda' : 'Reportar un pago por Bre-B') : 'Sin saldo pendiente';
+  return `<div class="bolsita-actions">
+    ${pending ? '<span class="review">⏳ Tu pago está en revisión</span>' : ''}
+    <button class="btn btn-wa btn-sm" ${canReport ? '' : 'disabled'} title="${reportTitle}" onclick="openPay('${id}')">${pending ? '📎 Reenviar comprobante' : '💸 Reportar pago'}</button>
+    <button class="btn btn-ghost btn-sm" ${total > 0 ? '' : 'disabled'} onclick="clientInvoice('${id}', this)">🧾 Generar factura</button>
+    <button class="btn btn-ghost btn-sm" ${canShip ? '' : 'disabled'} title="${shipTitle}" onclick="waAction('${id}', 'shipping', this)">${sent ? '✅ Enviada' : '📦 Solicitar envío'}</button>
+    <button class="btn btn-ghost btn-sm" onclick="waAction('${id}', 'help', this)">💬 Ayuda</button>
+  </div>`;
+}
+
+// Abre el chat de WhatsApp de la tienda (se abre la pestaña al instante para que el navegador no la bloquee)
+async function waAction(orderId, kind, btn) {
+  const w = window.open('', '_blank');
+  if (btn) btn.disabled = true;
+  try {
+    const r = await api('/api/orders/' + encodeURIComponent(orderId) + '/wa/' + kind);
+    if (w) w.location.href = r.whatsapp_link; else location.href = r.whatsapp_link;
+  } catch (e) { if (w) w.close(); toast('⚠ ' + e.message); }
+  finally { if (btn) btn.disabled = false; }
+}
+
+// Pago ya reportado: vuelve a abrir WhatsApp con el mismo mensaje para enviar el comprobante
+async function openResend(o) {
+  $('payBody').innerHTML = '<h3>📎 Reenviar comprobante</h3><p style="color:var(--text-muted)">Cargando…</p>';
+  $('payModal').classList.add('open');
+  try {
+    const r = await api('/api/orders/' + encodeURIComponent(o.id) + '/report-link');
+    $('payBody').innerHTML = `<div class="pay-done"><div class="big">⏳</div>
+      <h3>Pago en revisión · ${escH(o.order_number)}</h3>
+      <p style="color:var(--text-muted);font-size:14px;line-height:1.5">Reportaste <b style="color:var(--text)">${money(r.amount)}</b>. La tienda lo aprobará cuando reciba tu <b style="color:var(--text)">comprobante por WhatsApp</b>. Si aún no lo enviaste, hazlo ahora.</p>
+      <div class="modal-actions" style="flex-direction:column">
+        <a class="btn btn-wa" href="${escH(r.whatsapp_link)}" target="_blank" rel="noopener">Abrir WhatsApp</a>
+        <button type="button" class="btn btn-ghost" onclick="closePay()">Cerrar</button>
+      </div></div>`;
+  } catch (e) {
+    $('payBody').innerHTML = `<h3>📎 Reenviar comprobante</h3><div class="pay-warn">⚠ ${escH(e.message)}</div><div class="modal-actions"><button class="btn btn-ghost" onclick="closePay()">Cerrar</button></div>`;
+  }
+}
+
+/* ---------- Mis datos ---------- */
+async function openProfile() {
+  $('pfErr').textContent = ''; $('profileModal').classList.add('open');
+  try {
+    const me = await api('/api/auth/client/me');
+    $('pfName').value = me.name || ''; $('pfWa').value = me.whatsapp || '';
+    $('pfEmail').value = me.email || ''; $('pfCity').value = me.city || ''; $('pfAddr').value = me.address || '';
+  } catch (e) { $('pfErr').textContent = e.message; }
+}
+function closeProfile() { $('profileModal').classList.remove('open'); }
+async function saveProfile() {
+  const btn = $('pfSave'); btn.disabled = true; $('pfErr').textContent = '';
+  try {
+    const r = await api('/api/auth/client/me', { method: 'PUT', body: { name: $('pfName').value, email: $('pfEmail').value, city: $('pfCity').value, address: $('pfAddr').value } });
+    user = { ...user, ...r.user };
+    localStorage.setItem('pk_user', JSON.stringify(user));
+    const stores = getStores();
+    stores.forEach(st => { st.user = { ...st.user, name: r.user.name, email: r.user.email, city: r.user.city, address: r.user.address }; });
+    if (stores.length) localStorage.setItem('pk_stores', JSON.stringify(stores));
+    $('userName').textContent = '👋 ' + user.name; $('welcomeName').textContent = user.name;
+    closeProfile(); toast('✔ Datos actualizados en ' + r.stores_updated + ' tienda' + (r.stores_updated === 1 ? '' : 's'));
+  } catch (e) { $('pfErr').textContent = e.message; }
+  finally { btn.disabled = false; }
+}
+
 document.addEventListener('visibilitychange', () => { if (!document.hidden && token && typeof loadOrders === 'function') loadOrders(true); });
 
 async function changePin(e) {

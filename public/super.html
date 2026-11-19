@@ -124,16 +124,32 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
   main { padding: 24px 16px 60px; }
   .form-row { grid-template-columns: 1fr; }
 }
+
+.tablewrap { overflow-x: auto; }
+.acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-sm { padding: 7px 12px; font-size: 13px; }
+.pill { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; display: inline-block; }
+.pill.ok { background: rgba(34,197,94,.15); color: #22c55e; } .pill.danger { background: rgba(239,68,68,.15); color: #ef4444; } .pill.warn { background: rgba(245,158,11,.15); color: #f59e0b; }
+.note { color: var(--text-muted); font-size: 13px; line-height: 1.45; margin: 4px 0 12px; }
+.sec { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--brand); margin: 18px 0 10px; padding-top: 14px; border-top: 1px solid var(--border); }
+.sec:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+.modal-box.wide { width: min(620px, 100%); max-height: 92vh; overflow-y: auto; }
+.filebox { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px dashed var(--border); border-radius: 10px; background: var(--bg); }
+.filebox .fname { flex: 1; min-width: 0; font-size: 13px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.err { color: var(--danger); font-size: 13px; min-height: 18px; margin-top: 8px; text-align: center; }
+.view { display: none; } .view.active { display: block; }
+.hidden { display: none !important; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
 </style>
+<link rel="stylesheet" href="/lg-buttons.css?v=3">
 </head>
 <body>
 
-<header class="glass">
+<header class="glass hidden" id="hdr">
   <a href="/" class="brand">👑 Tu <span>Live Shop</span> · Super Admin</a>
   <div class="nav-right">
     <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn">🌙</button>
-    <span id="userName" style="font-weight:600"></span>
-    <a href="/" class="btn btn-ghost">Ver tienda</a>
+    <span id="who" style="font-weight:600"></span>
     <button class="btn btn-ghost" onclick="logout()">Salir</button>
   </div>
 </header>
@@ -143,223 +159,85 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
     <div style="max-width:420px;margin:60px auto">
       <h1 style="text-align:center">👑 Acceso Super Admin</h1>
       <p class="subtitle" style="text-align:center">Solo para el administrador principal del sistema.</p>
-      <form class="panel glass" onsubmit="superLogin(event)" style="display:grid;gap:12px">
-        <div class="form-group">
-          <label>Correo</label>
-          <input id="sEmail" type="email" required autocomplete="username">
-        </div>
-        <div class="form-group">
-          <label>Contraseña</label>
-          <input id="sPass" type="password" required autocomplete="current-password">
-        </div>
+      <form class="panel glass" onsubmit="login(event)" style="display:grid;gap:12px">
+        <div class="form-group"><label>Correo</label><input id="aEmail" type="email" required autocomplete="username"></div>
+        <div class="form-group"><label>Contraseña</label><input id="aPass" type="password" required autocomplete="current-password"></div>
         <button class="btn btn-primary" type="submit" style="width:100%;justify-content:center">Ingresar</button>
-        <div id="sErr" style="color:var(--danger);font-size:13px;text-align:center"></div>
+        <div class="err" id="aErr"></div>
       </form>
     </div>
   </section>
 
-  <section id="view-dashboard" class="view" style="display:none">
-    <h1>Panel de Control</h1>
-    <p class="subtitle">Gestión global de administradores, tiendas y usuarios.</p>
-
-    <div class="grid">
-      <div class="panel glass">
-        <h2>📊 Resumen</h2>
-        <div id="statsBox"></div>
-      </div>
-      <div class="panel glass">
-        <h2>➕ Crear Administrador</h2>
-        <form onsubmit="createAdmin(event)">
-          <div class="form-group">
-            <label>Nombre completo</label>
-            <input id="newAdminName" required>
-          </div>
-          <div class="form-group">
-            <label>Correo</label>
-            <input id="newAdminEmail" type="email" required>
-          </div>
-          <div class="form-group">
-            <label>Contraseña inicial</label>
-            <input id="newAdminPass" type="password" minlength="6" required>
-          </div>
-          <div class="form-group">
-            <label>Nombre de la tienda (slug)</label>
-            <input id="newStoreSlug" placeholder="ej: mi-tienda" required>
-          </div>
-          <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center">Crear administrador y tienda</button>
-        </form>
-      </div>
+  <section id="view-main" class="view">
+    <div class="toolbar">
+      <div><h1>🏪 Tiendas</h1><p class="subtitle" style="margin-bottom:0">Crea tiendas y a su administrador. Los clientes podrán darse de alta en cada tienda creada.</p></div>
+      <button class="btn btn-primary" onclick="openPortfolio()">+ Nueva tienda</button>
     </div>
-
-    <div class="panel glass">
-      <h2>👥 Administradores registrados</h2>
-      <div id="adminsList"></div>
-    </div>
-
-    <div class="panel glass" style="margin-top:20px">
-      <h2>🏪 Tiendas (portafolios)</h2>
-      <div id="portfoliosList"></div>
-    </div>
+    <div class="panel glass" style="margin-top:20px"><div id="pfTable"></div></div>
   </section>
 </main>
 
-<div id="toast" class="toast"></div>
+<!-- Crear / editar tienda -->
+<div class="modal-overlay" id="pfModal">
+  <div class="modal-box wide">
+    <h3 id="pfTitle">Nueva tienda</h3>
+    <input type="hidden" id="pfId">
+    <div class="sec">Datos de la tienda</div>
+    <div class="form-group"><label>Nombre de la tienda *</label><input id="pfName" maxlength="80" placeholder="Ej: Pandala Kawaii" oninput="suggestSlug()"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Enlace público *</label><input id="pfSlug" maxlength="30" placeholder="ej: pandala-kawaii" oninput="this.dataset.touched=1"></div>
+      <div class="form-group"><label>Iniciales de numeración</label><input id="pfPrefix" maxlength="6" placeholder="BOL" style="text-transform:uppercase"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Llave Bre-B *</label><input id="pfBreb" placeholder="Celular o llave"></div>
+      <div class="form-group"><label>WhatsApp de la tienda *</label><input id="pfWa" inputmode="tel" placeholder="3001234567"></div>
+    </div>
+    <p class="note" id="pfLink"></p>
 
-<script>
-let token = localStorage.getItem('token') || '';
-let user = JSON.parse(localStorage.getItem('user') || 'null');
-
-const $ = id => document.getElementById(id);
-function toast(msg) {
-  const t = $('toast'); t.textContent = msg; t.classList.add('show');
-  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3000);
-}
-
-async function api(path, opts = {}) {
-  const res = await fetch(path, {
-    ...opts,
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}), ...(opts.headers || {}) },
-    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'Error ' + res.status);
-  return data;
-}
-
-function init() {
-  const saved = localStorage.getItem('theme');
-  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const theme = saved || (prefersDark ? 'dark' : 'light');
-  document.documentElement.setAttribute('data-theme', theme);
-  $('themeBtn').textContent = theme === 'dark' ? '🌙' : '☀️';
-
-  if (user && token && user.role === 'super_admin') showDashboard();
-  else showLogin();
-}
-
-function showLogin() {
-  $('view-login').style.display = 'block';
-  $('view-dashboard').style.display = 'none';
-}
-
-function showDashboard() {
-  $('view-login').style.display = 'none';
-  $('view-dashboard').style.display = 'block';
-  $('userName').textContent = '👑 ' + (user.name || 'Super Admin');
-  loadStats();
-  loadAdmins();
-  loadPortfolios();
-}
-
-async function superLogin(e) {
-  e.preventDefault();
-  $('sErr').textContent = '';
-  try {
-    const d = await api('/api/auth/admin/login', { method: 'POST', body: { email: $('sEmail').value.trim(), password: $('sPass').value } });
-    if (d.user.role !== 'super_admin') throw new Error('Esta cuenta no tiene permisos de super administrador');
-    token = d.token; user = d.user;
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    showDashboard();
-  } catch (e) { $('sErr').textContent = e.message; }
-}
-
-function logout() {
-  token = ''; user = null;
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  showLogin();
-}
-
-async function loadStats() {
-  try {
-    const admins = await api('/api/super/admins');
-    const portfolios = await api('/api/super/portfolios');
-    $('statsBox').innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
-        <div style="text-align:center;padding:16px;background:var(--bg);border-radius:12px">
-          <div style="font-size:28px;font-weight:800;color:var(--brand)">${admins.length}</div>
-          <div style="font-size:13px;color:var(--text-muted)">Administradores</div>
-        </div>
-        <div style="text-align:center;padding:16px;background:var(--bg);border-radius:12px">
-          <div style="font-size:28px;font-weight:800;color:var(--brand)">${portfolios.length}</div>
-          <div style="font-size:13px;color:var(--text-muted)">Tiendas activas</div>
-        </div>
+    <div id="pfAdminBox">
+      <div class="sec">Administrador de la tienda</div>
+      <div class="form-row">
+        <div class="form-group"><label>Nombre completo *</label><input id="paName" maxlength="100"></div>
+        <div class="form-group"><label>Correo *</label><input id="paEmail" type="email" maxlength="120" autocomplete="off"></div>
       </div>
-    `;
-  } catch (e) {
-    $('statsBox').innerHTML = '<p class="empty">No se pudieron cargar las estadísticas.</p>';
-  }
-}
+      <div class="form-group"><label>Contraseña inicial * (mínimo 8 caracteres)</label><input id="paPass" type="password" autocomplete="new-password"></div>
+      <div class="form-group"><label>Documento de identidad del administrador * (PDF, JPG o PNG · máx. 5 MB)</label>
+        <div class="filebox"><button type="button" class="btn btn-ghost btn-sm" onclick="$('paDoc').click()">📎 Subir documento</button><span class="fname" id="paDocName">Ningún archivo seleccionado</span></div>
+        <input id="paDoc" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" class="hidden" onchange="pickDoc(this,'paDocName')">
+      </div>
+    </div>
+    <div class="err" id="pfErr"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('pfModal')">Cancelar</button>
+      <button class="btn btn-primary" id="pfSave" onclick="savePortfolio()">Guardar tienda</button>
+    </div>
+  </div>
+</div>
 
-async function loadAdmins() {
-  try {
-    const admins = await api('/api/super/admins');
-    if (!admins.length) { $('adminsList').innerHTML = '<p class="empty">Aún no hay administradores.</p>'; return; }
-    $('adminsList').innerHTML = '<table><thead><tr><th>Nombre</th><th>Correo</th><th>Tienda</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>' +
-      admins.map(a => `<tr>
-        <td><b>${a.name}</b></td>
-        <td>${a.email}</td>
-        <td>${a.portfolio_name || '—'}</td>
-        <td><span class="badge badge-ok">${a.status || 'Activo'}</span></td>
-        <td><button class="btn btn-ghost" style="padding:6px 12px;font-size:12px" onclick="resetAdminPass('${a.id}')">Resetear clave</button></td>
-      </tr>`).join('') + '</tbody></table>';
-  } catch (e) { $('adminsList').innerHTML = '<p class="empty">Error al cargar administradores.</p>'; }
-}
+<!-- Administradores de una tienda -->
+<div class="modal-overlay" id="adModal">
+  <div class="modal-box wide">
+    <h3 id="adTitle">Administradores</h3>
+    <div id="adList"></div>
+    <div class="sec">Agregar otro administrador</div>
+    <div class="form-row">
+      <div class="form-group"><label>Nombre completo</label><input id="adName" maxlength="100"></div>
+      <div class="form-group"><label>Correo</label><input id="adEmail" type="email" autocomplete="off"></div>
+    </div>
+    <div class="form-group"><label>Contraseña inicial (mínimo 8)</label><input id="adPass" type="password" autocomplete="new-password"></div>
+    <div class="form-group"><label>Documento de identidad (PDF, JPG o PNG · máx. 5 MB)</label>
+      <div class="filebox"><button type="button" class="btn btn-ghost btn-sm" onclick="$('adDoc').click()">📎 Subir documento</button><span class="fname" id="adDocName">Ningún archivo seleccionado</span></div>
+      <input id="adDoc" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" class="hidden" onchange="pickDoc(this,'adDocName')">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('adModal')">Cerrar</button>
+      <button class="btn btn-primary" onclick="createAdmin()">Crear administrador</button>
+    </div>
+  </div>
+</div>
+<input id="docReplace" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" class="hidden">
 
-async function loadPortfolios() {
-  try {
-    const portfolios = await api('/api/super/portfolios');
-    if (!portfolios.length) { $('portfoliosList').innerHTML = '<p class="empty">Aún no hay tiendas.</p>'; return; }
-    $('portfoliosList').innerHTML = '<table><thead><tr><th>Nombre</th><th>Slug</th><th>Administrador</th><th>Acciones</th></tr></thead><tbody>' +
-      portfolios.map(p => `<tr>
-        <td><b>${p.name}</b></td>
-        <td><code style="background:var(--bg);padding:2px 8px;border-radius:4px">${p.slug}</code></td>
-        <td>${p.admin_name || '—'}</td>
-        <td><a href="/?t=${p.slug}" target="_blank" class="btn btn-ghost" style="padding:6px 12px;font-size:12px">Ver tienda</a></td>
-      </tr>`).join('') + '</tbody></table>';
-  } catch (e) { $('portfoliosList').innerHTML = '<p class="empty">Error al cargar tiendas.</p>'; }
-}
-
-async function createAdmin(e) {
-  e.preventDefault();
-  try {
-    await api('/api/super/admins', {
-      method: 'POST',
-      body: {
-        name: $('newAdminName').value.trim(),
-        email: $('newAdminEmail').value.trim(),
-        password: $('newAdminPass').value,
-        store_name: $('newAdminName').value.trim() + ' Shop',
-        store_slug: $('newStoreSlug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-')
-      }
-    });
-    toast('✔ Administrador y tienda creados');
-    $('newAdminName').value = ''; $('newAdminEmail').value = ''; $('newAdminPass').value = ''; $('newStoreSlug').value = '';
-    loadStats(); loadAdmins(); loadPortfolios();
-  } catch (e) { toast('⚠ ' + e.message); }
-}
-
-async function resetAdminPass(id) {
-  const newPass = prompt('Nueva contraseña para este administrador (mín. 6 caracteres):');
-  if (!newPass || newPass.length < 6) return;
-  try {
-    await api('/api/super/admins/' + id + '/reset-password', { method: 'POST', body: { new_password: newPass } });
-    toast('✔ Contraseña reseteada');
-  } catch (e) { toast('⚠ ' + e.message); }
-}
-
-function toggleTheme() {
-  const html = document.documentElement;
-  const current = html.getAttribute('data-theme');
-  const next = current === 'dark' ? 'light' : 'dark';
-  html.setAttribute('data-theme', next);
-  localStorage.setItem('theme', next);
-  $('themeBtn').textContent = next === 'dark' ? '🌙' : '☀️';
-}
-
-init();
-</script>
+<div id="toast" class="toast"></div>
+<script src="/super.js"></script>
 </body>
 </html>

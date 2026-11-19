@@ -14,6 +14,7 @@ import productRoutes from './routes/products.js';
 import orderRoutes from './routes/orders.js';
 import adminRoutes from './routes/admin.js';
 import superRoutes from './routes/super.js';
+import { ensureSchema } from './schema.js';
 
 dotenv.config();
 
@@ -74,4 +75,6 @@ io.on('connection', (socket) => {
 });
 
 const PORT = Number(process.env.PORT) || 3001;
-httpServer.listen(PORT, () => console.log(`🚀 Servidor en http://localhost:${PORT}`));
+ensureSchema()
+  .catch((e) => console.error('⚠ No se pudo verificar el esquema:', e.message))
+  .finally(() => httpServer.listen(PORT, () => console.log(`🚀 Servidor en http://localhost:${PORT}`)));

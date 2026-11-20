@@ -8,10 +8,12 @@ const router = Router();
 
 const DOC_TYPES: Record<string, string> = { 'application/pdf': 'pdf', 'image/jpeg': 'jpg', 'image/png': 'png' };
 const MAX_DOC = 5 * 1024 * 1024; // 5 MB
+const DATA_POLICY_VERSION = '2026-11-20'; // versión de la Política de Tratamiento de Datos Personales aceptada
 
 /** Valida y decodifica el documento recibido como { name, type, data(base64) } */
 function parseDoc(doc: any) {
   if (!doc) return null;
+  if (doc.consent !== true) throw new Error('Confirma que el titular autorizó el tratamiento de su documento de identidad');
   const type = String(doc.type || '').toLowerCase();
   if (!DOC_TYPES[type]) throw new Error('El documento debe ser PDF, JPG o PNG');
   const b64 = String(doc.data || '').replace(/^data:[^;]+;base64,/, '');
@@ -25,8 +27,8 @@ function parseDoc(doc: any) {
 async function saveDoc(db: any, userId: string, portfolioId: string, d: { name: string; type: string; buf: Buffer }) {
   await db.query(`DELETE FROM admin_documents WHERE user_id = $1`, [userId]); // un documento vigente por administrador
   await db.query(
-    `INSERT INTO admin_documents (user_id, portfolio_id, file_name, mime_type, size_bytes, data) VALUES ($1,$2,$3,$4,$5,$6)`,
-    [userId, portfolioId, d.name, d.type, d.buf.length, d.buf]);
+    `INSERT INTO admin_documents (user_id, portfolio_id, file_name, mime_type, size_bytes, data, consent_at, consent_version) VALUES ($1,$2,$3,$4,$5,$6,NOW(),$7)`,
+    [userId, portfolioId, d.name, d.type, d.buf.length, d.buf, DATA_POLICY_VERSION]);
 }
 
 // Todo lo de este archivo es exclusivo del Super administrador
@@ -189,10 +191,18 @@ router.put('/admins/:id/document', async (req: AuthRequest, res) => {
     await saveDoc(pool, u.id, u.portfolio_id, doc);
     res.json({ ok: true });
   } catch (e: any) {
-    const bad = /documento|PDF|MB/.test(String(e.message));
+    const bad = /documento|PDF|MB|autoriz/.test(String(e.message));
     if (!bad) console.error(e);
     res.status(bad ? 400 : 500).json({ error: bad ? e.message : 'Error del servidor' });
   }
+});
+
+/** Supresión del documento (derecho de supresión / revocación de la autorización) */
+router.delete('/admins/:id/document', async (req: AuthRequest, res) => {
+  try {
+    const r = await pool.query(`DELETE FROM admin_documents WHERE user_id = $1`, [req.params.id]);
+    res.json({ ok: true, deleted: r.rowCount });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 
 router.get('/admins/:id/document', async (req: AuthRequest, res) => {

@@ -10,8 +10,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #0f172a;
-  --bg-gradient: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.15) 0%, transparent 40%);
+  --bg: #0B1220;
+  --bg-gradient: none;
   --surface: rgba(30, 41, 59, 0.65);
   --surface-hover: rgba(51, 65, 85, 0.8);
   --border: rgba(255, 255, 255, 0.08);
@@ -233,85 +233,34 @@ th.sortable { cursor: pointer; user-select: none; }
 @media (max-width: 430px) {
   .fgrid { grid-template-columns: minmax(0, 1fr); }
 }
-/* ===== Liquid glass 2.0 ===== */
-:root {
-  --lg-blur: blur(28px) saturate(190%) brightness(1.05);
-  --lg-fill: linear-gradient(135deg, rgba(255,255,255,.14) 0%, rgba(255,255,255,.04) 45%, rgba(255,255,255,.10) 100%);
-  --lg-edge: rgba(255,255,255,.18); --lg-spec: rgba(255,255,255,.38);
-  --lg-shadow: 0 20px 56px rgba(2,6,23,.50), 0 2px 8px rgba(2,6,23,.28);
-  --lg-btn: linear-gradient(180deg, rgba(255,255,255,.20) 0%, rgba(255,255,255,.05) 50%, rgba(255,255,255,.18) 100%);
-  --lg-btn-base: rgba(12,20,44,.55);
-  --lg-tint: rgba(8,15,35,.42);
-  --lg-text-shadow: 0 1px 1px rgba(0,0,0,.35);
-  --p-edge: #6f9be0; --p-mid: #2f63c8;
-  --bg-gradient:
-    radial-gradient(circle at 10% 14%, rgba(59,130,246,.42) 0, transparent 38%),
-    radial-gradient(circle at 90% 10%, rgba(168,85,247,.32) 0, transparent 40%),
-    radial-gradient(circle at 84% 92%, rgba(6,182,212,.34) 0, transparent 42%),
-    radial-gradient(circle at 8% 90%, rgba(244,114,182,.22) 0, transparent 40%);
-}
-:root:not([data-theme="light"]) { --text: #ffffff; --text-muted: #c9d3e3; --muted: #c9d3e3; }
-[data-theme="light"] {
-  --lg-fill: linear-gradient(135deg, rgba(255,255,255,.82) 0%, rgba(255,255,255,.46) 50%, rgba(255,255,255,.70) 100%);
-  --lg-edge: rgba(255,255,255,.95); --lg-spec: #ffffff;
-  --lg-shadow: 0 18px 48px rgba(30,64,140,.18), 0 2px 8px rgba(30,64,140,.10);
-  --lg-btn: linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(255,255,255,.62) 50%, rgba(255,255,255,.95) 100%);
-  --lg-btn-base: rgba(255,255,255,.4);
-  --lg-tint: rgba(255,255,255,0);
-  --lg-text-shadow: none;
-  --p-edge: #4aa3d8; --p-mid: #0b78b4;
-  --bg-gradient:
-    radial-gradient(circle at 10% 14%, rgba(59,130,246,.30) 0, transparent 38%),
-    radial-gradient(circle at 90% 10%, rgba(192,132,252,.26) 0, transparent 40%),
-    radial-gradient(circle at 84% 92%, rgba(34,211,238,.30) 0, transparent 42%),
-    radial-gradient(circle at 8% 90%, rgba(251,146,180,.20) 0, transparent 40%);
-}
-.glass, .modal {
-  background: var(--lg-fill), var(--lg-tint); -webkit-backdrop-filter: var(--lg-blur); backdrop-filter: var(--lg-blur);
-  border: 1px solid var(--lg-edge);
-  box-shadow: inset 0 1px 0 var(--lg-spec), inset 0 -1px 0 rgba(255,255,255,.06), inset 1px 0 0 rgba(255,255,255,.06), var(--lg-shadow);
-}
-header.glass { border-radius: 0 0 24px 24px; border-top: 0; }
-.card { background: var(--lg-fill), var(--lg-tint); border: 1px solid var(--lg-edge); box-shadow: inset 0 1px 0 var(--lg-spec), 0 8px 24px rgba(2,6,23,.16); }
-#userMenu { background: color-mix(in srgb, var(--bg) 78%, transparent); }
-input, select, textarea {
-  background: color-mix(in srgb, var(--bg) 55%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-  border: 1px solid var(--lg-edge); box-shadow: inset 0 1px 3px rgba(0,0,0,.14);
-}
-input:focus, select:focus, textarea:focus { box-shadow: inset 0 1px 3px rgba(0,0,0,.14), 0 0 0 3px var(--brand-glow); }
-/* Botones: cristal sobrio. Degradado vertical: más claro arriba y abajo, más intenso al centro */
-.btn, .chip, .theme-toggle, .who-btn {
-  position: relative; overflow: hidden; isolation: isolate;
-  background: var(--lg-btn); background-color: var(--lg-btn-base);
-  -webkit-backdrop-filter: blur(14px) saturate(150%); backdrop-filter: blur(14px) saturate(150%);
-  border: 1px solid var(--lg-edge); color: var(--text);
-  box-shadow: inset 0 1px 0 var(--lg-spec), 0 4px 14px rgba(2,6,23,.16);
-  text-shadow: var(--lg-text-shadow);
-  transition: transform .18s cubic-bezier(.3,.7,.3,1), box-shadow .18s, filter .18s;
-}
-.btn:hover, .chip:hover, .theme-toggle:hover, .who-btn:hover {
-  transform: translateY(-1px); filter: brightness(1.07);
-  box-shadow: inset 0 1px 0 var(--lg-spec), 0 8px 20px rgba(2,6,23,.22);
-}
-.btn:active, .chip:active, .theme-toggle:active, .who-btn:active { transform: translateY(0) scale(.98); filter: brightness(.97); }
-.chip:hover { color: var(--text); border-color: var(--lg-edge); }
-.btn.primary, .chip.active {
-  background: linear-gradient(180deg, var(--p-edge) 0%, var(--p-mid) 50%, var(--p-edge) 100%);
-  color: #fff; border-color: rgba(255,255,255,.35); text-shadow: 0 1px 1px rgba(0,0,0,.30);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 5px 16px var(--brand-glow);
-}
-.btn.primary:hover, .chip.active:hover { color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 8px 22px var(--brand-glow); }
-.btn.danger { background: linear-gradient(180deg, #ef7f7f 0%, #dc4b4b 50%, #ef7f7f 100%); color: #fff; border-color: rgba(255,255,255,.35); text-shadow: 0 1px 1px rgba(0,0,0,.30);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 5px 14px rgba(220,75,75,.28); }
-.btn.wa { background: linear-gradient(180deg, #5fd68b 0%, #1fa85a 50%, #5fd68b 100%); color: #fff; border-color: rgba(255,255,255,.35); text-shadow: 0 1px 1px rgba(0,0,0,.30);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 5px 14px rgba(31,168,90,.26); }
-.btn[disabled], .btn:disabled { opacity: .55; transform: none; filter: grayscale(.3); }
-@media (prefers-reduced-motion: reduce) { .btn, .chip, .theme-toggle, .who-btn { transition: none; } }
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass, .modal { background: var(--bg); } .btn, .chip { background: var(--surface-hover); }
-}
+/* ===== Superficies planas (colores desde theme.css / Diseño) ===== */
+header.glass { border-radius: 0 0 20px 20px; border-top: 0; }
+.glass, .modal { -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: var(--shadow); }
+#userMenu { background: var(--surface); }
+input, select, textarea { background: var(--bg); border: 1px solid var(--border); color: var(--text); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-glow); }
+/* ===== Diseño (Configuración) ===== */
+.dz-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+.dz-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.dz-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dz-row label { flex: 1 1 100%; font-size: 12px; color: var(--text-muted); }
+.dz-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.dz-field .dz-in { display: flex; gap: 8px; align-items: center; }
+.dz-field input[type=color] { width: 44px; height: 38px; padding: 2px; border-radius: 10px; cursor: pointer; flex: none; }
+.dz-field input[type=text] { flex: 1; min-width: 0; font-family: ui-monospace, monospace; text-transform: uppercase; }
+.dz-alerts { margin-top: 14px; display: grid; gap: 8px; }
+.dz-alert { padding: 10px 12px; border-radius: 12px; font-size: 13px; border: 1px solid var(--border); }
+.dz-alert.error { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.dz-alert.warn { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+.dz-alert.okmsg { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+.dz-prev { margin-top: 14px; border-radius: 16px; padding: 16px; border: 1px solid var(--pv-border); background: var(--pv-bg); color: var(--pv-text); }
+.dz-prev .pv-card { background: var(--pv-surface); border: 1px solid var(--pv-border); border-radius: 14px; padding: 14px; }
+.dz-prev .pv-muted { color: var(--pv-muted); font-size: 13px; }
+.dz-prev .pv-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.dz-prev .pv-b { border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 600; border: 1px solid var(--pv-btn-border); background: var(--pv-btn); color: var(--pv-text); }
 </style>
-<link rel="stylesheet" href="/lg-buttons.css?v=3">
+<link rel="stylesheet" href="/theme.css?v=1">
+<script src="/theme.js?v=1"></script>
 </head>
 <body>
 
@@ -323,9 +272,6 @@ input:focus, select:focus, textarea:focus { box-shadow: inset 0 1px 3px rgba(0,0
     <div class="who-wrap">
       <button class="who-btn" onclick="toggleUserMenu()">👑 <span id="whoName">Admin</span> ▾</button>
       <div id="userMenu" class="glass hidden">
-        <button onclick="menuGo('kits')">🎁 Kits</button>
-        <button onclick="menuGo('cats')">🏷️ Categorías</button>
-        <div style="height:1px; background:var(--border); margin:4px 0;"></div>
         <button onclick="menuGo('config')">⚙️ Configuración</button>
         <button onclick="menuGo('legal')">📜 Legal</button>
         <div style="height:1px; background:var(--border); margin:4px 0;"></div>
@@ -606,6 +552,15 @@ input:focus, select:focus, textarea:focus { box-shadow: inset 0 1px 3px rgba(0,0
         <div class="field pk-pc-only"><label>Ubicación del menú (PC)</label><select id="uiLayoutSel" onchange="setLayout(this.value)"><option value="top">Barra superior</option><option value="side">Barra lateral</option></select></div>
       </div>
     </div>
+    <div class="panel glass" id="dzPanel">
+      <h2>Diseño</h2>
+      <p class="note">Elige 5 colores por modo; el sistema deriva el resto (texto, bordes, hover, botones). Se aplica a tu panel y a la tienda de tus clientes.</p>
+      <div class="dz-tabs"><button class="chip active" id="dzTabLight" onclick="dzMode('light')">☀️ Claro</button><button class="chip" id="dzTabDark" onclick="dzMode('dark')">🌙 Oscuro</button></div>
+      <div class="dz-grid" id="dzFields"></div>
+      <div class="dz-alerts" id="dzAlerts"></div>
+      <div class="dz-prev" id="dzPrev"></div>
+      <div class="actions" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" onclick="dzSave()">Guardar diseño</button><button class="btn" onclick="dzReset()">Restablecer a Opción A</button></div>
+    </div>
     <div class="panel glass">
       <h2>Utilidad: diezmo, ofrenda y reinversión</h2>
       <div class="fgrid">
@@ -840,7 +795,7 @@ input:focus, select:focus, textarea:focus { box-shadow: inset 0 1px 3px rgba(0,0
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="/admin.js?v=6"></script>
+<script src="/admin.js?v=7"></script>
 <script>
 // Toggle de tema
 function toggleTheme() {

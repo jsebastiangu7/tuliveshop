@@ -183,7 +183,8 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
   main { padding: 24px 16px 60px; }
 }
 </style>
-<link rel="stylesheet" href="/lg-buttons.css?v=3">
+<link rel="stylesheet" href="/theme.css?v=1">
+<script src="/theme.js?v=1"></script>
 </head>
 <body>
 
@@ -635,8 +636,17 @@ const fmtDMY = (v) => { const d = new Date(v); return isNaN(d) ? '' : [String(d.
 const bagsLabel = () => (CFG && CFG.bags_label) || 'Mis bolsitas';
 function applyBagsLabel() { const t = $('bagsLabelTxt'); if (t) t.textContent = bagsLabel(); }
 async function loadCfg() {
-  try { CFG = await api('/api/products/config/' + encodeURIComponent(slug)); applyBagsLabel(); } catch (_) { /* usa la etiqueta por defecto */ }
+  try { CFG = await api('/api/products/config/' + encodeURIComponent(slug)); applyBagsLabel(); applyStoreTheme(); } catch (_) { /* usa la etiqueta por defecto */ }
 }
+// Colores de la tienda (sección Diseño del administrador); sin configurar = Opción A
+function applyStoreTheme() {
+  try {
+    const th = TLSTheme.sanitize(CFG && CFG.theme);
+    if (th) TLSTheme.apply(th); else TLSTheme.reset();
+    TLSTheme.cacheSet(slug, th);
+  } catch (_) {}
+}
+try { const th0 = TLSTheme.cacheGet(slug); if (th0) TLSTheme.apply(th0); } catch (_) {}
 
 function renderBagBar(cur) {
   const b = $('bagBar'); if (!b) return;

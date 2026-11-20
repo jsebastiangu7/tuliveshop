@@ -34,6 +34,9 @@ async function api(path, opts = {}) {
   const data = await res.json().catch(() => ({}));
   if (res.status === 401 && !path.includes('/auth/')) { logout(); throw new Error('Sesión vencida: ingresa de nuevo'); }
   if (!res.ok) throw new Error(data.error || 'Error ' + res.status);
+  if (path === '/api/admin/settings' && !opts.method && typeof TLSTheme !== 'undefined') {
+    try { var th = TLSTheme.sanitize(data.theme); if (th) TLSTheme.apply(th); else TLSTheme.reset(); TLSTheme.cacheSet('admin', th); } catch (e) {}
+  }
   return data;
 }
 function toast(msg) { const t = $('toast'); if (!t) return; t.textContent = msg; t.classList.remove('hidden'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.add('hidden'), 3200); }
@@ -118,10 +121,12 @@ const TABS = [
   ['ventas-prod', 'Ventas por producto'],
   ['orders', 'Pedidos'],
   ['inv', 'Inventario'],
+  ['kits', 'Kits'],
+  ['cats', 'Categorías'],
   ['clients', 'Clientes'],
   ['abonos', 'Abonos'],
   ['logis', 'Logística']
-];  // Kits y Categorías se abren desde el botón del perfil
+];  // Configuración y Legal se abren desde el botón del perfil
 let currentTab = 'dash';
 function renderTabs() { const t = $('tabs'); if (t) t.innerHTML = TABS.map(([id, n]) => `<button class="chip ${currentTab === id ? 'active' : ''}" onclick="showTab('${id}')">${n}</button>`).join(''); }
 function showTab(id) {
@@ -1379,7 +1384,7 @@ async function loadConfig() {
   set('gDiezmo', pc.diezmoPct); set('gOfrenda', pc.ofrendaPct);
   set('gReinv', pc.reinvEnabled ? '1' : '0'); set('gReinvPct', pc.reinvPct);
   set('uiThemeSel', localStorage.getItem('uiTheme') || 'light');
-  set('uiLayoutSel', localStorage.getItem('uiLayout') || 'top');
+  set('uiLayoutSel', localStorage.getItem('uiLayout') || 'top'); try { dzLoad(); } catch (e) {}
   renderGoalsCfg(); renderDonations();
 }
 async function saveProfitCfg() {
@@ -1757,7 +1762,7 @@ async function executeWipe() {
     else {
       if (!extra) { extra = document.createElement('option'); extra.id = 'pkExtraOpt'; extra.hidden = true; extra.disabled = true; sel.appendChild(extra); }
       extra.value = currentTab;
-      extra.textContent = ({ config: 'Configuración', legal: 'Legal', kits: 'Kits', cats: 'Categorías' })[currentTab] || String(currentTab);
+      extra.textContent = ({ config: 'Configuración', legal: 'Legal' })[currentTab] || String(currentTab);
     }
     if (sel.value !== currentTab) sel.value = currentTab;
     var ico = document.getElementById('pkMnavIco'); if (ico) ico.textContent = ICONS[currentTab] || '🧭';
@@ -2123,7 +2128,7 @@ async function executeWipe() {
       set('gDiezmo', pc.diezmoPct); set('gOfrenda', pc.ofrendaPct);
       set('gReinv', pc.reinvEnabled ? '1' : '0'); set('gReinvPct', pc.reinvPct);
       set('uiThemeSel', localStorage.getItem('uiTheme') || 'light');
-      set('uiLayoutSel', localStorage.getItem('uiLayout') || 'top');
+      set('uiLayoutSel', localStorage.getItem('uiLayout') || 'top'); try { dzLoad(); } catch (e) {}
     }
     try { renderGoalsCfg(); } catch (e) {} try { renderDonations(); } catch (e) {}
     failBanner('config', f);
@@ -2541,3 +2546,65 @@ async function saveVpAssignments() {
   new MutationObserver(queue).observe(document.body, { childList: true, subtree: true });
   queue();
 })();
+
+
+/* ======================= Diseño (colores por tienda) ======================= */
+var DZ = { mode: 'light', t: null };
+var DZ_LABELS = { bg: 'Fondo', surface: 'Superficie (tarjetas y tablas)', primary: 'Primario (botones y activos)', danger: 'Peligro (eliminar)', success: 'Éxito (confirmar)' };
+function dzDraft(m) { return TLSTheme.full(m, DZ.t[m]); }
+function dzLoad() {
+  if (!$('dzFields') || typeof TLSTheme === 'undefined') return;
+  var saved = TLSTheme.sanitize(CFG && CFG.theme) || {};
+  DZ.t = { light: TLSTheme.full('light', saved.light), dark: TLSTheme.full('dark', saved.dark) };
+  dzMode(document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
+}
+function dzMode(m) {
+  DZ.mode = m;
+  $('dzTabLight').classList.toggle('active', m === 'light');
+  $('dzTabDark').classList.toggle('active', m === 'dark');
+  var c = DZ.t[m];
+  $('dzFields').innerHTML = TLSTheme.KEYS.map(function (k) {
+    return '<div class="dz-field"><label>' + DZ_LABELS[k] + '</label><div class="dz-in"><input type="color" data-k="' + k + '" value="' + c[k].toLowerCase() + '">' +
+      '<input type="text" data-h="' + k + '" value="' + c[k] + '" maxlength="7" spellcheck="false"></div></div>';
+  }).join('');
+  $('dzFields').querySelectorAll('input[type=color]').forEach(function (i) { i.oninput = function () { dzSet(i.dataset.k, i.value); }; });
+  $('dzFields').querySelectorAll('input[type=text]').forEach(function (i) {
+    i.oninput = function () { var v = i.value.trim(); if (v[0] !== '#') v = '#' + v; if (/^#[0-9a-f]{6}$/i.test(v)) dzSet(i.dataset.h, v, true); };
+  });
+  dzRender();
+}
+function dzSet(k, v, fromText) {
+  DZ.t[DZ.mode][k] = v.toUpperCase();
+  if (fromText) { var c = $('dzFields').querySelector('input[data-k="' + k + '"]'); if (c) c.value = v.toLowerCase(); }
+  else { var h = $('dzFields').querySelector('input[data-h="' + k + '"]'); if (h) h.value = v.toUpperCase(); }
+  dzRender();
+}
+function dzRender() {
+  var m = DZ.mode, c = dzDraft(m), v = TLSTheme.derive(m, c), al = TLSTheme.check(m, c);
+  $('dzAlerts').innerHTML = al.length ? al.map(function (a) { return '<div class="dz-alert ' + a.level + '">' + (a.level === 'error' ? '⛔ ' : '⚠️ ') + esc(a.msg) + '</div>'; }).join('')
+    : '<div class="dz-alert okmsg">✅ Contraste correcto: textos y botones cumplen la legibilidad recomendada (WCAG AA).</div>';
+  var pv = $('dzPrev');
+  var map = { '--pv-bg': v['--bg'], '--pv-surface': v['--surface'], '--pv-border': v['--border'], '--pv-text': v['--text'], '--pv-muted': v['--text-muted'], '--pv-btn': v['--btn-bg'], '--pv-btn-border': v['--btn-border'] };
+  Object.keys(map).forEach(function (k) { pv.style.setProperty(k, map[k]); });
+  function b(txt, bg, fg) { return '<span class="pv-b" style="background:' + bg + ';color:' + fg + ';border-color:transparent">' + txt + '</span>'; }
+  pv.innerHTML = '<div class="pv-card"><b>Vista previa · ' + (m === 'dark' ? 'oscuro' : 'claro') + '</b><div class="pv-muted">Así se verán tarjetas, texto secundario y botones.</div>' +
+    '<div class="pv-btns"><span class="pv-b">Neutro</span>' + b('Primario', v['--brand'], v['--on-brand']) + b('Eliminar', v['--danger'], v['--on-danger']) + b('Confirmar', v['--ok'], v['--on-ok']) + '</div></div>';
+}
+async function dzSave() {
+  var errs = [];
+  ['light', 'dark'].forEach(function (m) { TLSTheme.check(m, dzDraft(m)).forEach(function (a) { if (a.level === 'error') errs.push((m === 'dark' ? 'Oscuro: ' : 'Claro: ') + a.msg); }); });
+  if (errs.length && !confirm('Hay problemas de legibilidad:\n\n• ' + errs.join('\n• ') + '\n\n¿Guardar de todos modos?')) return;
+  var theme = { v: 1, light: dzDraft('light'), dark: dzDraft('dark') };
+  try {
+    await api('/api/admin/settings', { method: 'PUT', body: { theme: theme } });
+    CFG.theme = theme; TLSTheme.apply(theme); TLSTheme.cacheSet('admin', theme); toast('✔ Diseño guardado');
+  } catch (e) { toast('⚠ ' + e.message); }
+}
+async function dzReset() {
+  if (!confirm('¿Restablecer los colores a la Opción A?')) return;
+  try {
+    await api('/api/admin/settings', { method: 'PUT', body: { theme: null } });
+    CFG.theme = null; TLSTheme.reset(); TLSTheme.cacheSet('admin', null); dzLoad(); toast('✔ Colores restablecidos');
+  } catch (e) { toast('⚠ ' + e.message); }
+}
+(function () { try { var t = TLSTheme.cacheGet('admin'); if (t) TLSTheme.apply(t); } catch (e) {} })();

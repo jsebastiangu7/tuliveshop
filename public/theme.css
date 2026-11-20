@@ -1,0 +1,52 @@
+/* Tu Live Shop · Tema por defecto (Opción A) + botones planos.
+   Variables generadas con theme.js (derive). Si el administrador personaliza colores,
+   theme.js inyecta <style id="tls-theme-vars"> que las reemplaza. */
+html[data-theme="light"]{--bg:#F6F7F9;--bg-gradient:none;--surface:#FFFFFF;--surface-hover:#F1F1F2;--border:#E5E6E7;--thead-bg:#F3F3F4;--text:#111827;--text-muted:#6D717B;--muted:#6D717B;--brand:#2563EB;--brand-solid:#2563EB;--brand-hover:#2157CF;--brand-glow:rgba(37,99,235,0.3);--ok:#16A34A;--danger:#DC2626;--warn:#D97706;--on-brand:#FFFFFF;--on-danger:#FFFFFF;--on-ok:#0B1220;--btn-bg:rgba(17,24,39,0.07);--btn-bg-hover:rgba(17,24,39,0.12);--btn-border:rgba(17,24,39,0.14);--shadow:0 1px 2px rgba(15,23,42,.08)}
+html[data-theme="dark"]{--bg:#0B1220;--bg-gradient:none;--surface:#111A2B;--surface-hover:#1E2737;--border:#2A3242;--thead-bg:#1C2535;--text:#F1F5F9;--text-muted:#959AA2;--muted:#959AA2;--brand:#3B82F6;--brand-solid:#3B82F6;--brand-hover:#5391F7;--brand-glow:rgba(59,130,246,0.3);--ok:#34D399;--danger:#F87171;--warn:#FBBF24;--on-brand:#0B1220;--on-danger:#0B1220;--on-ok:#0B1220;--btn-bg:rgba(241,245,249,0.07);--btn-bg-hover:rgba(241,245,249,0.12);--btn-border:rgba(241,245,249,0.14);--shadow:0 1px 2px rgba(0,0,0,.35)}
+
+/* ---------- Botones planos (estilo centro de control: cápsula translúcida, sin brillo ni halos) ---------- */
+html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button) {
+  border-radius: 999px !important;
+  border: 1px solid var(--btn-border) !important;
+  background: var(--btn-bg) !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, transform .12s ease;
+}
+html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button)::before,
+html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button)::after { content: none !important; }
+html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button):hover:not([disabled]) {
+  background: var(--btn-bg-hover) !important; transform: none !important; color: var(--text) !important;
+}
+html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button):active:not([disabled]) { transform: scale(.97) !important; }
+html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button):focus-visible {
+  outline: 2px solid var(--brand) !important; outline-offset: 2px;
+}
+html body :is(.btn, .chip, .tab)[disabled], html body .btn.is-locked { opacity: .5 !important; cursor: not-allowed !important; }
+
+/* Activo / primario: color sólido */
+html body :is(.btn-primary, .btn.primary, .chip.active, .tab.active) {
+  background: var(--brand) !important; border-color: transparent !important; color: var(--on-brand) !important;
+}
+html body :is(.btn-primary, .btn.primary, .chip.active, .tab.active):hover:not([disabled]) {
+  background: var(--brand-hover) !important; color: var(--on-brand) !important;
+}
+html body :is(.btn-danger, .btn.danger) { background: var(--danger) !important; border-color: transparent !important; color: var(--on-danger) !important; }
+html body :is(.btn-danger, .btn.danger):hover:not([disabled]) { background: var(--danger) !important; filter: brightness(.92) !important; color: var(--on-danger) !important; }
+html body :is(.btn-wa, .btn.wa) { background: var(--ok) !important; border-color: transparent !important; color: var(--on-ok) !important; }
+html body :is(.btn-wa, .btn.wa):hover:not([disabled]) { background: var(--ok) !important; filter: brightness(.92) !important; color: var(--on-ok) !important; }
+
+/* Botones auxiliares del modal de pago */
+html body :is(.pay-key button, .pay-amt button) { padding: 7px 14px !important; font-size: 12px; }
+html body .pay-amt button { align-self: stretch; }
+/* Nombre del cliente en el encabezado: una línea */
+html body .user-chip { white-space: nowrap; max-width: 46vw; text-overflow: ellipsis; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn) { transition: none; } }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+}

@@ -2601,7 +2601,7 @@ async function dzSave() {
   } catch (e) { toast('⚠ ' + e.message); }
 }
 async function dzReset() {
-  if (!confirm('¿Restablecer los colores a la Opción A?')) return;
+  if (!confirm('¿Restablecer los colores originales?')) return;
   try {
     await api('/api/admin/settings', { method: 'PUT', body: { theme: null } });
     CFG.theme = null; TLSTheme.reset(); TLSTheme.cacheSet('admin', null); dzLoad(); toast('✔ Colores restablecidos');

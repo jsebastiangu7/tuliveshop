@@ -550,7 +550,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
       <div class="fgrid">
         <div class="field"><label>Tema de color</label><select id="uiThemeSel" onchange="setTheme(this.value)"><option value="light">Claro</option><option value="dark">Oscuro</option></select></div>
         <div class="field pk-pc-only"><label>Ubicación del menú (PC)</label><select id="uiLayoutSel" onchange="setLayout(this.value)"><option value="top">Barra superior</option><option value="side">Barra lateral</option></select></div>
+        <div class="field"><label>Nombre del botón «Mis bolsitas» (lo ven tus clientes)</label><input id="gBagsLabel" maxlength="30" placeholder="Mis bolsitas"></div>
       </div>
+      <div class="actions" style="margin-top:12px"><button class="btn primary" onclick="saveGeneral()">Guardar nombre del botón</button></div>
     </div>
     <div class="panel glass" id="dzPanel">
       <h2>Diseño</h2>
@@ -559,7 +561,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
       <div class="dz-grid" id="dzFields"></div>
       <div class="dz-alerts" id="dzAlerts"></div>
       <div class="dz-prev" id="dzPrev"></div>
-      <div class="actions" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" onclick="dzSave()">Guardar diseño</button><button class="btn" onclick="dzReset()">Restablecer a Opción A</button></div>
+      <div class="actions" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" onclick="dzSave()">Guardar diseño</button><button class="btn" onclick="dzReset()">Restablecer</button></div>
     </div>
     <div class="panel glass">
       <h2>Utilidad: diezmo, ofrenda y reinversión</h2>
@@ -624,7 +626,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
         <div class="field"><label>Número de inicio</label><input id="gStart" type="number" min="1"></div>
         <div class="field"><label>Dígitos</label><input id="gDigits" type="number" min="3" max="8"></div>
         <div class="field" style="grid-column:1/-1"><label>Plantilla mensaje WhatsApp ({ORDER_NUMBER}, {TOTAL}, {AMOUNT})</label><input id="gTpl"></div>
-        <div class="field"><label>Nombre del botón «Mis bolsitas» (lo ven tus clientes)</label><input id="gBagsLabel" maxlength="30" placeholder="Mis bolsitas"></div>
         <div class="field" style="grid-column:1/-1"><label>Mensaje de «Solicitar envío» del cliente ({ORDER_NUMBER}, {TOTAL})</label><input id="gShipTpl" placeholder="Hola. Por favor, procedamos con el envío del pedido {ORDER_NUMBER}."></div>
         <div class="field" style="grid-column:1/-1"><label>Mensaje de «Ayuda» del cliente ({ORDER_NUMBER}, {TOTAL})</label><input id="gHelpTpl" placeholder="Hola. Necesito ayuda con el pedido {ORDER_NUMBER}"></div>
       </div>
@@ -795,7 +796,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="/admin.js?v=7"></script>
+<script src="/admin.js?v=8"></script>
 <script>
 // Toggle de tema
 function toggleTheme() {

@@ -112,11 +112,23 @@ function replaceDoc(adminId) {
   inp.onchange = async () => {
     try {
       const doc = await readDoc(inp.files[0]); if (!doc) return;
-      await api('/api/super/admins/' + adminId + '/document', { method: 'PUT', body: { id_document: doc } });
+      if (!confirm('¿Confirmas que el titular fue informado y autorizó el tratamiento de su documento de identidad según la Política de Tratamiento de Datos?')) return;
+      await api('/api/super/admins/' + adminId + '/document', { method: 'PUT', body: { id_document: { ...doc, consent: true } } });
       toast('✔ Documento guardado'); renderAdmins();
     } catch (e) { toast('⚠ ' + e.message); }
   };
   inp.click();
+}
+
+async function deleteDoc(adminId) {
+  if (!confirm('¿Eliminar definitivamente el documento de identidad de este administrador?')) return;
+  try { await api('/api/super/admins/' + adminId + '/document', { method: 'DELETE' }); toast('✔ Documento eliminado'); renderAdmins(); }
+  catch (e) { toast('⚠ ' + e.message); }
+}
+function showDataPolicy() {
+  if (!window.LEGAL_DOCS) return;
+  $('dpBody').innerHTML = window.LEGAL_DOCS.data.es;
+  openModal('dpModal');
 }
 
 /* ---------- Tiendas ---------- */
@@ -178,10 +190,11 @@ async function savePortfolio() {
     if (!body.slug) return ($('pfErr').textContent = 'Escribe el enlace público de la tienda');
     if (!body.bre_b_key) return ($('pfErr').textContent = 'Escribe la llave Bre-B de la tienda');
     if (!body.whatsapp_number) return ($('pfErr').textContent = 'Escribe el WhatsApp de la tienda');
-    const admin = { name: $('paName').value.trim(), email: $('paEmail').value.trim(), password: $('paPass').value, id_document: DOCS.paDoc || null };
+    const admin = { name: $('paName').value.trim(), email: $('paEmail').value.trim(), password: $('paPass').value, id_document: DOCS.paDoc ? { ...DOCS.paDoc, consent: !!$('paConsent').checked } : null };
     if (!admin.name || !admin.email) return ($('pfErr').textContent = 'Escribe el nombre y el correo del administrador');
     if (admin.password.length < 8) return ($('pfErr').textContent = 'La contraseña del administrador debe tener mínimo 8 caracteres');
     if (!admin.id_document) return ($('pfErr').textContent = 'Sube el documento de identidad del administrador');
+    if (!admin.id_document.consent) return ($('pfErr').textContent = 'Confirma que el titular autorizó el tratamiento de su documento');
     body.admin = admin;
   }
   const btn = $('pfSave'); btn.disabled = true;
@@ -198,7 +211,7 @@ async function openAdmins(pfId) {
   curPf = PORTFOLIOS.find(x => x.id === pfId); if (!curPf) return;
   $('adTitle').textContent = 'Administradores — ' + curPf.name;
   ['adName', 'adEmail', 'adPass'].forEach(i => { $(i).value = ''; });
-  $('adDoc').value = ''; DOCS.adDoc = null; $('adDocName').textContent = 'Ningún archivo seleccionado';
+  $('adDoc').value = ''; DOCS.adDoc = null; $('adConsent').checked = false; $('adDocName').textContent = 'Ningún archivo seleccionado';
   await renderAdmins();
   openModal('adModal');
 }
@@ -209,7 +222,7 @@ async function renderAdmins() {
       '<div class="tablewrap"><table><thead><tr><th>Nombre</th><th>Correo</th><th>Estado</th><th>Documento</th><th></th></tr></thead><tbody>' +
       rows.map(a => `<tr><td><b>${esc(a.name)}</b></td><td>${esc(a.email)}</td>
         <td>${a.status === 'Activo' ? '<span class="pill ok">Activo</span>' : '<span class="pill danger">Inactivo</span>'}</td>
-        <td>${a.has_document ? `<button class="btn btn-ghost btn-sm" onclick="viewDoc('${a.id}')">Ver</button> ` : '<span class="pill warn">Sin documento</span> '}<button class="btn btn-ghost btn-sm" onclick="replaceDoc('${a.id}')">${a.has_document ? 'Reemplazar' : 'Subir'}</button></td>
+        <td>${a.has_document ? `<button class="btn btn-ghost btn-sm" onclick="viewDoc('${a.id}')">Ver</button> ` : '<span class="pill warn">Sin documento</span> '}<button class="btn btn-ghost btn-sm" onclick="replaceDoc('${a.id}')">${a.has_document ? 'Reemplazar' : 'Subir'}</button>${a.has_document ? ` <button class="btn btn-ghost btn-sm" onclick="deleteDoc('${a.id}')">Eliminar</button>` : ''}</td>
         <td><div class="acts"><button class="btn btn-ghost btn-sm" onclick="resetAdminPass('${a.id}')">Restablecer contraseña</button><button class="btn btn-sm ${a.status === 'Activo' ? 'btn-danger' : 'btn-primary'}" onclick="toggleAdmin('${a.id}','${a.status === 'Activo' ? 'Inactivo' : 'Activo'}')">${a.status === 'Activo' ? 'Inactivar' : 'Activar'}</button></div></td></tr>`).join('') +
       '</tbody></table></div>' :
       '<p class="empty" style="padding:16px">Esta tienda aún no tiene administradores.</p>';
@@ -218,7 +231,7 @@ async function renderAdmins() {
 async function createAdmin() {
   if (!curPf) return;
   try {
-    await api('/api/super/portfolios/' + curPf.id + '/admins', { method: 'POST', body: { name: $('adName').value.trim(), email: $('adEmail').value.trim(), password: $('adPass').value, id_document: DOCS.adDoc || null } });
+    await api('/api/super/portfolios/' + curPf.id + '/admins', { method: 'POST', body: { name: $('adName').value.trim(), email: $('adEmail').value.trim(), password: $('adPass').value, id_document: DOCS.adDoc ? { ...DOCS.adDoc, consent: !!$('adConsent').checked } : null } });
     ['adName', 'adEmail', 'adPass'].forEach(i => { $(i).value = ''; });
     $('adDoc').value = ''; DOCS.adDoc = null; $('adDocName').textContent = 'Ningún archivo seleccionado';
     toast('✔ Administrador creado'); renderAdmins(); loadPortfolios();

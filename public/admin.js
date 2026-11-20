@@ -167,6 +167,7 @@ function renderLegal() {
   $('legalContent').innerHTML = window.LEGAL_DOCS[legalDoc][lang];
   $('legalBtnPrivacy').className = 'btn' + (legalDoc === 'privacy' ? ' primary' : '');
   $('legalBtnTerms').className = 'btn' + (legalDoc === 'terms' ? ' primary' : '');
+  if ($('legalBtnData')) $('legalBtnData').className = 'btn' + (legalDoc === 'data' ? ' primary' : '');
 }
 
 /* ---------- UI extra inyectada ---------- */

@@ -140,6 +140,9 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
 .view { display: none; } .view.active { display: block; }
 .hidden { display: none !important; }
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.consent { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--text-muted); margin: 6px 0 10px; cursor: pointer; }
+.consent input { margin-top: 3px; flex: none; }
+#dpBody a, .consent a { color: var(--brand); }
 </style>
 <link rel="stylesheet" href="/theme.css?v=1">
 <script src="/theme.js?v=1"></script>
@@ -206,6 +209,7 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
         <div class="filebox"><button type="button" class="btn btn-ghost btn-sm" onclick="$('paDoc').click()">📎 Subir documento</button><span class="fname" id="paDocName">Ningún archivo seleccionado</span></div>
         <input id="paDoc" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" class="hidden" onchange="pickDoc(this,'paDocName')">
       </div>
+      <label class="consent"><input type="checkbox" id="paConsent"> <span>El titular fue informado y autorizó el tratamiento de su documento de identidad para verificar su identidad como administrador. <a href="#" onclick="showDataPolicy();return false">Ver política de tratamiento de datos</a></span></label>
     </div>
     <div class="err" id="pfErr"></div>
     <div class="modal-actions">
@@ -230,15 +234,23 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
       <div class="filebox"><button type="button" class="btn btn-ghost btn-sm" onclick="$('adDoc').click()">📎 Subir documento</button><span class="fname" id="adDocName">Ningún archivo seleccionado</span></div>
       <input id="adDoc" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" class="hidden" onchange="pickDoc(this,'adDocName')">
     </div>
+    <label class="consent"><input type="checkbox" id="adConsent"> <span>El titular fue informado y autorizó el tratamiento de su documento de identidad para verificar su identidad como administrador. <a href="#" onclick="showDataPolicy();return false">Ver política de tratamiento de datos</a></span></label>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('adModal')">Cerrar</button>
       <button class="btn btn-primary" onclick="createAdmin()">Crear administrador</button>
     </div>
   </div>
 </div>
+<div class="modal-overlay" id="dpModal">
+  <div class="modal-box wide">
+    <div id="dpBody" style="max-height:70vh;overflow:auto"></div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('dpModal')">Cerrar</button></div>
+  </div>
+</div>
 <input id="docReplace" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" class="hidden">
 
 <div id="toast" class="toast"></div>
-<script src="/super.js"></script>
+<script src="/legal-docs.js?v=2"></script>
+<script src="/super.js?v=2"></script>
 </body>
 </html>

@@ -239,6 +239,7 @@ header.glass { border-radius: 0 0 20px 20px; border-top: 0; }
 #userMenu { background: var(--surface); }
 input, select, textarea { background: var(--bg); border: 1px solid var(--border); color: var(--text); }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-glow); }
+#legalContent a { color: var(--brand); }
 /* ===== Diseño (Configuración) ===== */
 .dz-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
 .dz-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
@@ -651,12 +652,13 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   <!-- LEGAL -->
   <section id="view-legal" class="view">
     <h1>Legal</h1>
-    <p class="note">Política de privacidad y términos de servicio de la Aplicación.</p>
+    <p class="note">Política de privacidad, términos de servicio y tratamiento de datos personales.</p>
     <div class="panel glass">
       <div class="toolbar">
         <button class="btn" id="legalBtnPrivacy" onclick="setLegalDoc('privacy')">Política de privacidad</button>
         <button class="btn" id="legalBtnTerms" onclick="setLegalDoc('terms')">Términos de servicio</button>
-        <select id="legalLang"><option value="es">Español</option><option value="en">English</option></select>
+        <button class="btn" id="legalBtnData" onclick="setLegalDoc('data')">Datos personales</button>
+        <select id="legalLang" onchange="renderLegal()"><option value="es">Español</option><option value="en">English</option></select>
       </div>
       <div id="legalContent"></div>
     </div>
@@ -797,7 +799,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="/admin.js?v=9"></script>
+<script src="/legal-docs.js?v=2"></script>
+<script src="/admin.js?v=10"></script>
 <script>
 // Toggle de tema
 function toggleTheme() {

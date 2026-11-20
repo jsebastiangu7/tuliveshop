@@ -850,6 +850,9 @@ router.delete('/donations/:id', async (req: AuthRequest, res: Response) => {
 });
 
 /* ─────────────── Configuración ─────────────── */
+import { cleanTheme } from '../utils/theme.js';
+function parseTheme(raw?: string): any { try { return raw ? cleanTheme(JSON.parse(raw)) : null; } catch { return null; } }
+
 router.get('/settings', async (req: AuthRequest, res: Response) => {
   try {
     const pf = pfOf(req);
@@ -866,6 +869,7 @@ router.get('/settings', async (req: AuthRequest, res: Response) => {
       help_template: map.help_template || '',
       invoice_config: map.invoice_config ? JSON.parse(map.invoice_config) : null,
       profit_config: map.profit_config ? JSON.parse(map.profit_config) : null,
+      theme: parseTheme(map.theme),
     });
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
 });
@@ -883,6 +887,14 @@ router.put('/settings', async (req: AuthRequest, res: Response) => {
     if (b.help_template !== undefined) await upsert('help_template', String(b.help_template).slice(0, 500));
     if (b.invoice_config !== undefined) await upsert('invoice_config', JSON.stringify(b.invoice_config));
     if (b.profit_config !== undefined) await upsert('profit_config', JSON.stringify(b.profit_config));
+    if (b.theme !== undefined) {
+      if (b.theme === null) await pool.query(`DELETE FROM settings WHERE portfolio_id=$1 AND key='theme'`, [pf]);
+      else {
+        const th = cleanTheme(b.theme);
+        if (!th) return res.status(400).json({ error: 'Colores inválidos: usa el formato #RRGGBB' });
+        await upsert('theme', JSON.stringify(th));
+      }
+    }
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
 });

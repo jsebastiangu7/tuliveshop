@@ -850,7 +850,7 @@ router.delete('/donations/:id', async (req: AuthRequest, res: Response) => {
 });
 
 /* ─────────────── Configuración ─────────────── */
-import { cleanTheme } from '../utils/theme.js';
+import { cleanTheme, BAGS_ICONS, bagsIcon } from '../utils/theme.js';
 function parseTheme(raw?: string): any { try { return raw ? cleanTheme(JSON.parse(raw)) : null; } catch { return null; } }
 
 router.get('/settings', async (req: AuthRequest, res: Response) => {
@@ -865,6 +865,7 @@ router.get('/settings', async (req: AuthRequest, res: Response) => {
       order_prefix: p.order_prefix, order_digits: p.order_digits, order_start: p.order_start,
       min_payment_amount: Number(map.min_payment_amount || 10000),
       bags_label: map.bags_label || '',
+      bags_icon: bagsIcon(map.bags_icon),
       shipping_template: map.shipping_template || '',
       help_template: map.help_template || '',
       invoice_config: map.invoice_config ? JSON.parse(map.invoice_config) : null,
@@ -883,6 +884,7 @@ router.put('/settings', async (req: AuthRequest, res: Response) => {
     const upsert = async (key: string, value: string) => pool.query(`INSERT INTO settings (portfolio_id, key, value) VALUES ($1,$2,$3) ON CONFLICT (portfolio_id, key) DO UPDATE SET value = EXCLUDED.value`, [pf, key, value]);
     if (b.min_payment_amount !== undefined) await upsert('min_payment_amount', String(Number(b.min_payment_amount) || 0));
     if (b.bags_label !== undefined) await upsert('bags_label', String(b.bags_label).trim().slice(0, 30));
+    if (b.bags_icon !== undefined) await upsert('bags_icon', BAGS_ICONS.includes(String(b.bags_icon)) ? String(b.bags_icon) : '🛍️');
     if (b.shipping_template !== undefined) await upsert('shipping_template', String(b.shipping_template).slice(0, 500));
     if (b.help_template !== undefined) await upsert('help_template', String(b.help_template).slice(0, 500));
     if (b.invoice_config !== undefined) await upsert('invoice_config', JSON.stringify(b.invoice_config));

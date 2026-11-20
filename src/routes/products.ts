@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
-import { cleanTheme } from '../utils/theme.js';
+import { cleanTheme, bagsIcon } from '../utils/theme.js';
 import { productAvailable } from '../services/inventory.js';
 
 const router = Router();
@@ -71,7 +71,7 @@ router.get('/config/:slug', async (req, res) => {
   const pf = await portfolioBySlug(req.params.slug);
   if (!pf) return res.status(404).json({ error: 'Tienda no encontrada' });
   const { rows: sets } = await pool.query(
-    `SELECT key, value FROM settings WHERE portfolio_id = $1 AND key IN ('bags_label','shipping_template','help_template','theme')`, [pf.id]);
+    `SELECT key, value FROM settings WHERE portfolio_id = $1 AND key IN ('bags_label','shipping_template','help_template','theme','bags_icon')`, [pf.id]);
   const st: Record<string, string> = {};
   sets.forEach((r: any) => { st[r.key] = r.value; });
   res.json({
@@ -79,6 +79,7 @@ router.get('/config/:slug', async (req, res) => {
     bre_b_key: pf.bre_b_key, whatsapp_number: pf.whatsapp_number,
     whatsapp_template: pf.whatsapp_template, order_prefix: pf.order_prefix,
     bags_label: (st.bags_label || '').trim() || 'Mis bolsitas',
+    bags_icon: bagsIcon(st.bags_icon),
     theme: (() => { try { return st.theme ? cleanTheme(JSON.parse(st.theme)) : null; } catch { return null; } })(),
   });
 });

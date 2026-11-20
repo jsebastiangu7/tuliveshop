@@ -4,6 +4,7 @@ const HEX6 = /^#[0-9a-f]{6}$/i;
 export function cleanTheme(t: any): any {
   if (!t || typeof t !== 'object') return null;
   const out: any = { v: 1 };
+  if (t.style === 'flat' || t.style === 'glass') out.style = t.style;
   let any = false;
   for (const m of ['light', 'dark']) {
     const src = t[m];

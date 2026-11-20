@@ -257,11 +257,13 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .dz-prev { margin-top: 14px; border-radius: 16px; padding: 16px; border: 1px solid var(--pv-border); background: var(--pv-bg); color: var(--pv-text); }
 .dz-prev .pv-card { background: var(--pv-surface); border: 1px solid var(--pv-border); border-radius: 14px; padding: 14px; }
 .dz-prev .pv-muted { color: var(--pv-muted); font-size: 13px; }
+.dz-prev.glass .pv-b { box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 4px 12px rgba(0,0,0,.12); background-image: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,0) 60%); }
+.dz-prev.glass .pv-card { box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 8px 24px rgba(0,0,0,.12); }
 .dz-prev .pv-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .dz-prev .pv-b { border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 600; border: 1px solid var(--pv-btn-border); background: var(--pv-btn); color: var(--pv-text); }
 </style>
-<link rel="stylesheet" href="/theme.css?v=1">
-<script src="/theme.js?v=1"></script>
+<link rel="stylesheet" href="/theme.css?v=2">
+<script src="/theme.js?v=2"></script>
 </head>
 <body>
 
@@ -560,6 +562,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
       <h2>Diseño</h2>
       <p class="note">Elige 5 colores por modo; el sistema deriva el resto (texto, bordes, hover, botones). Se aplica a tu panel y a la tienda de tus clientes.</p>
       <div class="dz-tabs"><button class="chip active" id="dzTabLight" onclick="dzMode('light')">☀️ Claro</button><button class="chip" id="dzTabDark" onclick="dzMode('dark')">🌙 Oscuro</button></div>
+      <div class="field" style="max-width:320px;margin-bottom:14px"><label>Estilo de botones y tarjetas</label><select id="dzStyle" onchange="dzStyleSet(this.value)"><option value="glass">Cristal líquido</option><option value="flat">Plano</option></select></div>
       <div class="dz-grid" id="dzFields"></div>
       <div class="dz-alerts" id="dzAlerts"></div>
       <div class="dz-prev" id="dzPrev"></div>
@@ -800,7 +803,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="/legal-docs.js?v=2"></script>
-<script src="/admin.js?v=10"></script>
+<script src="/admin.js?v=11"></script>
 <script>
 // Toggle de tema
 function toggleTheme() {

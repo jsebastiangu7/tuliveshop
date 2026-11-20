@@ -2556,7 +2556,8 @@ function dzDraft(m) { return TLSTheme.full(m, DZ.t[m]); }
 function dzLoad() {
   if (!$('dzFields') || typeof TLSTheme === 'undefined') return;
   var saved = TLSTheme.sanitize(CFG && CFG.theme) || {};
-  DZ.t = { light: TLSTheme.full('light', saved.light), dark: TLSTheme.full('dark', saved.dark) };
+  DZ.t = { light: TLSTheme.full('light', saved.light), dark: TLSTheme.full('dark', saved.dark), style: saved.style === 'flat' ? 'flat' : 'glass' };
+  $('dzStyle').value = DZ.t.style;
   dzMode(document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
 }
 function dzMode(m) {
@@ -2580,11 +2581,12 @@ function dzSet(k, v, fromText) {
   else { var h = $('dzFields').querySelector('input[data-h="' + k + '"]'); if (h) h.value = v.toUpperCase(); }
   dzRender();
 }
+function dzStyleSet(v) { DZ.t.style = v === 'flat' ? 'flat' : 'glass'; dzRender(); }
 function dzRender() {
   var m = DZ.mode, c = dzDraft(m), v = TLSTheme.derive(m, c), al = TLSTheme.check(m, c);
   $('dzAlerts').innerHTML = al.length ? al.map(function (a) { return '<div class="dz-alert ' + a.level + '">' + (a.level === 'error' ? '⛔ ' : '⚠️ ') + esc(a.msg) + '</div>'; }).join('')
     : '<div class="dz-alert okmsg">✅ Contraste correcto: textos y botones cumplen la legibilidad recomendada (WCAG AA).</div>';
-  var pv = $('dzPrev');
+  var pv = $('dzPrev'); pv.className = 'dz-prev ' + (DZ.t.style === 'flat' ? 'flat' : 'glass');
   var map = { '--pv-bg': v['--bg'], '--pv-surface': v['--surface'], '--pv-border': v['--border'], '--pv-text': v['--text'], '--pv-muted': v['--text-muted'], '--pv-btn': v['--btn-bg'], '--pv-btn-border': v['--btn-border'] };
   Object.keys(map).forEach(function (k) { pv.style.setProperty(k, map[k]); });
   function b(txt, bg, fg) { return '<span class="pv-b" style="background:' + bg + ';color:' + fg + ';border-color:transparent">' + txt + '</span>'; }
@@ -2595,7 +2597,7 @@ async function dzSave() {
   var errs = [];
   ['light', 'dark'].forEach(function (m) { TLSTheme.check(m, dzDraft(m)).forEach(function (a) { if (a.level === 'error') errs.push((m === 'dark' ? 'Oscuro: ' : 'Claro: ') + a.msg); }); });
   if (errs.length && !confirm('Hay problemas de legibilidad:\n\n• ' + errs.join('\n• ') + '\n\n¿Guardar de todos modos?')) return;
-  var theme = { v: 1, light: dzDraft('light'), dark: dzDraft('dark') };
+  var theme = { v: 1, style: DZ.t.style, light: dzDraft('light'), dark: dzDraft('dark') };
   try {
     await api('/api/admin/settings', { method: 'PUT', body: { theme: theme } });
     CFG.theme = theme; TLSTheme.apply(theme); TLSTheme.cacheSet('admin', theme); toast('✔ Diseño guardado');

@@ -1,11 +1,12 @@
-/* Tu Live Shop · Tema por defecto (Opción A) + botones planos.
+/* Tu Live Shop · Tema por defecto (Opción A) + estilos de botones y superficies.
+   Cristal líquido por defecto; html[data-style="flat"] activa el estilo plano.
    Variables generadas con theme.js (derive). Si el administrador personaliza colores,
    theme.js inyecta <style id="tls-theme-vars"> que las reemplaza. */
-html[data-theme="light"]{--bg:#F6F7F9;--bg-gradient:none;--surface:#FFFFFF;--surface-hover:#F1F1F2;--border:#E5E6E7;--thead-bg:#F3F3F4;--text:#111827;--text-muted:#6D717B;--muted:#6D717B;--brand:#2563EB;--brand-solid:#2563EB;--brand-hover:#2157CF;--brand-glow:rgba(37,99,235,0.3);--ok:#16A34A;--danger:#DC2626;--warn:#D97706;--on-brand:#FFFFFF;--on-danger:#FFFFFF;--on-ok:#0B1220;--btn-bg:rgba(17,24,39,0.07);--btn-bg-hover:rgba(17,24,39,0.12);--btn-border:rgba(17,24,39,0.14);--shadow:0 1px 2px rgba(15,23,42,.08)}
-html[data-theme="dark"]{--bg:#0B1220;--bg-gradient:none;--surface:#111A2B;--surface-hover:#1E2737;--border:#2A3242;--thead-bg:#1C2535;--text:#F1F5F9;--text-muted:#959AA2;--muted:#959AA2;--brand:#3B82F6;--brand-solid:#3B82F6;--brand-hover:#5391F7;--brand-glow:rgba(59,130,246,0.3);--ok:#34D399;--danger:#F87171;--warn:#FBBF24;--on-brand:#0B1220;--on-danger:#0B1220;--on-ok:#0B1220;--btn-bg:rgba(241,245,249,0.07);--btn-bg-hover:rgba(241,245,249,0.12);--btn-border:rgba(241,245,249,0.14);--shadow:0 1px 2px rgba(0,0,0,.35)}
+html[data-theme="light"]{--bg:#F6F7F9;--bg-gradient:none;--surface:#FFFFFF;--surface-hover:#F1F1F2;--border:#E5E6E7;--thead-bg:#F3F3F4;--text:#111827;--text-muted:#6D717B;--muted:#6D717B;--brand:#2563EB;--brand-solid:#2563EB;--brand-hover:#2157CF;--brand-glow:rgba(37,99,235,0.3);--ok:#16A34A;--danger:#DC2626;--warn:#D97706;--on-brand:#FFFFFF;--on-danger:#FFFFFF;--on-ok:#0B1220;--btn-bg:rgba(17,24,39,0.07);--btn-bg-hover:rgba(17,24,39,0.12);--btn-border:rgba(17,24,39,0.14);--shadow:0 1px 2px rgba(15,23,42,.08);--g-hi:rgba(255,255,255,.72);--g-lo:rgba(255,255,255,.16);--g-edge:rgba(255,255,255,.60);--g-shadow:0 10px 36px rgba(37,99,235,0.14);--g-fill:62%;--g-blur:24px;--glass-bg:radial-gradient(60vmax 50vmax at 8% 0%,rgba(37,99,235,0.3),transparent 62%),radial-gradient(55vmax 45vmax at 95% 8%,rgba(217,119,6,0.255),transparent 60%),radial-gradient(60vmax 50vmax at 85% 100%,rgba(30,131,155,0.3),transparent 62%),radial-gradient(50vmax 45vmax at 0% 95%,rgba(129,69,137,0.24),transparent 60%),#F6F7F9;--brand-light:#3F76ED}
+html[data-theme="dark"]{--bg:#0B1220;--bg-gradient:none;--surface:#111A2B;--surface-hover:#1E2737;--border:#2A3242;--thead-bg:#1C2535;--text:#F1F5F9;--text-muted:#959AA2;--muted:#959AA2;--brand:#3B82F6;--brand-solid:#3B82F6;--brand-hover:#5391F7;--brand-glow:rgba(59,130,246,0.3);--ok:#34D399;--danger:#F87171;--warn:#FBBF24;--on-brand:#0B1220;--on-danger:#0B1220;--on-ok:#0B1220;--btn-bg:rgba(241,245,249,0.07);--btn-bg-hover:rgba(241,245,249,0.12);--btn-border:rgba(241,245,249,0.14);--shadow:0 1px 2px rgba(0,0,0,.35);--g-hi:rgba(255,255,255,.15);--g-lo:rgba(255,255,255,.03);--g-edge:rgba(255,255,255,.18);--g-shadow:0 10px 40px rgba(0,0,0,.40);--g-fill:50%;--g-blur:24px;--glass-bg:radial-gradient(60vmax 50vmax at 8% 0%,rgba(59,130,246,0.34),transparent 62%),radial-gradient(55vmax 45vmax at 95% 8%,rgba(251,191,36,0.28900000000000003),transparent 60%),radial-gradient(60vmax 50vmax at 85% 100%,rgba(56,171,200,0.34),transparent 62%),radial-gradient(50vmax 45vmax at 0% 95%,rgba(154,122,180,0.272),transparent 60%),#0B1220;--brand-light:#5391F7}
 
 /* ---------- Botones planos (estilo centro de control: cápsula translúcida, sin brillo ni halos) ---------- */
-html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button) {
+html[data-style="flat"] body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button) {
   border-radius: 999px !important;
   border: 1px solid var(--btn-border) !important;
   background: var(--btn-bg) !important;
@@ -18,35 +19,99 @@ html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key b
   cursor: pointer;
   transition: background .15s ease, border-color .15s ease, transform .12s ease;
 }
-html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button)::before,
-html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button)::after { content: none !important; }
-html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button):hover:not([disabled]) {
+html[data-style="flat"] body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button)::before,
+html[data-style="flat"] body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button)::after { content: none !important; }
+html[data-style="flat"] body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button):hover:not([disabled]) {
   background: var(--btn-bg-hover) !important; transform: none !important; color: var(--text) !important;
 }
-html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button):active:not([disabled]) { transform: scale(.97) !important; }
-html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button):focus-visible {
+html[data-style="flat"] body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button):active:not([disabled]) { transform: scale(.97) !important; }
+html[data-style="flat"] body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button):focus-visible {
   outline: 2px solid var(--brand) !important; outline-offset: 2px;
 }
-html body :is(.btn, .chip, .tab)[disabled], html body .btn.is-locked { opacity: .5 !important; cursor: not-allowed !important; }
+html[data-style="flat"] body :is(.btn, .chip, .tab)[disabled], html body .btn.is-locked { opacity: .5 !important; cursor: not-allowed !important; }
 
 /* Activo / primario: color sólido */
-html body :is(.btn-primary, .btn.primary, .chip.active, .tab.active) {
+html[data-style="flat"] body :is(.btn-primary, .btn.primary, .chip.active, .tab.active) {
   background: var(--brand) !important; border-color: transparent !important; color: var(--on-brand) !important;
 }
-html body :is(.btn-primary, .btn.primary, .chip.active, .tab.active):hover:not([disabled]) {
+html[data-style="flat"] body :is(.btn-primary, .btn.primary, .chip.active, .tab.active):hover:not([disabled]) {
   background: var(--brand-hover) !important; color: var(--on-brand) !important;
 }
-html body :is(.btn-danger, .btn.danger) { background: var(--danger) !important; border-color: transparent !important; color: var(--on-danger) !important; }
-html body :is(.btn-danger, .btn.danger):hover:not([disabled]) { background: var(--danger) !important; filter: brightness(.92) !important; color: var(--on-danger) !important; }
-html body :is(.btn-wa, .btn.wa) { background: var(--ok) !important; border-color: transparent !important; color: var(--on-ok) !important; }
-html body :is(.btn-wa, .btn.wa):hover:not([disabled]) { background: var(--ok) !important; filter: brightness(.92) !important; color: var(--on-ok) !important; }
+html[data-style="flat"] body :is(.btn-danger, .btn.danger) { background: var(--danger) !important; border-color: transparent !important; color: var(--on-danger) !important; }
+html[data-style="flat"] body :is(.btn-danger, .btn.danger):hover:not([disabled]) { background: var(--danger) !important; filter: brightness(.92) !important; color: var(--on-danger) !important; }
+html[data-style="flat"] body :is(.btn-wa, .btn.wa) { background: var(--ok) !important; border-color: transparent !important; color: var(--on-ok) !important; }
+html[data-style="flat"] body :is(.btn-wa, .btn.wa):hover:not([disabled]) { background: var(--ok) !important; filter: brightness(.92) !important; color: var(--on-ok) !important; }
 
 /* Botones auxiliares del modal de pago */
-html body :is(.pay-key button, .pay-amt button) { padding: 7px 14px !important; font-size: 12px; }
-html body .pay-amt button { align-self: stretch; }
+html[data-style="flat"] body :is(.pay-key button, .pay-amt button) { padding: 7px 14px !important; font-size: 12px; }
+html[data-style="flat"] body .pay-amt button { align-self: stretch; }
 /* Nombre del cliente en el encabezado: una línea */
-html body .user-chip { white-space: nowrap; max-width: 46vw; text-overflow: ellipsis; overflow: hidden; }
-@media (prefers-reduced-motion: reduce) { html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn) { transition: none; } }
+html[data-style="flat"] body .user-chip { white-space: nowrap; max-width: 46vw; text-overflow: ellipsis; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { html[data-style="flat"] body :is(.btn, .chip, .tab, .theme-toggle, .who-btn) { transition: none; } }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  html body :is(.btn, .chip, .tab, .theme-toggle, .who-btn) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  html[data-style="flat"] body :is(.btn, .chip, .tab, .theme-toggle, .who-btn) { -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
+
+/* ---------- Cristal líquido (por defecto): reflejos, bordes de luz, desenfoque y fondo con manchas de color ---------- */
+html:not([data-style="flat"]) { background: var(--glass-bg); background-attachment: fixed; min-height: 100%; }
+html:not([data-style="flat"]) body { background: transparent !important; background-image: none !important; }
+html:not([data-style="flat"]) body :is(.glass, .panel, .card, .modal, .modal-box, .tablewrap, .pcard, .pay-box, .stat-card, .pricing-card) {
+  background: linear-gradient(135deg, var(--g-hi), var(--g-lo) 42%, transparent 70%), color-mix(in srgb, var(--surface) var(--g-fill), transparent) !important;
+  -webkit-backdrop-filter: blur(var(--g-blur)) saturate(1.8) brightness(1.04); backdrop-filter: blur(var(--g-blur)) saturate(1.8) brightness(1.04);
+  border: 1px solid var(--g-edge) !important;
+  box-shadow: inset 0 1px 0 var(--g-hi), inset 0 -1px 0 var(--g-lo), inset 1px 0 0 var(--g-lo), var(--g-shadow) !important;
+}
+html:not([data-style="flat"]) body :is(.modal, .modal-box) { --g-blur: 34px; --g-fill: 68%; border-radius: 28px; }
+html:not([data-style="flat"]) body :is(.modal-backdrop, .modal-overlay) { -webkit-backdrop-filter: blur(10px) saturate(1.3); backdrop-filter: blur(10px) saturate(1.3); }
+html:not([data-style="flat"]) body header.glass { border-radius: 0 0 26px 26px; border-top: 0; }
+html:not([data-style="flat"]) body :is(table, td) { background: transparent; }
+html:not([data-style="flat"]) body th { background: color-mix(in srgb, var(--surface) 35%, transparent) !important; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+html:not([data-style="flat"]) body tbody tr:hover td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
+html:not([data-style="flat"]) body :is(input, select, textarea) {
+  background: color-mix(in srgb, var(--bg) 45%, transparent) !important; border: 1px solid var(--g-edge) !important;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.08), inset 0 1px 0 var(--g-lo);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+html:not([data-style="flat"]) body :is(input, select, textarea):focus { border-color: var(--brand) !important; box-shadow: 0 0 0 3px var(--brand-glow), inset 0 1px 3px rgba(0,0,0,.08); }
+
+/* Botones: cápsula de cristal con reflejo superior */
+html:not([data-style="flat"]) body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, .pay-key button, .pay-amt button) {
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, var(--g-hi), var(--g-lo)), color-mix(in srgb, var(--surface) 40%, transparent) !important;
+  border: 1px solid var(--g-edge) !important; color: var(--text) !important;
+  box-shadow: inset 0 1px 0 var(--g-hi), 0 4px 14px rgba(0,0,0,.10) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(1.6); backdrop-filter: blur(12px) saturate(1.6);
+  font-weight: 600; cursor: pointer; text-shadow: none !important;
+  transition: box-shadow .15s ease, transform .15s ease, background .15s ease;
+}
+html:not([data-style="flat"]) body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip):hover:not([disabled]) {
+  box-shadow: inset 0 1px 0 var(--g-hi), 0 8px 22px rgba(0,0,0,.18) !important; transform: translateY(-1px); color: var(--text) !important;
+}
+html:not([data-style="flat"]) body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip):active:not([disabled]) { transform: scale(.97); }
+html:not([data-style="flat"]) body :is(.btn, .chip, .tab, .theme-toggle, .who-btn, .user-chip, input, select, textarea):focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+html:not([data-style="flat"]) body :is(.btn, .chip, .tab)[disabled], html:not([data-style="flat"]) body .btn.is-locked { opacity: .5 !important; cursor: not-allowed !important; }
+/* Activo / primario / peligro / éxito: color con brillo de cristal */
+html:not([data-style="flat"]) body :is(.btn-primary, .btn.primary, .chip.active, .tab.active) {
+  background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,0) 55%), linear-gradient(135deg, var(--brand), var(--brand-light)) !important;
+  color: var(--on-brand) !important; border: 1px solid rgba(255,255,255,.40) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 -2px 6px rgba(0,0,0,.15), 0 8px 22px var(--brand-glow) !important;
+}
+html:not([data-style="flat"]) body :is(.btn-danger, .btn.danger) {
+  background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,0) 55%), var(--danger) !important;
+  color: var(--on-danger) !important; border: 1px solid rgba(255,255,255,.40) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 6px rgba(0,0,0,.15), 0 8px 22px rgba(0,0,0,.18) !important;
+}
+html:not([data-style="flat"]) body :is(.btn-wa, .btn.wa) {
+  background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,0) 55%), var(--ok) !important;
+  color: var(--on-ok) !important; border: 1px solid rgba(255,255,255,.40) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 6px rgba(0,0,0,.15), 0 8px 22px rgba(0,0,0,.18) !important;
+}
+html:not([data-style="flat"]) body :is(.pay-key button, .pay-amt button) { padding: 7px 14px !important; font-size: 12px; }
+html:not([data-style="flat"]) body .user-chip { white-space: nowrap; max-width: 46vw; text-overflow: ellipsis; overflow: hidden; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  html:not([data-style="flat"]) body :is(.glass, .panel, .card, .modal, .modal-box, .tablewrap, .pcard, .pay-box, .stat-card, .pricing-card) { background: var(--surface) !important; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  html:not([data-style="flat"]) body :is(.glass, .panel, .card, .modal, .modal-box, .tablewrap, .pcard, .pay-box, .stat-card, .pricing-card) { background: var(--surface) !important; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (prefers-reduced-motion: reduce) { html:not([data-style="flat"]) body :is(.btn, .chip, .tab) { transition: none; } }

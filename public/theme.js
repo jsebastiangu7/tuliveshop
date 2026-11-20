@@ -67,6 +67,21 @@
       '--btn-bg': rgba(text, 0.07), '--btn-bg-hover': rgba(text, 0.12), '--btn-border': rgba(text, 0.14),
       '--shadow': dark ? '0 1px 2px rgba(0,0,0,.35)' : '0 1px 2px rgba(15,23,42,.08)'
     };
+    /* Cristal líquido: reflejos, bordes y fondo con manchas de color derivadas de la paleta */
+    var warn = WARN[dark ? 'dark' : 'light'];
+    var a = dark ? 0.34 : 0.30;
+    v['--g-hi'] = dark ? 'rgba(255,255,255,.15)' : 'rgba(255,255,255,.72)';
+    v['--g-lo'] = dark ? 'rgba(255,255,255,.03)' : 'rgba(255,255,255,.16)';
+    v['--g-edge'] = dark ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.60)';
+    v['--g-shadow'] = dark ? '0 10px 40px rgba(0,0,0,.40)' : '0 10px 36px ' + rgba(c.primary, 0.14);
+    v['--g-fill'] = dark ? '50%' : '62%';
+    v['--g-blur'] = '24px';
+    v['--glass-bg'] =
+      'radial-gradient(60vmax 50vmax at 8% 0%,' + rgba(c.primary, a) + ',transparent 62%),' +
+      'radial-gradient(55vmax 45vmax at 95% 8%,' + rgba(warn, a * 0.85) + ',transparent 60%),' +
+      'radial-gradient(60vmax 50vmax at 85% 100%,' + rgba(mix(c.primary, c.success, 0.5), a) + ',transparent 62%),' +
+      'radial-gradient(50vmax 45vmax at 0% 95%,' + rgba(mix(c.primary, c.danger, 0.5), a * 0.8) + ',transparent 60%),' + c.bg;
+    v['--brand-light'] = mix(c.primary, '#FFFFFF', 0.12);
     return v;
   }
 
@@ -94,6 +109,7 @@
   function sanitize(theme) {
     if (!theme || typeof theme !== 'object') return null;
     var o = { v: 1 }, any = false;
+    if (theme.style === 'flat' || theme.style === 'glass') o.style = theme.style;
     ['light', 'dark'].forEach(function (m) {
       if (!theme[m] || typeof theme[m] !== 'object') return;
       var s = {}, ok = true;
@@ -116,8 +132,9 @@
     if (!el) { el = document.createElement('style'); el.id = 'tls-theme-vars'; (document.head || document.documentElement).appendChild(el); }
     return el;
   }
-  function apply(theme) { styleEl().textContent = buildCss(theme); }
-  function reset() { var el = document.getElementById('tls-theme-vars'); if (el) el.remove(); }
+  function setStyle(st) { try { document.documentElement.setAttribute('data-style', st === 'flat' ? 'flat' : 'glass'); } catch (e) {} }
+  function apply(theme) { styleEl().textContent = buildCss(theme); var t = sanitize(theme); setStyle(t && t.style); }
+  function reset() { var el = document.getElementById('tls-theme-vars'); if (el) el.remove(); setStyle('glass'); }
   function cacheGet(slug) { try { return sanitize(JSON.parse(localStorage.getItem(LS + slug))); } catch (e) { return null; } }
   function cacheSet(slug, theme) {
     try { if (theme) localStorage.setItem(LS + slug, JSON.stringify(theme)); else localStorage.removeItem(LS + slug); } catch (e) {}

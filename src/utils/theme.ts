@@ -14,3 +14,7 @@ export function cleanTheme(t: any): any {
   }
   return any ? out : null;
 }
+
+/** Emoji permitido para el botón «Mis bolsitas» ('' = sin emoji). Sin configurar = 🛍️ */
+export const BAGS_ICONS = ['', '🛍️', '🎁', '📦', '🛒', '🧺'];
+export function bagsIcon(raw?: string | null): string { return raw === undefined || raw === null ? '🛍️' : (BAGS_ICONS.includes(raw) ? raw : '🛍️'); }

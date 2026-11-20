@@ -15,4 +15,7 @@ export async function ensureSchema() {
       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`);
   await pool.query(`CREATE INDEX IF NOT EXISTS admin_documents_user_idx ON admin_documents (user_id)`);
+  // Constancia de la autorización del titular (Ley 1581 de 2012): fecha y versión de la política aceptada
+  await pool.query(`ALTER TABLE admin_documents ADD COLUMN IF NOT EXISTS consent_at TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE admin_documents ADD COLUMN IF NOT EXISTS consent_version TEXT`);
 }

@@ -1377,7 +1377,7 @@ async function loadConfig() {
   const lp = $('iLogoPrev'); if (lp) { lp.src = logoData || ''; lp.style.display = logoData ? 'inline-block' : 'none'; }
   const wp = $('iWmPrev'); if (wp) { wp.src = wmData || ''; wp.style.display = wmData ? 'inline-block' : 'none'; }
   set('gBreb', CFG.bre_b_key || ''); set('gWa', CFG.whatsapp_number || ''); set('gTpl', CFG.whatsapp_template || '');
-  set('gBagsLabel', CFG.bags_label || ''); set('gShipTpl', CFG.shipping_template || ''); set('gHelpTpl', CFG.help_template || '');
+  set('gBagsLabel', CFG.bags_label || ''); set('gBagsIcon', typeof CFG.bags_icon === 'string' ? CFG.bags_icon : '🛍️'); set('gShipTpl', CFG.shipping_template || ''); set('gHelpTpl', CFG.help_template || '');
   set('gPrefix', CFG.order_prefix || ''); set('gStart', CFG.order_start || 1); set('gDigits', CFG.order_digits || 5);
   set('gMin', CFG.min_payment_amount || 0);
   const pc = profitConfig();
@@ -1476,7 +1476,7 @@ async function saveGeneral() {
       bre_b_key: $('gBreb').value.trim(), whatsapp_number: $('gWa').value.trim(), whatsapp_template: $('gTpl').value,
       order_prefix: $('gPrefix').value.trim(), order_digits: Number($('gDigits').value) || 5, order_start: Number($('gStart').value) || 1,
       min_payment_amount: Number($('gMin').value) || 0,
-      bags_label: $('gBagsLabel').value.trim(), shipping_template: $('gShipTpl').value, help_template: $('gHelpTpl').value,
+      bags_label: $('gBagsLabel').value.trim(), bags_icon: $('gBagsIcon').value, shipping_template: $('gShipTpl').value, help_template: $('gHelpTpl').value,
     } });
     toast('✔ Configuración guardada'); loadConfig();
   } catch (e) { toast('⚠ ' + e.message); }
@@ -2121,7 +2121,7 @@ async function executeWipe() {
       var lp = $('iLogoPrev'); if (lp) { lp.src = logoData || ''; lp.style.display = logoData ? 'inline-block' : 'none'; }
       var wp = $('iWmPrev'); if (wp) { wp.src = wmData || ''; wp.style.display = wmData ? 'inline-block' : 'none'; }
       set('gBreb', CFG.bre_b_key || ''); set('gWa', CFG.whatsapp_number || ''); set('gTpl', CFG.whatsapp_template || '');
-  set('gBagsLabel', CFG.bags_label || ''); set('gShipTpl', CFG.shipping_template || ''); set('gHelpTpl', CFG.help_template || '');
+  set('gBagsLabel', CFG.bags_label || ''); set('gBagsIcon', typeof CFG.bags_icon === 'string' ? CFG.bags_icon : '🛍️'); set('gShipTpl', CFG.shipping_template || ''); set('gHelpTpl', CFG.help_template || '');
       set('gPrefix', CFG.order_prefix || ''); set('gStart', CFG.order_start || 1); set('gDigits', CFG.order_digits || 5);
       set('gMin', CFG.min_payment_amount || 0);
       var pc = profitConfig();

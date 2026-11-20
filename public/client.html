@@ -233,7 +233,7 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
     <p class="subtitle">Hola, <span id="welcomeName"></span>.</p>
     <div class="tabs">
       <button class="tab active" id="tabBtn-shop" onclick="setTab('shop')">🛍️ Tienda</button>
-      <button class="tab" id="tabBtn-orders" onclick="setTab('orders')">🎀 <span id="bagsLabelTxt">Mis bolsitas</span><span class="cnt" id="bagCnt" style="display:none"></span></button>
+      <button class="tab" id="tabBtn-orders" onclick="setTab('orders')"><span id="bagsIconTxt">🛍️</span> <span id="bagsLabelTxt">Mis bolsitas</span><span class="cnt" id="bagCnt" style="display:none"></span></button>
     </div>
     <div class="bagbar" id="bagBar" style="display:none"></div>
 
@@ -543,7 +543,7 @@ async function loadOrders(quiet) {
     renderBagBar(cur);
     if (!orders || !orders.length) {
       renderBagBar(null);
-      $('ordersList').innerHTML = '<div class="empty"><div class="big">🎀</div>Aún no tienes pedidos.<br><button class="btn btn-primary" style="margin-top:16px" onclick="setTab(\'shop\')">Ir a la tienda</button></div>';
+      $('ordersList').innerHTML = '<div class="empty"><div class="big">' + bagsIcon() + '</div>Aún no tienes pedidos.<br><button class="btn btn-primary" style="margin-top:16px" onclick="setTab(\'shop\')">Ir a la tienda</button></div>';
       return;
     }
     $('ordersList').innerHTML = orders.map(o => {
@@ -634,7 +634,11 @@ let CFG = null;
 // Fecha y hora del servidor (timestamp) → dd-mm-aaaa en la hora local del cliente
 const fmtDMY = (v) => { const d = new Date(v); return isNaN(d) ? '' : [String(d.getDate()).padStart(2, '0'), String(d.getMonth() + 1).padStart(2, '0'), d.getFullYear()].join('-'); };
 const bagsLabel = () => (CFG && CFG.bags_label) || 'Mis bolsitas';
-function applyBagsLabel() { const t = $('bagsLabelTxt'); if (t) t.textContent = bagsLabel(); }
+const bagsIcon = () => (CFG && typeof CFG.bags_icon === 'string') ? CFG.bags_icon : '🛍️';
+function applyBagsLabel() {
+  const t = $('bagsLabelTxt'); if (t) t.textContent = bagsLabel();
+  const i = $('bagsIconTxt'); if (i) { i.textContent = bagsIcon(); i.style.display = bagsIcon() ? '' : 'none'; }
+}
 async function loadCfg() {
   try { CFG = await api('/api/products/config/' + encodeURIComponent(slug)); applyBagsLabel(); applyStoreTheme(); } catch (_) { /* usa la etiqueta por defecto */ }
 }
@@ -654,7 +658,7 @@ function renderBagBar(cur) {
   const n = (cur.items || []).reduce((a, i) => a + Number(i.quantity), 0);
   const pending = cur.status === 'pending_confirm';
   const canPay = !pending && ['draft', 'apartada'].includes(cur.status) && Number(cur.balance) > 0;
-  b.innerHTML = `<div class="info">🎀 <b>${escH(cur.order_number)}</b> · ${n} producto${n === 1 ? '' : 's'} · Saldo <span class="saldo">${money(cur.balance)}</span>${pending ? ' · <span style="color:var(--warn);font-weight:700">⏳ pago en revisión</span>' : ''}</div>` +
+  b.innerHTML = `<div class="info">${bagsIcon() ? bagsIcon() + ' ' : ''}<b>${escH(cur.order_number)}</b> · ${n} producto${n === 1 ? '' : 's'} · Saldo <span class="saldo">${money(cur.balance)}</span>${pending ? ' · <span style="color:var(--warn);font-weight:700">⏳ pago en revisión</span>' : ''}</div>` +
     (pending ? `<button class="btn btn-wa btn-sm" onclick="openPay('${escH(cur.id)}')">📎 Reenviar comprobante</button>`
       : canPay ? `<button class="btn btn-wa btn-sm" onclick="openPay('${escH(cur.id)}')">💸 Reportar pago</button>` : '') +
     `<button class="btn btn-ghost btn-sm" onclick="setTab('orders')">Ver ${escH(bagsLabel().toLowerCase())}</button>`;

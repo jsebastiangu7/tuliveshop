@@ -551,8 +551,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
         <div class="field"><label>Tema de color</label><select id="uiThemeSel" onchange="setTheme(this.value)"><option value="light">Claro</option><option value="dark">Oscuro</option></select></div>
         <div class="field pk-pc-only"><label>Ubicación del menú (PC)</label><select id="uiLayoutSel" onchange="setLayout(this.value)"><option value="top">Barra superior</option><option value="side">Barra lateral</option></select></div>
         <div class="field"><label>Nombre del botón «Mis bolsitas» (lo ven tus clientes)</label><input id="gBagsLabel" maxlength="30" placeholder="Mis bolsitas"></div>
+        <div class="field"><label>Emoji del botón «Mis bolsitas»</label><select id="gBagsIcon"><option value="">Sin emoji</option><option value="🛍️">🛍️ Bolsa de compras</option><option value="🎁">🎁 Regalo</option><option value="📦">📦 Paquete</option><option value="🛒">🛒 Carrito</option><option value="🧺">🧺 Canasta</option></select></div>
       </div>
-      <div class="actions" style="margin-top:12px"><button class="btn primary" onclick="saveGeneral()">Guardar nombre del botón</button></div>
+      <div class="actions" style="margin-top:12px"><button class="btn primary" onclick="saveGeneral()">Guardar botón</button></div>
     </div>
     <div class="panel glass" id="dzPanel">
       <h2>Diseño</h2>
@@ -796,7 +797,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="/admin.js?v=8"></script>
+<script src="/admin.js?v=9"></script>
 <script>
 // Toggle de tema
 function toggleTheme() {

@@ -1,1 +1,31 @@
+LOGOS DE BILLETERAS
 
+Coloca aquí el logo OFICIAL de cada billetera (descárgalo del sitio o kit de prensa de cada marca).
+Formato: PNG cuadrado (ideal 256x256, fondo transparente o blanco), con EXACTAMENTE estos nombres:
+
+  bre-b.png   (Bre-B)
+  nequi.png   (Nequi)
+  daviplata.png   (Daviplata)
+  mercadopago.png   (Mercado Pago)
+  dimo.png   (DiMo)
+  yape.png   (Yape)
+  plin.png   (Plin)
+  deuna.png   (DeUna)
+  payphone.png   (PayPhone)
+  mach.png   (MACH)
+  tenpo.png   (Tenpo)
+  uala.png   (Ualá)
+  naranjax.png   (Naranja X)
+  pix.png   (Pix)
+  picpay.png   (PicPay)
+  tigomoney.png   (Tigo Money)
+  yappy.png   (Yappy)
+  sinpe.png   (SINPE Móvil)
+  prex.png   (Prex)
+  midinero.png   (MiDinero)
+  zinli.png   (Zinli)
+  pagomovil.png   (Pago Móvil)
+  paypal.png   (PayPal)
+
+Si falta un archivo, la app muestra una insignia con las iniciales del nombre (no se inventan logos).
+Después de subir logos nuevos, sube el número ?v=1 en public/wallets.js para que los navegadores los refresquen.

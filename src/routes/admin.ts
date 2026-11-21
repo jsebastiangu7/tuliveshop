@@ -851,6 +851,7 @@ router.delete('/donations/:id', async (req: AuthRequest, res: Response) => {
 
 /* ─────────────── Configuración ─────────────── */
 import { cleanTheme, BAGS_ICONS, bagsIcon } from '../utils/theme.js';
+import { cleanWallet, effectiveWallet } from '../utils/wallets.js';
 function parseTheme(raw?: string): any { try { return raw ? cleanTheme(JSON.parse(raw)) : null; } catch { return null; } }
 
 router.get('/settings', async (req: AuthRequest, res: Response) => {
@@ -861,7 +862,8 @@ router.get('/settings', async (req: AuthRequest, res: Response) => {
     const map: Record<string, string> = {};
     sets.forEach(s => { map[s.key] = s.value; });
     res.json({
-      bre_b_key: p.bre_b_key, whatsapp_number: p.whatsapp_number, whatsapp_template: p.whatsapp_template,
+      bre_b_key: p.bre_b_key, wallet: effectiveWallet(map.wallet, p.bre_b_key),
+      whatsapp_number: p.whatsapp_number, whatsapp_template: p.whatsapp_template,
       order_prefix: p.order_prefix, order_digits: p.order_digits, order_start: p.order_start,
       min_payment_amount: Number(map.min_payment_amount || 10000),
       bags_label: map.bags_label || '',
@@ -882,6 +884,12 @@ router.put('/settings', async (req: AuthRequest, res: Response) => {
     await pool.query(`UPDATE portfolios SET bre_b_key = COALESCE(NULLIF($2, ''), bre_b_key), whatsapp_number = COALESCE(NULLIF($3, ''), whatsapp_number), whatsapp_template = COALESCE($4, whatsapp_template), order_prefix = COALESCE(NULLIF($5, ''), order_prefix), order_digits = COALESCE($6, order_digits), order_start = COALESCE($7, order_start) WHERE id = $1`,
       [pf, b.bre_b_key !== undefined ? String(b.bre_b_key).trim() : '', b.whatsapp_number !== undefined ? String(b.whatsapp_number).trim() : '', b.whatsapp_template !== undefined ? String(b.whatsapp_template) : null, b.order_prefix !== undefined ? String(b.order_prefix).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) : '', b.order_digits !== undefined ? Math.min(8, Math.max(3, Number(b.order_digits) || 5)) : null, b.order_start !== undefined ? Math.max(1, Number(b.order_start) || 1) : null]);
     const upsert = async (key: string, value: string) => pool.query(`INSERT INTO settings (portfolio_id, key, value) VALUES ($1,$2,$3) ON CONFLICT (portfolio_id, key) DO UPDATE SET value = EXCLUDED.value`, [pf, key, value]);
+    if (b.wallet !== undefined) {
+      const w = cleanWallet(b.wallet);
+      if (!w.ok) return res.status(400).json({ error: w.error });
+      await pool.query(`UPDATE portfolios SET bre_b_key = $2 WHERE id = $1`, [pf, w.wallet.value]);
+      await upsert('wallet', JSON.stringify({ country: w.wallet.country, provider: w.wallet.provider }));
+    }
     if (b.min_payment_amount !== undefined) await upsert('min_payment_amount', String(Number(b.min_payment_amount) || 0));
     if (b.bags_label !== undefined) await upsert('bags_label', String(b.bags_label).trim().slice(0, 30));
     if (b.bags_icon !== undefined) await upsert('bags_icon', BAGS_ICONS.includes(String(b.bags_icon)) ? String(b.bags_icon) : '🛍️');

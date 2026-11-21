@@ -1,1 +1,8 @@
+La landing usa public/landing.css (Tailwind compilado, sin CDN: el CSP del servidor bloquea cdn.tailwindcss.com).
+Solo necesitas regenerarlo si cambias clases en public/landing.html. Desde tu computador:
 
+  cd tools/tailwind
+  npm i -D tailwindcss@3.4.17
+  npx tailwindcss -c tailwind.config.js -i landing.src.css -o ../../public/landing.css --minify
+
+Luego sube el nuevo public/landing.css y sube el número ?v=N en el <link> de landing.html.

@@ -1,718 +1,1698 @@
-<!doctype html>
-<html lang="es" data-theme="dark">
+<!DOCTYPE html>
+<html lang="es-419" class="scroll-smooth">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="X-Content-Type-Options" content="nosniff">
-<meta http-equiv="X-Frame-Options" content="DENY">
-<meta http-equiv="X-XSS-Protection" content="1; mode=block">
-<meta name="description" content="Tu Live Shop: El sistema de ventas, inventario y logística diseñado para emprendedores que venden en vivo.">
-<meta name="theme-color" content="#0A1430">
-<title>Tu Live Shop · Vende en vivo, cuadra la caja sin perder la voz</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96;700;12..96;800&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<style>
-:root {
-  color-scheme: dark;
-  --bg: #0A1430;
-  --bg-gradient: radial-gradient(circle at 8% 10%, rgba(31,95,224,.22), transparent 38%), radial-gradient(circle at 92% 80%, rgba(43,159,216,.15), transparent 38%);
-  --surface: rgba(22, 39, 75, .62);
-  --surface-hover: rgba(35, 58, 103, .78);
-  --border: rgba(255,255,255,.13);
-  --brand: #5B9BFF;
-  --brand-solid: #1F5FE0;
-  --brand-hover: #3479F5;
-  --brand-glow: rgba(31,95,224,.34);
-  --orange: #FFB020;
-  --cyan: #5FC3F0;
-  --text: #F5F8FF;
-  --text-muted: #AAB8D2;
-  --shadow: 0 16px 48px rgba(0,0,0,.28);
-  --ok: #45D483;
-  --warn: #FFB020;
-  --danger: #FF647C;
-  --radius: 22px;
-}
-[data-theme="light"] {
-  color-scheme: light;
-  --bg: #EEF4FF;
-  --bg-gradient: radial-gradient(circle at 8% 10%, rgba(31,95,224,.12), transparent 38%), radial-gradient(circle at 92% 80%, rgba(43,159,216,.12), transparent 38%);
-  --surface: rgba(255,255,255,.68);
-  --surface-hover: rgba(255,255,255,.88);
-  --border: rgba(31,55,100,.12);
-  --brand: #1F5FE0;
-  --brand-solid: #1F5FE0;
-  --brand-hover: #174FC0;
-  --brand-glow: rgba(31,95,224,.20);
-  --orange: #F08A00;
-  --cyan: #168DBF;
-  --text: #142344;
-  --text-muted: #5D6D8B;
-  --shadow: 0 16px 44px rgba(31,65,125,.12);
-  --ok: #168B50;
-  --warn: #B86A00;
-  --danger: #C8324D;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
-body {
-  font-family: 'DM Sans', system-ui, sans-serif;
-  background: var(--bg);
-  background-image: var(--bg-gradient);
-  background-attachment: fixed;
-  color: var(--text);
-  min-height: 100vh;
-  line-height: 1.6;
-  transition: background .25s, color .25s;
-}
-button, input, select, textarea { font: inherit; }
-button { -webkit-tap-highlight-color: transparent; }
-.glass {
-  background: var(--surface);
-  backdrop-filter: blur(22px) saturate(1.7);
-  -webkit-backdrop-filter: blur(22px) saturate(1.7);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-}
-header {
-  position: sticky; top: 0; z-index: 100; padding: 15px 24px;
-  display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; gap: 12px;
-  background: var(--surface); backdrop-filter: blur(22px) saturate(1.7);
-  -webkit-backdrop-filter: blur(22px) saturate(1.7);
-  border-bottom: 1px solid var(--border); box-shadow: 0 8px 30px rgba(0,0,0,.10);
-}
-.brand {
-  font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 800;
-  text-decoration: none; color: var(--text); display: flex; align-items: center; gap: 8px; letter-spacing: -.7px;
-}
-.brand span { color: var(--brand); }
-.nav-actions { display: flex; gap: 10px; align-items: center; flex-wrap: nowrap; }
-.btn {
-  padding: 11px 20px; border-radius: 14px; font-weight: 700; font-size: 14px;
-  text-decoration: none; cursor: pointer; transition: all .2s ease; border: 1px solid transparent;
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-}
-.btn-ghost { background: transparent; color: var(--text-muted); border-color: transparent; }
-.btn-ghost:hover { color: var(--text); background: var(--surface-hover); border-color: var(--border); }
-.btn-primary { background: linear-gradient(135deg, var(--brand-solid), var(--brand-hover)); color: #fff; box-shadow: 0 5px 18px var(--brand-glow); }
-.btn-primary:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 8px 24px var(--brand-glow); }
-.btn-outline { background: var(--surface); color: var(--brand); border: 1px solid var(--brand); backdrop-filter: blur(12px); }
-.btn-outline:hover { background: var(--brand-solid); color: #fff; transform: translateY(-1px); }
-.theme-toggle {
-  width: 42px; height: 42px; border-radius: 14px; border: 1px solid var(--border);
-  background: var(--surface); color: var(--text); cursor: pointer; font-size: 17px;
-  display: flex; align-items: center; justify-content: center; transition: all .2s; backdrop-filter: blur(12px);
-}
-.theme-toggle:hover { background: var(--surface-hover); transform: translateY(-1px); }
-main { max-width: 1160px; margin: 0 auto; padding: 40px 24px 80px; }
-section { margin-bottom: 88px; scroll-margin-top: 110px; }
-.hero { text-align: center; padding: 76px 0 44px; }
-.hero .tag {
-  display: inline-block; background: rgba(31,95,224,.15); color: var(--brand);
-  padding: 7px 17px; border-radius: 999px; font-weight: 700; font-size: 13px;
-  margin-bottom: 22px; border: 1px solid rgba(91,155,255,.25);
-}
-.hero h1 {
-  font-family: 'Bricolage Grotesque', sans-serif; font-size: clamp(38px, 6vw, 66px);
-  font-weight: 800; line-height: 1.06; margin-bottom: 22px; letter-spacing: -2px;
-}
-.hero h1 .highlight {
-  background: linear-gradient(120deg, var(--brand), var(--cyan), var(--orange));
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-.hero p { font-size: 18px; color: var(--text-muted); max-width: 650px; margin: 0 auto 34px; line-height: 1.7; }
-.hero .cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 18px; margin-top: 64px; }
-.stat-card { padding: 26px; text-align: center; border-radius: var(--radius); }
-.stat-card b { font-family: 'Bricolage Grotesque', sans-serif; font-size: 32px; font-weight: 800; color: var(--brand); display: block; margin-bottom: 4px; }
-.stat-card span { font-size: 14px; color: var(--text-muted); }
-.section-title { font-family: 'Bricolage Grotesque', sans-serif; text-align: center; font-size: clamp(29px, 4vw, 40px); font-weight: 800; margin-bottom: 12px; letter-spacing: -.8px; }
-.section-sub { text-align: center; color: var(--text-muted); max-width: 620px; margin: 0 auto 48px; font-size: 16px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 22px; }
-.card { padding: 30px; border-radius: var(--radius); transition: transform .25s, background .25s, border-color .25s; }
-.card:hover { transform: translateY(-5px); background: var(--surface-hover); border-color: rgba(91,155,255,.35); }
-.card .icon { font-size: 32px; margin-bottom: 16px; display: block; }
-.card h3 { font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; margin-bottom: 8px; }
-.card p { font-size: 14px; color: var(--text-muted); line-height: 1.7; }
-.pricing-card {
-  max-width: 500px; margin: 0 auto; padding: 42px 34px; border-radius: 28px; text-align: center;
-  border: 1px solid rgba(91,155,255,.45); position: relative; overflow: hidden;
-}
-.pricing-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--brand), var(--cyan), var(--orange)); }
-.price-tag { font-family: 'Bricolage Grotesque', sans-serif; font-size: 52px; font-weight: 800; color: var(--brand); margin: 18px 0 8px; }
-.price-tag span { font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600; color: var(--text-muted); }
-.features-list { list-style: none; text-align: left; margin: 32px 0; }
-.features-list li { padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 15px; display: flex; align-items: center; gap: 10px; }
-.features-list li::before { content: '✓'; color: var(--ok); font-weight: 800; }
-footer { text-align: center; padding: 40px 24px; color: var(--text-muted); font-size: 14px; border-top: 1px solid var(--border); background: var(--surface); backdrop-filter: blur(20px); }
-footer a { color: var(--brand); text-decoration: none; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 
-/* Modales */
-.modal-overlay {
-  position: fixed; inset: 0; background: rgba(2,8,24,.72); backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center;
-  z-index: 200; padding: 16px;
-}
-.modal-overlay.open { display: flex; }
-.modal-box {
-  background: var(--surface); backdrop-filter: blur(24px) saturate(1.6);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6); border: 1px solid var(--border);
-  border-radius: 24px; padding: 32px; width: min(460px, 100%); box-shadow: var(--shadow);
-  max-height: calc(100vh - 32px); overflow-y: auto;
-}
-.modal-box h3 { font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; margin-bottom: 8px; text-align: center; }
-.modal-box .subtitle { color: var(--text-muted); text-align: center; margin-bottom: 24px; font-size: 14px; }
-.form-group { margin-bottom: 16px; }
-.form-group label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--text-muted); }
-.form-group input, .form-group select {
-  width: 100%; padding: 13px 14px; border-radius: 12px; border: 1px solid var(--border);
-  background: rgba(5,15,38,.35); color: var(--text); font-size: 14px; font-family: inherit;
-  outline: none; transition: border-color .2s, box-shadow .2s;
-}
-[data-theme="light"] .form-group input, [data-theme="light"] .form-group select { background: rgba(255,255,255,.75); }
-.form-group input:focus, .form-group select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-glow); }
-.form-group input::placeholder { color: var(--text-muted); opacity: .7; }
-.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
-.modal-actions .btn { flex: 1; justify-content: center; }
-.form-error { color: var(--danger); font-size: 13px; min-height: 18px; margin-top: 8px; text-align: center; }
-.form-error.success { color: var(--ok); }
-.store-checkbox-group { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; padding: 8px; background: rgba(5,15,38,.2); border-radius: 12px; border: 1px solid var(--border); }
-.store-checkbox-label { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; cursor: pointer; transition: background .2s; }
-.store-checkbox-label:hover { background: var(--surface-hover); }
-.store-checkbox-label input { width: 18px; height: 18px; accent-color: var(--brand); }
-.step-indicator { display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; }
-.step-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); transition: background .3s; }
-.step-dot.active { background: var(--brand); }
-.link-text { color: var(--brand); font-size: 13px; cursor: pointer; text-decoration: underline; background: none; border: none; font-family: inherit; display: block; text-align: center; margin-top: 12px; }
-.link-text:hover { color: var(--brand-hover); }
+  <!-- =====================================================================
+       SEO FUNCIONAL: METADATOS PRINCIPALES, CANONICAL, GEO Y OPEN GRAPH
+       ===================================================================== -->
+  <title>Tu Live Shop | Software para Lives y Facturación</title>
+  <meta name="description" content="Software para lives de TikTok, Instagram y Facebook. Tus clientes agregan productos mientras ven el live, y tú generas facturas al instante, controlas abonos, saldos e inventario en Colombia y Latinoamérica." />
+  <meta name="keywords" content="software para lives de TikTok, software para separar ventas, sistema para tiendas en vivo, facturación para ventas en vivo, clientes agregan productos en vivo, control de abonos e inventario, vender en vivo Colombia, software live commerce Latinoamérica" />
+  <meta name="author" content="Tu Live Shop" />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+  <meta name="language" content="Spanish" />
+  <meta name="geo.region" content="CO" />
+  <meta name="geo.placename" content="Colombia, Latinoamérica" />
+  <meta name="theme-color" content="#1D4ED8" />
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png" />
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png" />
 
-@media (max-width: 640px) {
-  header { padding: 12px 16px; flex-wrap: nowrap; gap: 8px; }
-  .brand { font-size: 20px; white-space: nowrap; }
-  .nav-actions { flex-wrap: nowrap; gap: 8px; }
-  .nav-actions .btn { padding: 10px 14px; font-size: 13px; white-space: nowrap; }
-  .hero { padding: 44px 0 22px; }
-  .hero h1 { letter-spacing: -1.2px; }
-  .hero p { font-size: 16px; }
-  main { padding: 24px 16px 60px; }
-  section { margin-bottom: 65px; }
-  .grid { grid-template-columns: 1fr; }
-  .card { padding: 24px; }
-  .pricing-card { padding: 34px 22px; }
-  .price-tag { font-size: 42px; }
-  .modal-box { padding: 25px 20px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
-}
-</style>
-<link rel="stylesheet" href="/theme.css?v=2">
-<script src="/theme.js?v=2"></script>
+  <!-- URL Canónica y alternativas de idioma -->
+  <link rel="canonical" href="https://tuliveshop.onrender.com/" />
+  <link rel="alternate" hreflang="es-419" href="https://tuliveshop.onrender.com/" />
+  <link rel="alternate" hreflang="es-CO" href="https://tuliveshop.onrender.com/" />
+  <link rel="alternate" hreflang="x-default" href="https://tuliveshop.onrender.com/" />
+
+  <!-- Open Graph / Facebook / WhatsApp -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Tu Live Shop" />
+  <meta property="og:locale" content="es_LA" />
+  <meta property="og:url" content="https://tuliveshop.onrender.com/" />
+  <meta property="og:title" content="Tu Live Shop | Vende en vivo, factura al instante y controla tu negocio" />
+  <meta property="og:description" content="Tus clientes agregan sus productos mientras ven el live. Tú creas facturas al instante, controlas abonos, saldos e inventario automático." />
+  <meta property="og:image" content="https://tuliveshop.onrender.com/img/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Tu Live Shop: vende en vivo, factura al instante y controla abonos e inventario" />
+
+  <!-- Twitter Cards -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://tuliveshop.onrender.com/" />
+  <meta name="twitter:title" content="Tu Live Shop | Software para Lives de TikTok y Tiendas en Vivo" />
+  <meta name="twitter:description" content="Tus clientes agregan productos mientras ven el live y tú controlas facturas, abonos e inventario. Plan único de lanzamiento $21.000 COP / mes." />
+  <meta name="twitter:image" content="https://tuliveshop.onrender.com/img/og-image.png" />
+  <meta name="twitter:image:alt" content="Tu Live Shop: vende en vivo, factura al instante y controla abonos e inventario" />
+
+  <!-- Datos Estructurados JSON-LD (Schema.org: SoftwareApplication + FAQPage) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://tuliveshop.onrender.com/#software",
+        "name": "Tu Live Shop",
+        "alternateName": "Sistema para Tiendas en Vivo Tu Live Shop",
+        "url": "https://tuliveshop.onrender.com/",
+        "applicationCategory": "BusinessApplication",
+        "applicationSubCategory": "Live Commerce, Facturación y Control de Inventario",
+        "operatingSystem": "Web",
+        "image": "https://tuliveshop.onrender.com/img/og-image.png",
+        "logo": "https://tuliveshop.onrender.com/img/logo.png",
+        "inLanguage": "es-419",
+        "description": "Software para lives de TikTok, Instagram y Facebook donde tus clientes agregan productos directamente mientras ven el live, y tú generas facturas al instante, controlas abonos y gestionas inventario en tiempo real en Colombia y toda Latinoamérica.",
+        "areaServed": [
+          { "@type": "Country", "name": "Colombia" },
+          { "@type": "Country", "name": "México" },
+          { "@type": "Country", "name": "Perú" },
+          { "@type": "Country", "name": "Chile" },
+          { "@type": "Country", "name": "Ecuador" },
+          { "@type": "Country", "name": "Argentina" },
+          { "@type": "Place", "name": "Latinoamérica" }
+        ],
+        "featureList": [
+          "Autoservicio en vivo: tus clientes agregan productos a su pedido mientras ven el live",
+          "Creación instantánea de facturas con tu marca",
+          "Control de ventas, abonos y saldos pendientes por cliente",
+          "Registro de pedidos en vivo para TikTok, Instagram y Facebook",
+          "Inventario automático con lectura de código de barras",
+          "Gestión de logística, empaque y despachos",
+          "Creación de kits y combos",
+          "Importación masiva de catálogo desde Excel"
+        ],
+        "offers": {
+          "@type": "Offer",
+          "price": "21000",
+          "priceCurrency": "COP",
+          "priceValidUntil": "2027-12-31",
+          "availability": "https://schema.org/InStock",
+          "url": "https://tuliveshop.onrender.com/#precio",
+          "description": "Plan único de lanzamiento mensual: pedidos en vivo, clientes agregando productos durante el live, inventario, abonos, facturas, logística, kits, panel de ganancias, importación de Excel y tienda en línea 24/7."
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://tuliveshop.onrender.com/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "¿Cómo agregan productos mis clientes mientras ven el live?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Compartes el enlace de tu tienda en vivo en TikTok, Instagram o Facebook. Tus clientes entran desde su celular, seleccionan los productos disponibles durante la transmisión y los suman directamente a su pedido mientras el stock se actualiza al instante."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Cómo pago y cómo se activa?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Haces clic en el botón de WhatsApp, coordinamos el pago (Nequi, Daviplata, transferencia bancaria en Colombia o medios de pago internacionales en Latinoamérica) y activamos tu acceso de inmediato."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Funciona con TikTok, Instagram y Facebook?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Sí. Tus clientes agregan productos desde el enlace de tu tienda o tú registras los pedidos del live en la aplicación mientras transmites en TikTok, Instagram o Facebook, actualizando inventario, abonos y facturas automáticamente."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Necesito instalar algo?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No necesitas instalar nada. Se usa directamente desde el navegador de tu celular, tablet o computador."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Puedo traer mi inventario de Excel?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Sí. Puedes importar tu archivo de Excel y empezar en minutos con todos tus productos, precios y existencias ya cargados."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <!-- Tipografías solicitadas: Montserrat (Títulos/Botones/Cifras) y Nunito (Cuerpo/Formularios) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS compilado (public/landing.css). Para regenerarlo: ver tools/tailwind/LEEME.txt -->
+  <link rel="stylesheet" href="/landing.css?v=1" />
 </head>
 
-<body>
+<body class="bg-[#F8FAFC] text-[#0F172A] dark:bg-[#0B1120] dark:text-slate-100 font-sans antialiased selection:bg-[#2563EB] selection:text-white transition-colors duration-300">
 
-<header class="glass">
-  <a href="#" class="brand">Tu <span>Live Shop</span></a>
-  <div class="nav-actions">
-    <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn" aria-label="Cambiar tema">🌙</button>
-    <button class="btn btn-primary" onclick="openAuthModal()">🔐 Login</button>
-  </div>
-</header>
+  <!-- =====================================================================
+       BARRA DE NAVEGACIÓN FIJA (STICKY HEADER) CON BOTÓN LOGIN OBLIGATORIO
+       ===================================================================== -->
+  <header class="sticky top-0 z-40 w-full backdrop-blur-xl bg-white/90 dark:bg-[#0B1120]/90 border-b border-slate-200/80 dark:border-slate-800/80 transition-colors">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" aria-label="Navegación principal">
+      <div class="flex items-center justify-between h-16 sm:h-20 gap-3">
 
-<main>
-  <section class="hero">
-    <span class="tag">Hecho para vendedores de lives</span>
-    <h1>Vende en vivo. Cuadra la caja <span class="highlight">sin perder la voz.</span></h1>
-    <p>Tu Live Shop registra los pedidos mientras transmites, controla inventario y abonos, y te muestra cuánto ganaste de verdad al terminar el live.</p>
-    <div class="cta">
-      <a href="#precio" class="btn btn-primary">Quiero Tu Live Shop</a>
-      <a href="https://wa.me/573052889858?text=Hola%2C%20quiero%20suscribirme%20a%20Tu%20Live%20Shop" target="_blank" rel="noopener" class="btn btn-outline">Hablar por WhatsApp</a>
-    </div>
-    <div class="stats">
-      <div class="stat-card glass"><b>$21.000</b><span>COP al mes</span></div>
-      <div class="stat-card glass"><b>100%</b><span>Tu marca</span></div>
-      <div class="stat-card glass"><b>24/7</b><span>Tienda en línea</span></div>
-    </div>
-  </section>
+        <!-- Logo de Marca limpio (Icono de bolsa/tienda en azul, sin cámara ni REC) -->
+        <a href="/" class="flex items-center gap-3 shrink-0 focus:outline-none" aria-label="Tu Live Shop - Inicio">
+          <img src="/img/logo.png" width="720" height="322" alt="Tu Live Shop" fetchpriority="high" class="h-11 sm:h-14 w-auto rounded-lg dark:bg-white dark:px-2" />
+          <span class="hidden 2xl:block whitespace-nowrap text-[11px] font-semibold text-slate-500 dark:text-slate-400 tracking-wide">Ventas en Vivo y Facturación</span>
+        </a>
 
-  <section id="problema">
-    <h2 class="section-title">El problema real</h2>
-    <p class="section-sub">Vendes bien en el live, pero pierdes plata por el desorden.</p>
-    <div class="grid">
-      <div class="card glass"><span class="icon">❌</span><h3>Como vendes hoy</h3><p>Anotas pedidos a mano mientras hablas con la cámara. No sabes cuántas unidades quedan, los abonos viven en la memoria y al final del mes no sabes cuánto ganaste.</p></div>
-      <div class="card glass"><span class="icon">✅</span><h3>Con Tu Live Shop</h3><p>Capturas cada pedido en segundos. El inventario baja solo con cada venta. Cada abono queda registrado con saldo y factura en PDF.</p></div>
-    </div>
-  </section>
+        <!-- Enlaces de navegación Escritorio -->
+        <div class="hidden lg:flex items-center gap-5 xl:gap-7 whitespace-nowrap text-sm font-semibold text-slate-600 dark:text-slate-300">
+          <a href="#compra-en-vivo" class="hover:text-[#1D4ED8] dark:hover:text-[#38BDF8] transition-colors">Compra en vivo</a>
+          <a href="#como-funciona" class="hover:text-[#1D4ED8] dark:hover:text-[#38BDF8] transition-colors">Cómo funciona</a>
+          <a href="#funcionalidades" class="hover:text-[#1D4ED8] dark:hover:text-[#38BDF8] transition-colors">Funcionalidades</a>
+          <a href="#precio" class="hover:text-[#1D4ED8] dark:hover:text-[#38BDF8] transition-colors">Precio</a>
+          <a href="#faq" class="hover:text-[#1D4ED8] dark:hover:text-[#38BDF8] transition-colors">Preguntas frecuentes</a>
+        </div>
 
-  <section id="funciones">
-    <h2 class="section-title">Lo que incluye</h2>
-    <p class="section-sub">Todo lo que necesita una tienda que vende en vivo.</p>
-    <div class="grid">
-      <div class="card glass"><span class="icon">🛒</span><h3>Pedidos del live</h3><p>Registra cliente, producto y valor mientras transmites. Estado: pendiente, abonado o pagado.</p></div>
-      <div class="card glass"><span class="icon">📦</span><h3>Inventario con código de barras</h3><p>Escanea, cuenta y deja de vender lo que ya no tienes.</p></div>
-      <div class="card glass"><span class="icon">💰</span><h3>Abonos y saldos</h3><p>Cuánto pagó, cuánto debe y desde cuándo. Sin discusiones.</p></div>
-      <div class="card glass"><span class="icon">🧾</span><h3>Facturas en PDF</h3><p>Genera el comprobante de cada cliente y envíalo en un clic.</p></div>
-      <div class="card glass"><span class="icon">🚚</span><h3>Logística y envíos</h3><p>Qué se empaca, qué se despacha y qué falta por cobrar.</p></div>
-      <div class="card glass"><span class="icon">🎁</span><h3>Kits y combos</h3><p>Arma paquetes de varios productos y vende el combo como una sola unidad.</p></div>
-    </div>
-  </section>
+        <!-- Acciones Derecha (Tema + Botón Login Obligatorio + WhatsApp) -->
+        <div class="flex items-center gap-2 sm:gap-3">
+          <!-- Interruptor Tema Claro / Oscuro -->
+          <button
+            type="button"
+            id="themeToggleBtn"
+            onclick="toggleTheme()"
+            aria-label="Cambiar entre tema claro y oscuro"
+            title="Cambiar tema claro / oscuro"
+            class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:border-[#1D4ED8] dark:hover:border-[#38BDF8] transition-colors"
+          >
+            <!-- Sol (visible en modo oscuro) -->
+            <svg class="w-4 h-4 hidden dark:block text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <!-- Luna (visible en modo claro) -->
+            <svg class="w-4 h-4 block dark:hidden text-[#1E3A8A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          </button>
 
-  <section id="precio">
-    <h2 class="section-title">Un solo plan. Un solo precio.</h2>
-    <div class="pricing-card glass">
-      <span class="tag" style="background:rgba(240,138,0,.14); color:var(--orange); border-color:rgba(240,138,0,.3);">LANZAMIENTO</span>
-      <div class="price-tag">$21.000 <span>COP / mes</span></div>
-      <ul class="features-list">
-        <li>Pedidos, inventario, abonos y facturas</li>
-        <li>Logística, kits y panel de ganancias</li>
-        <li>Importación de Excel</li>
-        <li>Tema claro y oscuro</li>
-        <li>Cancelas cuando quieras</li>
-      </ul>
-      <a href="https://wa.me/573052889858?text=Hola%2C%20quiero%20suscribirme%20a%20Tu%20Live%20Shop" target="_blank" rel="noopener" class="btn btn-primary" style="width:100%; padding:14px; font-size:16px;">📲 Suscribirme por WhatsApp</a>
-    </div>
-  </section>
+          <!-- BOTÓN LOGIN OBLIGATORIO (Destacado en azul cobalto) -->
+          <button
+            type="button"
+            onclick="openLoginModal('selector')"
+            aria-label="Iniciar sesión en Tu Live Shop"
+            class="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-display text-sm font-bold bg-[#1D4ED8] hover:bg-[#1E40AF] dark:bg-[#2563EB] dark:hover:bg-[#1D4ED8] text-white shadow-sm shadow-blue-700/25 transition-all"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+            </svg>
+            <span>Login</span>
+          </button>
 
-  <section id="faq" class="faq" style="max-width:720px; margin:0 auto;">
-    <h2 class="section-title">Preguntas frecuentes</h2>
-    <details class="glass" style="padding:21px 24px; border-radius:18px; margin-bottom:13px; cursor:pointer; transition:background .2s;"><summary style="font-weight:700; font-size:16px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:15px;">¿Cómo pago y cómo se activa?<span style="font-size:22px; color:var(--brand);">+</span></summary><p style="margin-top:12px; color:var(--text-muted); font-size:15px;">Haces clic en el botón de WhatsApp, coordinamos el pago y activamos tu acceso.</p></details>
-    <details class="glass" style="padding:21px 24px; border-radius:18px; margin-bottom:13px; cursor:pointer; transition:background .2s;"><summary style="font-weight:700; font-size:16px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:15px;">¿Funciona con TikTok, Instagram y Facebook?<span style="font-size:22px; color:var(--brand);">+</span></summary><p style="margin-top:12px; color:var(--text-muted); font-size:15px;">Sí. Tú registras los pedidos del live en la aplicación.</p></details>
-    <details class="glass" style="padding:21px 24px; border-radius:18px; margin-bottom:13px; cursor:pointer; transition:background .2s;"><summary style="font-weight:700; font-size:16px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:15px;">¿Necesito instalar algo?<span style="font-size:22px; color:var(--brand);">+</span></summary><p style="margin-top:12px; color:var(--text-muted); font-size:15px;">Se usa desde el navegador de tu celular o computador.</p></details>
-    <details class="glass" style="padding:21px 24px; border-radius:18px; margin-bottom:13px; cursor:pointer; transition:background .2s;"><summary style="font-weight:700; font-size:16px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:15px;">¿Puedo traer mi inventario de Excel?<span style="font-size:22px; color:var(--brand);">+</span></summary><p style="margin-top:12px; color:var(--text-muted); font-size:15px;">Sí. Puedes importar tu archivo y empezar con tus productos ya cargados.</p></details>
-  </section>
-</main>
+          <!-- Botón Secundario: Hablar por WhatsApp (Escritorio) -->
+          <a
+            href="https://wa.me/573052889858?text=Hola%20Tu%20Live%20Shop%2C%20quiero%20informaci%C3%B3n%20para%20activar%20mi%20tienda%20en%20vivo"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="hidden md:inline-flex lg:hidden xl:inline-flex whitespace-nowrap items-center gap-2 px-4 py-2.5 rounded-xl font-display text-sm font-bold border border-emerald-600/30 bg-emerald-500/10 hover:bg-[#10B981] text-emerald-700 dark:text-emerald-400 hover:text-white transition-all"
+          >
+            <span>Hablar por WhatsApp</span>
+          </a>
 
-<footer class="glass">
-  <p>© 2026 Tu Live Shop · Hecho para vendedores de lives en Colombia.</p>
-</footer>
-
-<!-- ================= MODALES DE AUTENTICACIÓN ================= -->
-
-<!-- MODAL PRINCIPAL DE SELECCIÓN -->
-<div class="modal-overlay" id="mainAuthModal">
-  <div class="modal-box" style="text-align:center;">
-    <h3>¿Cómo deseas ingresar?</h3>
-    <p class="subtitle">Selecciona tu tipo de cuenta para continuar</p>
-    <div style="display:flex; flex-direction:column; gap:12px; margin-top:24px;">
-      <button class="btn btn-outline" style="padding:16px; font-size:16px;" onclick="switchAuthView('client-login')">🛍️ Soy Cliente</button>
-      <button class="btn btn-primary" style="padding:16px; font-size:16px;" onclick="switchAuthView('store-login')">🏪 Soy Tienda (Administrador)</button>
-    </div>
-    <button class="link-text" onclick="closeAllModals()" style="margin-top:24px;">Cancelar</button>
-  </div>
-</div>
-
-<!-- CLIENTE: LOGIN -->
-<div class="modal-overlay" id="clientLoginModal">
-  <div class="modal-box">
-    <h3>🛍️ Acceso Cliente</h3>
-    <p class="subtitle">Ingresa con tu WhatsApp y PIN</p>
-    <form onsubmit="handleClientLogin(event)">
-      <div class="form-group">
-        <label>WhatsApp</label>
-        <input type="text" id="cliWa" inputmode="numeric" placeholder="3001234567" required>
-      </div>
-      <div class="form-group">
-        <label>PIN</label>
-        <input type="password" id="cliPin" inputmode="numeric" placeholder="••••••" minlength="4" maxlength="8" required>
-      </div>
-      <p class="subtitle" style="font-size:12px;margin:-2px 0 10px">¿Ya eres cliente de una tienda pero nunca has ingresado? Tu PIN inicial es <b>1234</b>; al entrar crearás uno nuevo.</p>
-      <div class="form-error" id="cliLoginErr"></div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" onclick="closeAllModals()">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Ingresar</button>
-      </div>
-    </form>
-    <button class="link-text" onclick="switchAuthView('client-reg-step1')">¿No tienes cuenta? Regístrate aquí</button>
-    <button class="link-text" onclick="switchAuthView('client-forgot-pin')" style="color:var(--orange);">¿Olvidaste tu PIN?</button>
-  </div>
-</div>
-
-<!-- CLIENTE: REGISTRO PASO 1 -->
-<div class="modal-overlay" id="clientRegStep1Modal">
-  <div class="modal-box">
-    <div class="step-indicator"><div class="step-dot active"></div><div class="step-dot"></div></div>
-    <h3>📝 Crear cuenta (Paso 1/2)</h3>
-    <p class="subtitle">Ingresa tus datos personales</p>
-    <form onsubmit="handleClientRegStep1(event)">
-      <div class="form-group">
-        <label>Nombre completo</label>
-        <input id="regName" required>
-      </div>
-      <div class="form-group">
-        <label>WhatsApp</label>
-        <input type="text" id="regWa" inputmode="numeric" placeholder="3001234567" required>
-      </div>
-      <div class="form-group">
-        <label>Correo electrónico</label>
-        <input type="email" id="regEmail" placeholder="Para recuperar tu PIN" required>
-      </div>
-      <div class="form-group">
-        <label>Ciudad</label>
-        <input id="regCity">
-      </div>
-      <div class="form-group">
-        <label>Dirección</label>
-        <input id="regAddress">
-      </div>
-      <div class="form-group">
-        <label>Crea tu PIN (6 a 8 dígitos)</label>
-        <input type="password" id="regPin" inputmode="numeric" title="El PIN debe tener de 6 a 8 dígitos, solo números" pattern="[0-9]{6,8}" minlength="6" maxlength="8" placeholder="Solo números" autocomplete="new-password" required>
-      </div>
-      <div class="form-group">
-        <label>Confirma tu PIN</label>
-        <input type="password" id="regPin2" inputmode="numeric" title="El PIN debe tener de 6 a 8 dígitos, solo números" pattern="[0-9]{6,8}" minlength="6" maxlength="8" autocomplete="new-password" required>
-      </div>
-      <div class="form-error" id="regStep1Err"></div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" onclick="closeAllModals()">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Siguiente</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- CLIENTE: REGISTRO PASO 2 (Selección de tiendas) -->
-<div class="modal-overlay" id="clientRegStep2Modal">
-  <div class="modal-box">
-    <div class="step-indicator"><div class="step-dot"></div><div class="step-dot active"></div></div>
-    <h3>🏪 Selecciona tus tiendas (Paso 2/2)</h3>
-    <p class="subtitle">Marca las tiendas a las que deseas tener acceso</p>
-    <form onsubmit="handleClientRegStep2(event)">
-      <div class="form-group">
-        <label>Tiendas disponibles (puedes elegir una o varias)</label>
-        <div id="storeSelectionList" class="store-checkbox-group">
-          <!-- Se llena dinámicamente -->
+          <!-- Botón Menú Hamburguesa Móvil -->
+          <button
+            type="button"
+            id="mobileMenuBtn"
+            onclick="toggleMobileMenu()"
+            aria-expanded="false"
+            aria-controls="mobileMenu"
+            aria-label="Abrir menú de navegación"
+            class="lg:hidden p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            <svg id="hamburgerIcon" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            <svg id="closeMenuIcon" class="w-5 h-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       </div>
-      <div class="form-error" id="regStep2Err"></div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" onclick="switchAuthView('client-reg-step1')">Atrás</button>
-        <button type="submit" class="btn btn-primary">Crear usuario</button>
+
+      <!-- Menú Móvil Desplegable (Con botón Login obligatorio y enlaces) -->
+      <div id="mobileMenu" class="hidden lg:hidden pb-5 pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
+        <a href="#compra-en-vivo" onclick="closeMobileMenu()" class="block px-3.5 py-2.5 rounded-xl text-base font-semibold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-900">Compra en vivo</a>
+        <a href="#como-funciona" onclick="closeMobileMenu()" class="block px-3.5 py-2.5 rounded-xl text-base font-semibold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-900">Cómo funciona</a>
+        <a href="#funcionalidades" onclick="closeMobileMenu()" class="block px-3.5 py-2.5 rounded-xl text-base font-semibold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-900">Funcionalidades</a>
+        <a href="#precio" onclick="closeMobileMenu()" class="block px-3.5 py-2.5 rounded-xl text-base font-semibold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-900">Precio ($21.000 COP)</a>
+        <a href="#faq" onclick="closeMobileMenu()" class="block px-3.5 py-2.5 rounded-xl text-base font-semibold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-900">Preguntas frecuentes</a>
+
+        <div class="pt-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <button
+            type="button"
+            onclick="closeMobileMenu(); openLoginModal('selector');"
+            class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-display font-bold bg-[#1D4ED8] hover:bg-[#1E40AF] text-white"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+            </svg>
+            <span>Login / Iniciar sesión</span>
+          </button>
+
+          <a
+            href="https://wa.me/573052889858?text=Hola%20Tu%20Live%20Shop%2C%20quiero%20activar%20mi%20tienda"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-display font-bold bg-[#10B981] hover:bg-emerald-600 text-white"
+          >
+            <span>Hablar por WhatsApp</span>
+          </a>
+        </div>
       </div>
-    </form>
+    </nav>
+  </header>
+
+  <!-- =====================================================================
+       CONTENIDO PRINCIPAL (<main>)
+       ===================================================================== -->
+  <main>
+
+    <!-- ===================================================================
+         1. HERO SECTION DIRECTO: CLIENTES AGREGAN PRODUCTOS EN VIVO + FACTURACIÓN
+         =================================================================== -->
+    <section class="relative overflow-hidden pt-10 pb-20 sm:pt-16 sm:pb-28">
+      <!-- Sutil resplandor azul profesional de fondo -->
+      <div class="pointer-events-none absolute -top-28 left-1/2 -translate-x-1/2 w-[56rem] h-[28rem] rounded-full bg-gradient-to-r from-[#1D4ED8]/15 via-[#0EA5E9]/15 to-[#1E3A8A]/10 blur-3xl"></div>
+
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-10 items-center">
+
+          <!-- Columna Izquierda: Encabezado Directo + Propuesta de Valor + CTAs -->
+          <div class="lg:col-span-6 space-y-6 text-center lg:text-left">
+            <!-- Insignia directa en azul (Sin cámara ni REC, sin mencionar PDF) -->
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800/80 text-[#1D4ED8] dark:text-[#38BDF8]">
+              <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span>Sistema para tiendas en vivo en TikTok, Instagram y Facebook</span>
+            </div>
+
+            <!-- ÚNICO H1 DIRECTO Y CONTUNDENTE EN MONTSERRAT -->
+            <h1 class="font-display font-extrabold text-3xl sm:text-5xl lg:text-[3.35rem] tracking-tight leading-[1.12] text-[#0F172A] dark:text-white">
+              Vende en vivo, <span class="text-[#1D4ED8] dark:text-[#38BDF8]">factura al instante</span> y controla tu negocio.
+            </h1>
+
+            <!-- Subtítulo directo destacando que el cliente agrega productos mientras ve el live -->
+            <p class="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl mx-auto lg:mx-0">
+              Tus clientes <strong>agregan sus productos directamente mientras ven el live</strong>. Tú generas facturas al instante, controlas abonos, saldos e inventario automático sin perder el hilo de tu transmisión.
+            </p>
+
+            <!-- Botones de Conversión -->
+            <div class="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3.5 pt-2">
+              <a
+                href="https://wa.me/573052889858?text=Hola%20Tu%20Live%20Shop%2C%20quiero%20activar%20mi%20tienda%20para%20vender%20en%20vivo%20y%20facturar%20al%20instante"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-4 rounded-2xl font-display text-sm sm:text-base font-bold bg-[#10B981] hover:bg-emerald-600 text-white shadow-glow-emerald hover:-translate-y-0.5 transition-all"
+              >
+                <svg class="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.1.824z"/>
+                </svg>
+                <span>Quiero Tu Live Shop - Hablar por WhatsApp</span>
+              </a>
+
+              <a
+                href="#simulador-live"
+                onclick="highlightDemoPanel()"
+                class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-display text-sm sm:text-base font-bold border border-blue-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[#1D4ED8] dark:text-[#38BDF8] hover:border-[#1D4ED8] transition-all"
+              >
+                <span>Ver compra en vivo</span>
+              </a>
+            </div>
+
+            <!-- Métricas clave en Montserrat -->
+            <div class="grid grid-cols-3 gap-3 pt-4 max-w-lg mx-auto lg:mx-0">
+              <div class="p-3.5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 shadow-sm">
+                <p class="font-display font-extrabold text-base sm:text-xl text-[#1D4ED8] dark:text-[#38BDF8]">$21.000</p>
+                <p class="text-xs font-medium text-slate-600 dark:text-slate-400">COP al mes</p>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 shadow-sm">
+                <p class="font-display font-extrabold text-base sm:text-xl text-[#0F172A] dark:text-white">100%</p>
+                <p class="text-xs font-medium text-slate-600 dark:text-slate-400">Tu marca</p>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 shadow-sm">
+                <p class="font-display font-extrabold text-base sm:text-xl text-[#10B981]">24/7</p>
+                <p class="text-xs font-medium text-slate-600 dark:text-slate-400">Tienda en línea</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Columna Derecha: Simulador Interactivo donde el cliente agrega productos mientras ve el live -->
+          <div id="simulador-live" class="lg:col-span-6">
+            <div id="demoPanelCard" class="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/95 p-5 sm:p-6 shadow-xl shadow-slate-900/5 dark:shadow-black/50 transition-all">
+
+              <!-- Encabezado del simulador: Vista del Cliente en Vivo + Factura Instantánea -->
+              <div class="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-slate-200 dark:border-slate-800">
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-display text-xs font-bold bg-blue-50 dark:bg-blue-950 text-[#1D4ED8] dark:text-[#38BDF8] border border-blue-200 dark:border-blue-800">
+                    Tienda en Vivo • Vista Cliente
+                  </span>
+                </div>
+                <div class="text-xs font-bold text-[#0F172A] dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg">
+                  Pedido de <span class="text-[#1D4ED8] dark:text-[#38BDF8]">Camila Restrepo</span>
+                </div>
+              </div>
+
+              <!-- Catálogo rápido que el cliente ve en su celular mientras mira el live -->
+              <div class="mt-4 space-y-3">
+                <div class="flex items-center justify-between">
+                  <p class="font-display text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    1. El cliente agrega productos mientras ve el live
+                  </p>
+                  <span class="text-[11px] font-semibold text-[#10B981]">Stock actualizado al instante</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <!-- Producto 1 disponible para agregar -->
+                  <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/75 border border-slate-200/90 dark:border-slate-700/80 flex items-center justify-between gap-2.5">
+                    <div class="min-w-0">
+                      <p class="font-display font-bold text-xs sm:text-sm text-[#0F172A] dark:text-white truncate">Blusa Satinada Azul Rey</p>
+                      <p class="text-xs text-slate-500 dark:text-slate-400">$85.000 • Quedan <strong id="stockProd1" class="text-[#1D4ED8] dark:text-[#38BDF8]">4</strong></p>
+                    </div>
+                    <button
+                      type="button"
+                      onclick="clientAddProductToLiveOrder('Blusa Satinada Azul Rey', 85000, 'stockProd1')"
+                      class="shrink-0 px-3 py-2 rounded-xl font-display text-xs font-bold bg-[#1D4ED8] hover:bg-[#1E40AF] text-white transition-colors"
+                    >
+                      + Agregar
+                    </button>
+                  </div>
+
+                  <!-- Producto 2 disponible para agregar -->
+                  <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/75 border border-slate-200/90 dark:border-slate-700/80 flex items-center justify-between gap-2.5">
+                    <div class="min-w-0">
+                      <p class="font-display font-bold text-xs sm:text-sm text-[#0F172A] dark:text-white truncate">Set Ejecutivo 2 Piezas</p>
+                      <p class="text-xs text-slate-500 dark:text-slate-400">$120.000 • Quedan <strong id="stockProd2" class="text-[#1D4ED8] dark:text-[#38BDF8]">3</strong></p>
+                    </div>
+                    <button
+                      type="button"
+                      onclick="clientAddProductToLiveOrder('Set Ejecutivo 2 Piezas', 120000, 'stockProd2')"
+                      class="shrink-0 px-3 py-2 rounded-xl font-display text-xs font-bold bg-[#1D4ED8] hover:bg-[#1E40AF] text-white transition-colors"
+                    >
+                      + Agregar
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 2. Factura actualizada al instante -->
+                <div class="mt-4 rounded-2xl border border-blue-200 dark:border-blue-900/80 bg-gradient-to-br from-blue-50/80 to-white dark:from-slate-800 dark:to-slate-900 p-4 shadow-sm">
+                  <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-blue-200/70 dark:border-slate-700">
+                    <div class="flex items-center gap-2.5">
+                      <div class="w-8 h-8 rounded-lg bg-[#1D4ED8] text-white flex items-center justify-center font-display font-extrabold text-xs">
+                        FAC
+                      </div>
+                      <div>
+                        <p class="font-display font-bold text-xs text-[#0F172A] dark:text-white">Factura Instantánea • <span class="text-[#1D4ED8] dark:text-[#38BDF8]">#1042</span></p>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">Actualizada en tiempo real • Lista para enviar</p>
+                      </div>
+                    </div>
+
+                    <div class="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onclick="toggleDemoPaymentState('Abonado')"
+                        id="btnStateAbonado"
+                        class="px-2.5 py-1 rounded-lg font-display text-[11px] font-bold bg-sky-500/15 text-[#0284C7] dark:text-[#38BDF8] border border-sky-400/40"
+                      >
+                        Abonado
+                      </button>
+                      <button
+                        type="button"
+                        onclick="toggleDemoPaymentState('Pagado')"
+                        id="btnStatePagado"
+                        class="px-2.5 py-1 rounded-lg font-display text-[11px] font-bold bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                      >
+                        Pagado
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Detalle dinámico de prendas agregadas por el cliente -->
+                  <div class="pt-3 space-y-2 text-xs">
+                    <div class="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                      <span>Productos en el pedido (<span id="demoItemsCount">1</span>):</span>
+                      <button type="button" onclick="resetDemoInvoice()" class="text-[11px] font-bold text-[#1D4ED8] dark:text-[#38BDF8] hover:underline">
+                        Reiniciar demo
+                      </button>
+                    </div>
+
+                    <ul id="demoInvoiceItemsList" class="space-y-1.5 max-h-24 overflow-y-auto pr-1">
+                      <li class="flex justify-between items-center py-1 px-2.5 rounded-lg bg-white/80 dark:bg-slate-950/50 text-slate-700 dark:text-slate-200">
+                        <span class="font-semibold">1x Blusa Satinada Azul Rey</span>
+                        <span class="font-display font-bold">$85.000</span>
+                      </li>
+                    </ul>
+
+                    <!-- Totales y saldos -->
+                    <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200/80 dark:border-slate-700/80">
+                      <div class="p-2 rounded-xl bg-white dark:bg-slate-950/60">
+                        <span class="block text-[11px] text-slate-500 dark:text-slate-400">Total Factura</span>
+                        <strong id="invTotal" class="font-display text-sm text-[#0F172A] dark:text-white">$85.000</strong>
+                      </div>
+                      <div class="p-2 rounded-xl bg-white dark:bg-slate-950/60">
+                        <span class="block text-[11px] text-slate-500 dark:text-slate-400">Abonado</span>
+                        <strong id="invPaid" class="font-display text-sm text-[#10B981]">$40.000</strong>
+                      </div>
+                      <div class="p-2 rounded-xl bg-white dark:bg-slate-950/60">
+                        <span class="block text-[11px] text-slate-500 dark:text-slate-400">Saldo Pendiente</span>
+                        <strong id="invBalance" class="font-display text-sm text-[#1D4ED8] dark:text-[#38BDF8]">$45.000</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         2. SECCIÓN DESTACADA: EL CLIENTE AGREGA PRODUCTOS MIENTRAS VE EL LIVE
+         =================================================================== -->
+    <section id="compra-en-vivo" class="py-16 sm:py-24 bg-white dark:bg-slate-900/50 border-y border-slate-200/80 dark:border-slate-800" aria-labelledby="heading-compra-vivo">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+          <div class="lg:col-span-6 space-y-5">
+            <span class="font-display text-xs font-extrabold uppercase tracking-widest text-[#1D4ED8] dark:text-[#38BDF8]">
+              Autoservicio en tiempo real
+            </span>
+            <h2 id="heading-compra-vivo" class="font-display font-extrabold text-2xl sm:text-4xl text-[#0F172A] dark:text-white leading-tight">
+              Tus clientes agregan sus productos mientras ven el live.
+            </h2>
+            <p class="text-slate-600 dark:text-slate-300 text-base sm:text-lg leading-relaxed">
+              Olvídate de detener tu transmisión en TikTok, Instagram o Facebook para anotar nombres y tallas en un cuaderno. Comparte el enlace de tu tienda en vivo y deja que tus compradores elijan y sumen sus prendas directo a su pedido.
+            </p>
+
+            <div class="space-y-3.5 pt-2">
+              <div class="flex items-start gap-3.5">
+                <div class="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950 text-[#1D4ED8] dark:text-[#38BDF8] flex items-center justify-center shrink-0 font-display font-extrabold text-sm">
+                  01
+                </div>
+                <div>
+                  <h3 class="font-display font-bold text-base text-[#0F172A] dark:text-white">Sin perder el hilo ni saturar el chat</h3>
+                  <p class="text-sm text-slate-600 dark:text-slate-300">Mientras muestras cada producto en vivo, tus clientes entran con su WhatsApp y PIN y lo agregan a su pedido en segundos.</p>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-3.5">
+                <div class="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950 text-[#1D4ED8] dark:text-[#38BDF8] flex items-center justify-center shrink-0 font-display font-extrabold text-sm">
+                  02
+                </div>
+                <div>
+                  <h3 class="font-display font-bold text-base text-[#0F172A] dark:text-white">Descuento de stock automático y sin sobreventas</h3>
+                  <p class="text-sm text-slate-600 dark:text-slate-300">Cada producto que el cliente suma se descuenta al instante de tu inventario, evitando que dos personas compren la última unidad.</p>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-3.5">
+                <div class="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950 text-[#1D4ED8] dark:text-[#38BDF8] flex items-center justify-center shrink-0 font-display font-extrabold text-sm">
+                  03
+                </div>
+                <div>
+                  <h3 class="font-display font-bold text-base text-[#0F172A] dark:text-white">Factura lista al terminar la transmisión</h3>
+                  <p class="text-sm text-slate-600 dark:text-slate-300">Todos los artículos agregados por cada comprador quedan consolidados en una sola factura con abonos y saldo claro.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tarjetas visuales de experiencia del comprador vs vendedor -->
+          <div class="lg:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div class="rounded-3xl p-6 bg-[#F8FAFC] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
+              <div class="w-11 h-11 rounded-2xl bg-[#1D4ED8] text-white flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 class="font-display font-bold text-lg text-[#0F172A] dark:text-white">Para tu cliente</h3>
+              <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                Ve el catálogo activo del live desde su celular, agrega productos con un toque, revisa su total acumulado y consulta sus abonos 24/7.
+              </p>
+            </div>
+
+            <div class="rounded-3xl p-6 bg-gradient-to-br from-[#0F172A] to-[#1E3A8A] text-white space-y-3 shadow-lg">
+              <div class="w-11 h-11 rounded-2xl bg-white/15 text-sky-300 flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 class="font-display font-bold text-lg text-white">Para ti como tienda</h3>
+              <p class="text-sm text-blue-100 leading-relaxed">
+                Vendes más rápido, mantienes tu energía en la transmisión y recibes los pedidos ya armados, facturados y listos para cobrar o despachar.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         3. COMPARATIVA "EL PROBLEMA REAL"
+         =================================================================== -->
+    <section class="py-16 sm:py-24" aria-labelledby="heading-problema">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center max-w-3xl mx-auto space-y-3 mb-12 sm:mb-16">
+          <span class="font-display text-xs font-extrabold uppercase tracking-widest text-[#1D4ED8] dark:text-[#38BDF8]">El problema real</span>
+          <h2 id="heading-problema" class="font-display font-extrabold text-2xl sm:text-4xl text-[#0F172A] dark:text-white">
+            Vendes bien en el live, pero pierdes plata por el desorden.
+          </h2>
+          <p class="text-slate-600 dark:text-slate-300 text-base sm:text-lg">
+            Transforma la forma en que separas pedidos, cobras saldos y entregas facturas a tus clientes.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+          <!-- Cómo vendes hoy -->
+          <article class="rounded-3xl p-7 sm:p-8 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 space-y-5">
+            <div class="flex items-center gap-3.5">
+              <span class="flex items-center justify-center w-11 h-11 rounded-2xl bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-display text-lg font-extrabold" aria-hidden="true">✕</span>
+              <div>
+                <h3 class="font-display font-bold text-xl text-[#0F172A] dark:text-white">Cómo vendes hoy</h3>
+                <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Proceso manual y propenso a errores</p>
+              </div>
+            </div>
+
+            <p class="text-slate-600 dark:text-slate-300 leading-relaxed">
+              Anotas pedidos a mano mientras transmites. No sabes cuántas unidades quedan disponibles, los abonos viven en tu memoria o en capturas sueltas y al final del mes no sabes cuánto ganaste de verdad.
+            </p>
+
+            <ul class="space-y-3 text-sm text-slate-600 dark:text-slate-300">
+              <li class="flex items-start gap-2.5">
+                <span class="font-bold text-slate-400 mt-0.5">•</span>
+                <span>Vendes productos agotados por no descontar el inventario al instante.</span>
+              </li>
+              <li class="flex items-start gap-2.5">
+                <span class="font-bold text-slate-400 mt-0.5">•</span>
+                <span>Malentendidos con clientes por falta de comprobantes claros de abonos y saldos.</span>
+              </li>
+              <li class="flex items-start gap-2.5">
+                <span class="font-bold text-slate-400 mt-0.5">•</span>
+                <span>Horas extra pasando pedidos del chat a cuadernos después de terminar el live.</span>
+              </li>
+            </ul>
+          </article>
+
+          <!-- Con Tu Live Shop -->
+          <article class="rounded-3xl p-7 sm:p-8 border-2 border-[#1D4ED8]/40 dark:border-[#38BDF8]/40 bg-gradient-to-br from-blue-50/80 via-white to-white dark:from-blue-950/30 dark:via-slate-900 dark:to-slate-900 shadow-lg shadow-blue-900/5 space-y-5">
+            <div class="flex items-center gap-3.5">
+              <span class="flex items-center justify-center w-11 h-11 rounded-2xl bg-[#1D4ED8] text-white font-display text-lg font-extrabold shadow-md shadow-blue-600/25" aria-hidden="true">✓</span>
+              <div>
+                <h3 class="font-display font-bold text-xl text-[#0F172A] dark:text-white">Con Tu Live Shop</h3>
+                <p class="text-xs font-semibold text-[#1D4ED8] dark:text-[#38BDF8]">Compra en vivo y facturación automática</p>
+              </div>
+            </div>
+
+            <p class="text-slate-700 dark:text-slate-200 leading-relaxed">
+              Tus clientes agregan productos mientras ven el live o tú los capturas en segundos. El inventario baja solo con cada venta, cada abono queda registrado con saldo exacto y generas la <strong>factura</strong> en un solo clic.
+            </p>
+
+            <ul class="space-y-3 text-sm text-slate-700 dark:text-slate-200">
+              <li class="flex items-start gap-2.5">
+                <span class="font-bold text-[#10B981] mt-0.5">✓</span>
+                <span><strong>Autoservicio en vivo:</strong> tus clientes suman prendas directo a su pedido durante el live.</span>
+              </li>
+              <li class="flex items-start gap-2.5">
+                <span class="font-bold text-[#10B981] mt-0.5">✓</span>
+                <span><strong>Facturas claras e instantáneas</strong> con el detalle de prendas, abonos y saldos.</span>
+              </li>
+              <li class="flex items-start gap-2.5">
+                <span class="font-bold text-[#10B981] mt-0.5">✓</span>
+                <span><strong>Inventario y ganancias reales</strong> al cerrar cada transmisión en vivo.</span>
+              </li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         4. CÓMO FUNCIONA EN 3 PASOS
+         =================================================================== -->
+    <section id="como-funciona" class="py-16 sm:py-24 bg-white dark:bg-slate-900/50 border-y border-slate-200/80 dark:border-slate-800" aria-labelledby="heading-pasos">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center max-w-3xl mx-auto space-y-3 mb-14">
+          <span class="font-display text-xs font-extrabold uppercase tracking-widest text-[#1D4ED8] dark:text-[#38BDF8]">Simple, rápido y ordenado</span>
+          <h2 id="heading-pasos" class="font-display font-extrabold text-2xl sm:text-4xl text-[#0F172A] dark:text-white">
+            Cómo funciona en 3 pasos
+          </h2>
+          <p class="text-slate-600 dark:text-slate-300 text-base sm:text-lg">
+            Diseñado para que cualquier emprendedor o tienda pueda vender en vivo, facturar y controlar sus clientes desde el primer día.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+          <!-- Paso 1 -->
+          <div class="rounded-3xl p-7 bg-[#F8FAFC] dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4">
+            <div class="w-11 h-11 rounded-2xl bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-[#1D4ED8] dark:text-[#38BDF8] font-display font-extrabold text-lg flex items-center justify-center">
+              1
+            </div>
+            <h3 class="font-display font-bold text-xl text-[#0F172A] dark:text-white">
+              Carga tu catálogo o importa desde Excel
+            </h3>
+            <p class="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+              Sube tus productos, tallas, precios y existencias o importa tu archivo de Excel en segundos. También puedes asignar códigos de barras para agilizar tus ventas.
+            </p>
+          </div>
+
+          <!-- Paso 2 -->
+          <div class="rounded-3xl p-7 bg-[#F8FAFC] dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4">
+            <div class="w-11 h-11 rounded-2xl bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-[#1D4ED8] dark:text-[#38BDF8] font-display font-extrabold text-lg flex items-center justify-center">
+              2
+            </div>
+            <h3 class="font-display font-bold text-xl text-[#0F172A] dark:text-white">
+              Tus clientes agregan productos en el live
+            </h3>
+            <p class="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+              Mientras transmites en TikTok, Instagram o Facebook, tus clientes entran a tu enlace y suman sus productos al pedido (o tú los registras al instante) descontando el stock solo.
+            </p>
+          </div>
+
+          <!-- Paso 3 -->
+          <div class="rounded-3xl p-7 bg-[#F8FAFC] dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4">
+            <div class="w-11 h-11 rounded-2xl bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-[#1D4ED8] dark:text-[#38BDF8] font-display font-extrabold text-lg flex items-center justify-center">
+              3
+            </div>
+            <h3 class="font-display font-bold text-xl text-[#0F172A] dark:text-white">
+              Envía facturas y gestiona despachos
+            </h3>
+            <p class="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+              Genera la factura con abonos y saldos en un clic, compártela por WhatsApp con tu cliente y controla el empaque y envío de los pedidos listos para despachar.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         5. CUADRÍCULA "LO QUE INCLUYE" (6 TARJETAS CON ICONOS VECTORIALES EN AZUL)
+         =================================================================== -->
+    <section id="funcionalidades" class="py-16 sm:py-24" aria-labelledby="heading-incluye">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center max-w-3xl mx-auto space-y-3 mb-14">
+          <span class="font-display text-xs font-extrabold uppercase tracking-widest text-[#1D4ED8] dark:text-[#38BDF8]">Lo que incluye</span>
+          <h2 id="heading-incluye" class="font-display font-extrabold text-2xl sm:text-4xl text-[#0F172A] dark:text-white">
+            Todo lo que necesita una tienda que vende en vivo.
+          </h2>
+          <p class="text-slate-600 dark:text-slate-300 text-base sm:text-lg">
+            Herramientas completas para que tus clientes compren durante el live y tú mantengas bajo control cada factura, abono y producto.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Tarjeta 1: Compra y pedidos en el live (Destacada) -->
+          <article class="rounded-3xl p-7 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/40 dark:to-slate-900 border-2 border-[#1D4ED8]/45 dark:border-[#38BDF8]/45 shadow-md space-y-3.5">
+            <div class="flex items-center justify-between">
+              <div class="w-12 h-12 rounded-2xl bg-[#1D4ED8] text-white flex items-center justify-center">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <span class="px-2.5 py-1 rounded-full font-display text-[11px] font-bold bg-[#1D4ED8] text-white">Clave en vivo</span>
+            </div>
+            <h3 class="font-display font-bold text-xl text-[#0F172A] dark:text-white">Pedidos y compra en el live</h3>
+            <p class="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
+              Tus clientes agregan sus productos mientras ven el live o tú los registras en segundos. Estado claro en todo momento: <strong>pendiente, abonado o pagado</strong>.
+            </p>
+          </article>
+
+          <!-- Tarjeta 2: Facturas al instante -->
+          <article class="rounded-3xl p-7 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-[#1D4ED8]/50 dark:hover:border-[#38BDF8]/50 transition-colors space-y-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/80 text-[#1D4ED8] dark:text-[#38BDF8] flex items-center justify-center">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <h3 class="font-display font-bold text-xl text-[#0F172A] dark:text-white">Facturas en un clic</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              Genera el comprobante de cada cliente con el desglose de productos, abonos y saldo pendiente, y envíalo en un clic por WhatsApp.
+            </p>
+          </article>
+
+          <!-- Tarjeta 3: Abonos y saldos -->
+          <article class="rounded-3xl p-7 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-[#1D4ED8]/50 dark:hover:border-[#38BDF8]/50 transition-colors space-y-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/80 text-[#1D4ED8] dark:text-[#38BDF8] flex items-center justify-center">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 class="font-display font-bold text-xl text-[#0F172A] dark:text-white">Abonos y saldos</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              Cuánto pagó, cuánto debe y desde cuándo. Historial detallado por cliente para evitar confusiones y cobrar a tiempo.
+            </p>
+          </article>
+
+          <!-- Tarjeta 4: Inventario con código de barras -->
+          <article class="rounded-3xl p-7 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-[#1D4ED8]/50 dark:hover:border-[#38BDF8]/50 transition-colors space-y-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/80 text-[#1D4ED8] dark:text-[#38BDF8] flex items-center justify-center">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+              </svg>
+            </div>
+            <h3 class="font-display font-bold text-xl text-[#0F172A] dark:text-white">Inventario con código de barras</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              Escanea, cuenta y deja de vender lo que ya no tienes. El stock se actualiza en tiempo real cada vez que un cliente suma o separa un producto.
+            </p>
+          </article>
+
+          <!-- Tarjeta 5: Logística y envíos -->
+          <article class="rounded-3xl p-7 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-[#1D4ED8]/50 dark:hover:border-[#38BDF8]/50 transition-colors space-y-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/80 text-[#1D4ED8] dark:text-[#38BDF8] flex items-center justify-center">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+            </div>
+            <h3 class="font-display font-bold text-xl text-[#0F172A] dark:text-white">Logística y envíos</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              Qué se empaca, qué se despacha y qué falta por cobrar. Organiza tus entregas locales y nacionales sin despachar paquetes impagos por error.
+            </p>
+          </article>
+
+          <!-- Tarjeta 6: Kits y combos -->
+          <article class="rounded-3xl p-7 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-[#1D4ED8]/50 dark:hover:border-[#38BDF8]/50 transition-colors space-y-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/80 text-[#1D4ED8] dark:text-[#38BDF8] flex items-center justify-center">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+            <h3 class="font-display font-bold text-xl text-[#0F172A] dark:text-white">Kits y combos</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              Arma paquetes de varios productos y vende el combo como una sola unidad descontando automáticamente cada referencia del inventario.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         6. COBERTURA LATINOAMÉRICA
+         =================================================================== -->
+    <section class="py-12 sm:py-16" aria-labelledby="heading-latam">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="rounded-3xl bg-gradient-to-r from-[#0F172A] via-[#1E3A8A] to-[#1D4ED8] text-white p-8 sm:p-12 shadow-xl">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            <div class="lg:col-span-8 space-y-4">
+              <span class="inline-block px-3.5 py-1 rounded-full font-display text-xs font-bold bg-white/15 text-sky-200">
+                Cobertura en Colombia y toda Latinoamérica
+              </span>
+              <h2 id="heading-latam" class="font-display font-extrabold text-2xl sm:text-3xl lg:text-4xl leading-tight">
+                Pensado para tiendas en vivo de todo el mercado hispanohablante
+              </h2>
+              <p class="text-blue-100 text-base sm:text-lg leading-relaxed">
+                Desde Colombia hasta México, Perú, Chile, Ecuador y Argentina: <strong>Tu Live Shop</strong> ayuda a tiendas de ropa, maquillaje, calzado, accesorios y mayoristas a profesionalizar sus ventas en TikTok, Instagram y Facebook con compras en vivo y portal de clientes 24/7.
+              </p>
+            </div>
+
+            <div class="lg:col-span-4 flex flex-col sm:flex-row lg:flex-col gap-3">
+              <div class="p-4 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-sm">
+                <p class="font-display font-bold text-sm text-white">Portal de compra y consulta para clientes</p>
+                <p class="text-xs text-blue-100 mt-1">Tus compradores ingresan con WhatsApp y PIN para agregar productos en vivo, revisar abonos y descargar facturas.</p>
+              </div>
+              <div class="p-4 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-sm">
+                <p class="font-display font-bold text-sm text-white">Sin comisiones por venta</p>
+                <p class="text-xs text-blue-100 mt-1">Todo lo que facturas en tus transmisiones es 100% tuyo.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         7. PRECIO ÚNICO ($21.000 COP / MES)
+         =================================================================== -->
+    <section id="precio" class="py-16 sm:py-24 bg-white dark:bg-slate-900/50 border-y border-slate-200/80 dark:border-slate-800" aria-labelledby="heading-precio">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center space-y-3 mb-12">
+          <span class="font-display text-xs font-extrabold uppercase tracking-widest text-[#1D4ED8] dark:text-[#38BDF8]">Tarifa transparente</span>
+          <h2 id="heading-precio" class="font-display font-extrabold text-3xl sm:text-4xl text-[#0F172A] dark:text-white">
+            Un solo plan. Un solo precio.
+          </h2>
+          <p class="text-slate-600 dark:text-slate-300 text-base sm:text-lg">
+            Todas las herramientas para que tus clientes compren durante el live y tú controles facturas, abonos e inventario en una sola suscripción mensual.
+          </p>
+        </div>
+
+        <div class="rounded-3xl p-8 sm:p-10 bg-[#F8FAFC] dark:bg-slate-900 border-2 border-[#1D4ED8] dark:border-[#38BDF8] shadow-glow-blue">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-8 border-b border-slate-200 dark:border-slate-800">
+            <div>
+              <span class="inline-block px-3 py-1 rounded-full font-display text-xs font-extrabold uppercase tracking-wider bg-[#1D4ED8] text-white mb-3">
+                LANZAMIENTO
+              </span>
+              <h3 class="font-display font-extrabold text-2xl sm:text-3xl text-[#0F172A] dark:text-white">
+                Plan Completo Tu Live Shop
+              </h3>
+              <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Disponible en Colombia y países hispanohablantes
+              </p>
+            </div>
+
+            <div class="sm:text-right">
+              <div class="flex items-baseline sm:justify-end gap-1.5">
+                <span class="font-display font-extrabold text-4xl sm:text-5xl text-[#0F172A] dark:text-white">$21.000</span>
+                <span class="font-display text-sm font-bold text-slate-500 dark:text-slate-400">COP / mes</span>
+              </div>
+              <p class="text-xs font-semibold text-[#10B981] mt-1">Sin cláusulas de permanencia</p>
+            </div>
+          </div>
+
+          <ul class="grid grid-cols-1 sm:grid-cols-2 gap-4 py-8 text-sm sm:text-base text-slate-700 dark:text-slate-200">
+            <li class="flex items-center gap-3">
+              <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-950 text-[#1D4ED8] dark:text-[#38BDF8] flex items-center justify-center font-bold">✓</span>
+              <span>Pedidos, inventario, abonos y facturas</span>
+            </li>
+            <li class="flex items-center gap-3">
+              <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-950 text-[#1D4ED8] dark:text-[#38BDF8] flex items-center justify-center font-bold">✓</span>
+              <span>Tus clientes agregan productos en vivo</span>
+            </li>
+            <li class="flex items-center gap-3">
+              <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-950 text-[#1D4ED8] dark:text-[#38BDF8] flex items-center justify-center font-bold">✓</span>
+              <span>Logística, kits y panel de ganancias</span>
+            </li>
+            <li class="flex items-center gap-3">
+              <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-950 text-[#1D4ED8] dark:text-[#38BDF8] flex items-center justify-center font-bold">✓</span>
+              <span>Importación de Excel</span>
+            </li>
+            <li class="flex items-center gap-3">
+              <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-950 text-[#1D4ED8] dark:text-[#38BDF8] flex items-center justify-center font-bold">✓</span>
+              <span>Tienda en línea 24/7 con tu marca</span>
+            </li>
+            <li class="flex items-center gap-3">
+              <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-950 text-[#1D4ED8] dark:text-[#38BDF8] flex items-center justify-center font-bold">✓</span>
+              <span>Tema claro y oscuro • Cancelas cuando quieras</span>
+            </li>
+          </ul>
+
+          <div>
+            <a
+              href="https://wa.me/573052889858?text=Hola%20Tu%20Live%20Shop%2C%20quiero%20suscribirme%20al%20plan%20de%20lanzamiento%20de%20%2421.000%20COP%2Fmes"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="w-full flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl font-display text-base sm:text-lg font-bold bg-[#10B981] hover:bg-emerald-600 text-white shadow-glow-emerald transition-all"
+            >
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.1.824z"/>
+              </svg>
+              <span>Suscribirme por WhatsApp</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         8. PREGUNTAS FRECUENTES (ACORDEÓN INTERACTIVO)
+         =================================================================== -->
+    <section id="faq" class="py-16 sm:py-24" aria-labelledby="heading-faq">
+      <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center space-y-3 mb-12">
+          <span class="font-display text-xs font-extrabold uppercase tracking-widest text-[#1D4ED8] dark:text-[#38BDF8]">Resolvemos tus dudas</span>
+          <h2 id="heading-faq" class="font-display font-extrabold text-2xl sm:text-4xl text-[#0F172A] dark:text-white">
+            Preguntas frecuentes
+          </h2>
+        </div>
+
+        <div class="space-y-3.5" id="faqContainer">
+          <!-- FAQ 1 (Sobre clientes agregando productos en vivo) -->
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+            <button
+              type="button"
+              onclick="toggleFaq(this)"
+              aria-expanded="true"
+              class="w-full flex items-center justify-between gap-4 p-5 text-left font-display font-bold text-base sm:text-lg text-[#0F172A] dark:text-white"
+            >
+              <span>¿Cómo agregan productos mis clientes mientras ven el live?</span>
+              <span class="faq-icon text-[#1D4ED8] dark:text-[#38BDF8] text-xl font-bold transition-transform rotate-45">+</span>
+            </button>
+            <div class="faq-content px-5 pb-5 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+              Compartes el enlace de tu tienda en vivo en TikTok, Instagram o Facebook. Tus clientes ingresan con su WhatsApp y PIN, seleccionan las prendas o artículos que muestras en la transmisión y los suman directamente a su pedido mientras el inventario se actualiza solo.
+            </div>
+          </div>
+
+          <!-- FAQ 2 -->
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+            <button
+              type="button"
+              onclick="toggleFaq(this)"
+              aria-expanded="false"
+              class="w-full flex items-center justify-between gap-4 p-5 text-left font-display font-bold text-base sm:text-lg text-[#0F172A] dark:text-white"
+            >
+              <span>¿Cómo pago y cómo se activa?</span>
+              <span class="faq-icon text-[#1D4ED8] dark:text-[#38BDF8] text-xl font-bold transition-transform">+</span>
+            </button>
+            <div class="faq-content hidden px-5 pb-5 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+              Haces clic en el botón de WhatsApp, coordinamos el pago y activamos tu acceso de inmediato.
+            </div>
+          </div>
+
+          <!-- FAQ 3 -->
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+            <button
+              type="button"
+              onclick="toggleFaq(this)"
+              aria-expanded="false"
+              class="w-full flex items-center justify-between gap-4 p-5 text-left font-display font-bold text-base sm:text-lg text-[#0F172A] dark:text-white"
+            >
+              <span>¿Funciona con TikTok, Instagram y Facebook?</span>
+              <span class="faq-icon text-[#1D4ED8] dark:text-[#38BDF8] text-xl font-bold transition-transform">+</span>
+            </button>
+            <div class="faq-content hidden px-5 pb-5 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+              Sí. Tus clientes pueden agregar productos directamente desde el enlace de tu tienda o tú registras los pedidos del live en la aplicación mientras transmites en TikTok, Instagram o Facebook.
+            </div>
+          </div>
+
+          <!-- FAQ 4 -->
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+            <button
+              type="button"
+              onclick="toggleFaq(this)"
+              aria-expanded="false"
+              class="w-full flex items-center justify-between gap-4 p-5 text-left font-display font-bold text-base sm:text-lg text-[#0F172A] dark:text-white"
+            >
+              <span>¿Necesito instalar algo?</span>
+              <span class="faq-icon text-[#1D4ED8] dark:text-[#38BDF8] text-xl font-bold transition-transform">+</span>
+            </button>
+            <div class="faq-content hidden px-5 pb-5 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+              No. Se usa directamente desde el navegador de tu celular o computador sin instalar programas ni ocupar almacenamiento.
+            </div>
+          </div>
+
+          <!-- FAQ 5 -->
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+            <button
+              type="button"
+              onclick="toggleFaq(this)"
+              aria-expanded="false"
+              class="w-full flex items-center justify-between gap-4 p-5 text-left font-display font-bold text-base sm:text-lg text-[#0F172A] dark:text-white"
+            >
+              <span>¿Puedo traer mi inventario de Excel?</span>
+              <span class="faq-icon text-[#1D4ED8] dark:text-[#38BDF8] text-xl font-bold transition-transform">+</span>
+            </button>
+            <div class="faq-content hidden px-5 pb-5 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+              Sí. Puedes importar tu archivo y empezar con tus productos ya cargados en el catálogo.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =====================================================================
+       9. FOOTER COMPLETO CON ENLACES SEO, LOGIN Y WHATSAPP
+       ===================================================================== -->
+  <footer class="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#080D19] py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8 pb-8 border-b border-slate-200 dark:border-slate-800">
+        <div class="md:col-span-2 space-y-3">
+          <a href="/" class="inline-flex items-center" aria-label="Tu Live Shop - Inicio"><img src="/img/logo.png" width="720" height="322" alt="Tu Live Shop" loading="lazy" class="h-14 w-auto rounded-lg dark:bg-white dark:px-2" /></a>
+          <p class="text-sm text-slate-600 dark:text-slate-400 max-w-md leading-relaxed">
+            Software para lives de TikTok, Instagram y Facebook. Tus clientes agregan productos mientras ven el live, y tú generas facturas al instante, controlas abonos e inventario en Colombia y Latinoamérica.
+          </p>
+        </div>
+
+        <div class="space-y-2.5">
+          <h3 class="font-display font-bold text-sm uppercase tracking-wider text-[#0F172A] dark:text-white">Navegación</h3>
+          <ul class="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+            <li><a href="#compra-en-vivo" class="hover:text-[#1D4ED8] dark:hover:text-[#38BDF8] transition-colors">Compra en vivo por el cliente</a></li>
+            <li><a href="#como-funciona" class="hover:text-[#1D4ED8] dark:hover:text-[#38BDF8] transition-colors">Cómo funciona</a></li>
+            <li><a href="#funcionalidades" class="hover:text-[#1D4ED8] dark:hover:text-[#38BDF8] transition-colors">Funcionalidades</a></li>
+            <li><a href="#precio" class="hover:text-[#1D4ED8] dark:hover:text-[#38BDF8] transition-colors">Plan $21.000 COP / mes</a></li>
+            <li><a href="#faq" class="hover:text-[#1D4ED8] dark:hover:text-[#38BDF8] transition-colors">Preguntas frecuentes</a></li>
+          </ul>
+        </div>
+
+        <div class="space-y-3">
+          <h3 class="font-display font-bold text-sm uppercase tracking-wider text-[#0F172A] dark:text-white">Acceso y Contacto</h3>
+          <div class="flex flex-col gap-2.5">
+            <button
+              type="button"
+              onclick="openLoginModal('selector')"
+              class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-display text-sm font-bold bg-[#1D4ED8] hover:bg-[#1E40AF] text-white transition-colors"
+            >
+              <span>Login / Iniciar sesión</span>
+            </button>
+            <a
+              href="https://wa.me/573052889858?text=Hola%20Tu%20Live%20Shop%2C%20quiero%20m%C3%A1s%20informaci%C3%B3n"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-display text-sm font-bold bg-[#10B981] hover:bg-emerald-600 text-white transition-colors"
+            >
+              <span>Hablar por WhatsApp</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
+        <p>© 2026 Tu Live Shop (<a href="https://tuliveshop.onrender.com/" class="underline hover:text-[#1D4ED8] dark:hover:text-[#38BDF8]">tuliveshop.onrender.com</a>). Todos los derechos reservados.</p>
+        <div class="flex flex-col sm:items-end gap-1.5">
+          <nav aria-label="Legal" class="flex flex-wrap gap-x-4 gap-y-1 justify-center">
+            <a href="/legal#terminos" class="underline hover:text-[#1D4ED8] dark:hover:text-[#38BDF8]">Términos y condiciones</a>
+            <a href="/legal#privacidad" class="underline hover:text-[#1D4ED8] dark:hover:text-[#38BDF8]">Política de privacidad</a>
+            <a href="/legal#datos" class="underline hover:text-[#1D4ED8] dark:hover:text-[#38BDF8]">Tratamiento de datos personales</a>
+          </nav>
+          <p>Hecho para vendedores de lives en Colombia y Latinoamérica.</p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- =====================================================================
+       MODAL DE LOGIN COMPLETO ("¿CÓMO DESEAS INGRESAR?")
+       ===================================================================== -->
+  <div
+    id="loginModal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modalTitle"
+    class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm overflow-y-auto"
+  >
+    <div class="relative w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-7 shadow-2xl my-8">
+
+      <!-- Botón Cerrar Modal -->
+      <button
+        type="button"
+        onclick="closeLoginModal()"
+        aria-label="Cerrar ventana de acceso"
+        class="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-[#0F172A] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+      >
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <!-- Notificación interna del modal -->
+      <div id="modalFeedback" class="hidden mb-4 p-3.5 rounded-2xl text-xs sm:text-sm font-semibold"></div>
+
+      <!-- =================================================================
+           VISTA 1: SELECTOR INICIAL ("¿Cómo deseas ingresar?")
+           ================================================================= -->
+      <div id="view-selector" class="login-view space-y-5">
+        <div class="space-y-1.5 pr-8">
+          <h2 id="modalTitle" class="font-display font-extrabold text-2xl text-[#0F172A] dark:text-white">
+            ¿Cómo deseas ingresar?
+          </h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400">
+            Selecciona tu tipo de cuenta para continuar
+          </p>
+        </div>
+
+        <div class="space-y-3.5 pt-1">
+          <!-- Opción Acceso Cliente -->
+          <button
+            type="button"
+            onclick="switchLoginView('cliente-login')"
+            class="w-full text-left p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/70 hover:border-[#1D4ED8] dark:hover:border-[#38BDF8] transition-all group"
+          >
+            <div class="flex items-start gap-3.5">
+              <div class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950 text-[#1D4ED8] dark:text-[#38BDF8] flex items-center justify-center shrink-0 mt-0.5">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <div class="space-y-1">
+                <p class="font-display font-bold text-base text-[#0F172A] dark:text-white group-hover:text-[#1D4ED8] dark:group-hover:text-[#38BDF8] transition-colors">
+                  Acceso Cliente
+                </p>
+                <p class="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  Ingresa con tu WhatsApp y PIN
+                </p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 pt-1 leading-relaxed">
+                  ¿Ya eres cliente de una tienda pero nunca has ingresado? Tu PIN inicial es <strong class="text-[#1D4ED8] dark:text-[#38BDF8]">1234</strong>; al entrar crearás uno nuevo.
+                </p>
+              </div>
+            </div>
+          </button>
+
+          <!-- Opción Acceso Tienda -->
+          <button
+            type="button"
+            onclick="switchLoginView('tienda-login')"
+            class="w-full text-left p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/70 hover:border-[#1D4ED8] dark:hover:border-[#38BDF8] transition-all group"
+          >
+            <div class="flex items-start gap-3.5">
+              <div class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950 text-[#1D4ED8] dark:text-[#38BDF8] flex items-center justify-center shrink-0 mt-0.5">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              </div>
+              <div class="space-y-1">
+                <p class="font-display font-bold text-base text-[#0F172A] dark:text-white group-hover:text-[#1D4ED8] dark:group-hover:text-[#38BDF8] transition-colors">
+                  Acceso Tienda
+                </p>
+                <p class="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  Ingresa con tu correo y contraseña de administrador
+                </p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 pt-1">
+                  Administra tus pedidos en vivo, facturas, abonos e inventario.
+                </p>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- =================================================================
+           VISTA 2: ACCESO CLIENTE (WhatsApp + PIN)
+           ================================================================= -->
+      <div id="view-cliente-login" class="login-view hidden space-y-4">
+        <button type="button" onclick="switchLoginView('selector')" class="font-display text-xs font-bold text-slate-500 hover:text-[#1D4ED8] dark:hover:text-[#38BDF8]">← Cambiar tipo de cuenta</button>
+        <div>
+          <h3 class="font-display font-extrabold text-xl text-[#0F172A] dark:text-white">Acceso Cliente</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Ingresa con tu WhatsApp y PIN. Si nunca has ingresado, tu PIN inicial es <strong class="text-[#1D4ED8] dark:text-[#38BDF8]">1234</strong> y al entrar crearás uno nuevo de 6 a 8 dígitos.</p>
+        </div>
+        <form onsubmit="handleClienteLogin(event)" class="space-y-3.5">
+          <div>
+            <label for="clienteWhatsapp" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Número de WhatsApp</label>
+            <input type="tel" id="clienteWhatsapp" required placeholder="Ej: 300 123 4567" autocomplete="tel" class="w-full px-3.5 py-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[#0F172A] dark:text-white focus:outline-none focus:border-[#1D4ED8]" />
+          </div>
+          <div>
+            <label for="clientePin" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">PIN (4 si es el inicial, o de 6 a 8 dígitos)</label>
+            <input type="password" id="clientePin" required placeholder="••••••" inputmode="numeric" maxlength="8" autocomplete="current-password" class="w-full px-3.5 py-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[#0F172A] dark:text-white focus:outline-none focus:border-[#1D4ED8]" />
+          </div>
+          <button type="submit" class="w-full py-3 rounded-xl font-display text-sm font-bold bg-[#1D4ED8] hover:bg-[#1E40AF] disabled:opacity-60 text-white transition-colors">Ingresar como Cliente</button>
+        </form>
+        <div class="pt-2.5 flex flex-wrap items-center justify-between gap-2 text-xs border-t border-slate-200 dark:border-slate-800">
+          <button type="button" onclick="switchLoginView('crear-cuenta-1')" class="font-display font-bold text-[#1D4ED8] dark:text-[#38BDF8] hover:underline">Crear cuenta</button>
+          <button type="button" onclick="switchLoginView('recuperar-pin')" class="font-semibold text-slate-500 dark:text-slate-400 hover:text-[#1D4ED8] dark:hover:text-[#38BDF8]">¿Olvidaste tu PIN?</button>
+        </div>
+      </div>
+      <!-- =================================================================
+           VISTA 3: CREAR CUENTA (Paso 1/2 - Datos personales)
+           ================================================================= -->
+      <div id="view-crear-cuenta-1" class="login-view hidden space-y-4">
+        <button type="button" onclick="switchLoginView('cliente-login')" class="font-display text-xs font-bold text-slate-500 hover:text-[#1D4ED8] dark:hover:text-[#38BDF8]">← Volver a Acceso Cliente</button>
+        <div>
+          <span class="font-display text-[11px] font-extrabold uppercase tracking-wider text-[#1D4ED8] dark:text-[#38BDF8]">Registro de Cliente</span>
+          <h3 class="font-display font-extrabold text-xl text-[#0F172A] dark:text-white">Crear cuenta (Paso 1/2)</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Ingresa tus datos personales</p>
+        </div>
+        <form onsubmit="goToRegisterStep2(event)" class="space-y-3">
+          <div>
+            <label for="regName" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Nombre completo</label>
+            <input type="text" id="regName" required placeholder="Tu nombre y apellido" autocomplete="name" maxlength="100" class="w-full px-3.5 py-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[#0F172A] dark:text-white focus:outline-none focus:border-[#1D4ED8]" />
+          </div>
+          <div>
+            <label for="regWa" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">WhatsApp</label>
+            <input type="tel" id="regWa" required placeholder="Ej: 300 123 4567" autocomplete="tel" class="w-full px-3.5 py-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[#0F172A] dark:text-white focus:outline-none focus:border-[#1D4ED8]" />
+          </div>
+          <div>
+            <label for="regEmail" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Correo electrónico</label>
+            <input type="email" id="regEmail" required placeholder="tu@correo.com" autocomplete="email" class="w-full px-3.5 py-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[#0F172A] dark:text-white focus:outline-none focus:border-[#1D4ED8]" />
+          </div>
+          <div>
+            <label for="regPin" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Crea tu PIN (6 a 8 dígitos)</label>
+            <input type="password" id="regPin" required placeholder="Solo números" inputmode="numeric" pattern="[0-9]{6,8}" minlength="6" maxlength="8" autocomplete="new-password" title="De 6 a 8 dígitos, solo números" class="w-full px-3.5 py-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[#0F172A] dark:text-white focus:outline-none focus:border-[#1D4ED8]" />
+          </div>
+          <div>
+            <label for="regPin2" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Confirma tu PIN</label>
+            <input type="password" id="regPin2" required placeholder="Repite el PIN" inputmode="numeric" pattern="[0-9]{6,8}" minlength="6" maxlength="8" autocomplete="new-password" title="De 6 a 8 dígitos, solo números" class="w-full px-3.5 py-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[#0F172A] dark:text-white focus:outline-none focus:border-[#1D4ED8]" />
+          </div>
+          <button type="submit" class="w-full py-3 rounded-xl font-display text-sm font-bold bg-[#1D4ED8] hover:bg-[#1E40AF] disabled:opacity-60 text-white transition-colors">Continuar al Paso 2</button>
+        </form>
+      </div>
+      <!-- =================================================================
+           VISTA 4: SELECCIONA TUS TIENDAS (Paso 2/2)
+           ================================================================= -->
+      <div id="view-crear-cuenta-2" class="login-view hidden space-y-4">
+        <button type="button" onclick="switchLoginView('crear-cuenta-1')" class="font-display text-xs font-bold text-slate-500 hover:text-[#1D4ED8] dark:hover:text-[#38BDF8]">← Volver al Paso 1/2</button>
+        <div>
+          <span class="font-display text-[11px] font-extrabold uppercase tracking-wider text-[#1D4ED8] dark:text-[#38BDF8]">Registro de Cliente</span>
+          <h3 class="font-display font-extrabold text-xl text-[#0F172A] dark:text-white">Selecciona tus tiendas (Paso 2/2)</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Marca las tiendas a las que deseas tener acceso</p>
+        </div>
+        <form onsubmit="finishClienteRegistration(event)" class="space-y-3">
+          <div id="storeSelectionList" class="space-y-2.5 max-h-64 overflow-y-auto"></div>
+          <button type="submit" class="w-full py-3 rounded-xl font-display text-sm font-bold bg-[#10B981] hover:bg-emerald-600 disabled:opacity-60 text-white transition-colors">Finalizar y entrar</button>
+        </form>
+      </div>
+      <!-- =================================================================
+           VISTA 5: SELECTOR MULTI-TIENDA ("¿A qué tienda quieres entrar?")
+           ================================================================= -->
+      <div id="view-multi-tienda" class="login-view hidden space-y-4">
+        <div>
+          <h3 class="font-display font-extrabold text-xl text-[#0F172A] dark:text-white">¿A qué tienda quieres entrar?</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Tu cuenta está en varias tiendas. Podrás cambiar de tienda dentro de tu cuenta.</p>
+        </div>
+        <div id="storePickList" class="space-y-2.5"></div>
+      </div>
+      <!-- =================================================================
+           VISTA 6: RECUPERAR PIN (Cliente)
+           ================================================================= -->
+      <div id="view-recuperar-pin" class="login-view hidden space-y-4">
+        <button type="button" onclick="switchLoginView('cliente-login')" class="font-display text-xs font-bold text-slate-500 hover:text-[#1D4ED8] dark:hover:text-[#38BDF8]">← Volver a Acceso Cliente</button>
+        <div>
+          <h3 class="font-display font-extrabold text-xl text-[#0F172A] dark:text-white">Recuperar PIN</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Escribe tu WhatsApp y el correo con el que te registraste. Te enviaremos un PIN temporal.</p>
+        </div>
+        <form onsubmit="handleRecoverPin(event)" class="space-y-3.5">
+          <div>
+            <label for="recWa" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Número de WhatsApp</label>
+            <input type="tel" id="recWa" required placeholder="Ej: 300 123 4567" autocomplete="tel" class="w-full px-3.5 py-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[#0F172A] dark:text-white focus:outline-none focus:border-[#1D4ED8]" />
+          </div>
+          <div>
+            <label for="recEmail" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Correo electrónico registrado</label>
+            <input type="email" id="recEmail" required placeholder="cliente@correo.com" autocomplete="email" class="w-full px-3.5 py-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[#0F172A] dark:text-white focus:outline-none focus:border-[#1D4ED8]" />
+          </div>
+          <button type="submit" class="w-full py-3 rounded-xl font-display text-sm font-bold bg-[#1D4ED8] hover:bg-[#1E40AF] disabled:opacity-60 text-white transition-colors">Enviar PIN temporal</button>
+        </form>
+      </div>
+      <!-- =================================================================
+           VISTA 7: ACCESO TIENDA (Correo + Contraseña de Administrador)
+           ================================================================= -->
+      <div id="view-tienda-login" class="login-view hidden space-y-4">
+        <button type="button" onclick="switchLoginView('selector')" class="font-display text-xs font-bold text-slate-500 hover:text-[#1D4ED8] dark:hover:text-[#38BDF8]">
+          ← Cambiar tipo de cuenta
+        </button>
+
+        <div>
+          <h3 class="font-display font-extrabold text-xl text-[#0F172A] dark:text-white">Acceso Tienda</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Ingresa con tu correo y contraseña de administrador
+          </p>
+        </div>
+
+        <form onsubmit="handleTiendaLogin(event)" class="space-y-3.5">
+          <div>
+            <label for="tiendaEmail" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Correo de administrador</label>
+            <input
+              type="email"
+              id="tiendaEmail"
+              required
+              placeholder="admin@tutienda.com"
+              class="w-full px-3.5 py-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[#0F172A] dark:text-white focus:outline-none focus:border-[#1D4ED8]"
+            />
+          </div>
+
+          <div>
+            <label for="tiendaPassword" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Contraseña</label>
+            <input
+              type="password"
+              id="tiendaPassword"
+              required
+              placeholder="••••••••"
+              class="w-full px-3.5 py-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[#0F172A] dark:text-white focus:outline-none focus:border-[#1D4ED8]"
+            />
+          </div>
+
+          <button type="submit" class="w-full py-3 rounded-xl font-display text-sm font-bold bg-[#1D4ED8] hover:bg-[#1E40AF] text-white transition-colors">
+            Entrar a mi Tienda
+          </button>
+        </form>
+
+        <div class="pt-2.5 flex items-center justify-between text-xs border-t border-slate-200 dark:border-slate-800">
+          <button type="button" onclick="switchLoginView('recuperar-password')" class="font-semibold text-slate-500 dark:text-slate-400 hover:text-[#1D4ED8] dark:hover:text-[#38BDF8]">
+            ¿Olvidaste tu contraseña?
+          </button>
+          <a href="https://wa.me/573052889858?text=Hola%20Tu%20Live%20Shop%2C%20quiero%20activar%20mi%20tienda" target="_blank" rel="noopener noreferrer" class="font-display font-bold text-[#10B981] hover:underline">
+            Activar nueva tienda
+          </a>
+        </div>
+      </div>
+
+      <!-- =================================================================
+           VISTA 8: RECUPERAR CONTRASEÑA (Tienda: Correo + NIT/CC)
+           ================================================================= -->
+      <div id="view-recuperar-password" class="login-view hidden space-y-4">
+        <button type="button" onclick="switchLoginView('tienda-login')" class="font-display text-xs font-bold text-slate-500 hover:text-[#1D4ED8] dark:hover:text-[#38BDF8]">← Volver a Acceso Tienda</button>
+        <div>
+          <h3 class="font-display font-extrabold text-xl text-[#0F172A] dark:text-white">Restablecer contraseña</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Escribe el correo de administrador de tu tienda. Te enviaremos una contraseña temporal; al entrar te pediremos cambiarla.</p>
+        </div>
+        <form onsubmit="handleRecoverPassword(event)" class="space-y-3.5">
+          <div>
+            <label for="recAdminEmail" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Correo de administrador</label>
+            <input type="email" id="recAdminEmail" required placeholder="admin@tutienda.com" autocomplete="email" class="w-full px-3.5 py-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[#0F172A] dark:text-white focus:outline-none focus:border-[#1D4ED8]" />
+          </div>
+          <button type="submit" class="w-full py-3 rounded-xl font-display text-sm font-bold bg-[#1D4ED8] hover:bg-[#1E40AF] disabled:opacity-60 text-white transition-colors">Enviar contraseña temporal</button>
+        </form>
+      </div>
+    </div>
   </div>
-</div>
 
-<!-- CLIENTE: ELEGIR TIENDA AL INGRESAR -->
-<div class="modal-overlay" id="clientStorePickModal">
-  <div class="modal-box">
-    <h3>🏪 ¿A qué tienda quieres entrar?</h3>
-    <p class="subtitle">Tu cuenta está en varias tiendas. Podrás cambiar de tienda dentro de tu cuenta.</p>
-    <div id="storePickList" style="display:grid;gap:10px;margin:14px 0"></div>
-    <button class="link-text" onclick="closeAllModals()">Cancelar</button>
-  </div>
-</div>
-
-<!-- CLIENTE: OLVIDÉ PIN -->
-<div class="modal-overlay" id="clientForgotPinModal">
-  <div class="modal-box">
-    <h3>🔑 Recuperar PIN</h3>
-    <p class="subtitle">Te enviaremos un PIN temporal a tu correo registrado.</p>
-    <form onsubmit="handleClientForgotPin(event)">
-      <div class="form-group">
-        <label>WhatsApp registrado</label>
-        <input type="text" id="recWa" inputmode="numeric" placeholder="3001234567" required>
-      </div>
-      <div class="form-group">
-        <label>Correo registrado</label>
-        <input type="email" id="recEmail" required>
-      </div>
-      <div class="form-error" id="recPinErr"></div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" onclick="closeAllModals()">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Enviar PIN temporal</button>
-      </div>
-    </form>
-    <button class="link-text" onclick="switchAuthView('client-login')">Volver al inicio de sesión</button>
-  </div>
-</div>
-
-<!-- TIENDA: LOGIN -->
-<div class="modal-overlay" id="storeLoginModal">
-  <div class="modal-box">
-    <h3>🏪 Acceso Tienda</h3>
-    <p class="subtitle">Ingresa con tu correo y contraseña de administrador</p>
-    <form onsubmit="handleStoreLogin(event)">
-      <div class="form-group">
-        <label>Correo electrónico</label>
-        <input type="email" id="storeEmail" required>
-      </div>
-      <div class="form-group">
-        <label>Contraseña</label>
-        <input type="password" id="storePass" required>
-      </div>
-      <div class="form-error" id="storeLoginErr"></div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" onclick="closeAllModals()">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Ingresar al panel</button>
-      </div>
-    </form>
-    <button class="link-text" onclick="switchAuthView('store-forgot-pass')">¿Olvidaste tu contraseña?</button>
-  </div>
-</div>
-
-<!-- TIENDA: OLVIDÉ CONTRASEÑA -->
-<div class="modal-overlay" id="storeForgotPassModal">
-  <div class="modal-box">
-    <h3>🔒 Recuperar Contraseña</h3>
-    <p class="subtitle">Ingresa tu correo y el número de documento (NIT/CC) de la tienda para verificar.</p>
-    <form onsubmit="handleStoreForgotPass(event)">
-      <div class="form-group">
-        <label>Correo registrado</label>
-        <input type="email" id="storeRecEmail" required>
-      </div>
-      <div class="form-group">
-        <label>Número de documento (NIT/CC)</label>
-        <input type="text" id="storeRecDoc" placeholder="Ej: 900123456-7 o 1234567890" required>
-      </div>
-      <div class="form-error" id="storeRecErr"></div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" onclick="closeAllModals()">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Enviar instrucciones</button>
-      </div>
-    </form>
-    <button class="link-text" onclick="switchAuthView('store-login')">Volver al inicio de sesión</button>
-  </div>
-</div>
-
-<script>
-// Toggle de tema
-function toggleTheme() {
-  const html = document.documentElement;
-  const current = html.getAttribute('data-theme');
-  const next = current === 'dark' ? 'light' : 'dark';
-  html.setAttribute('data-theme', next);
-  localStorage.setItem('theme', next);
-  document.getElementById('themeBtn').textContent = next === 'dark' ? '🌙' : '☀️';
-}
-(function() {
-  const saved = localStorage.getItem('theme');
-  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const theme = saved || (prefersDark ? 'dark' : 'light');
-  document.documentElement.setAttribute('data-theme', theme);
-  document.getElementById('themeBtn').textContent = theme === 'dark' ? '🌙' : '☀️';
-})();
-
-// Gestión de Modales
-function closeAllModals() {
-  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
-  document.querySelectorAll('.form-error').forEach(e => { e.textContent = ''; e.className = 'form-error'; });
-}
-
-function openAuthModal(type) {
-  closeAllModals();
-  if (type === 'client') switchAuthView('client-login');
-  else if (type === 'store') switchAuthView('store-login');
-  else document.getElementById('mainAuthModal').classList.add('open');
-}
-
-function switchAuthView(viewId) {
-  closeAllModals();
-  const modalMap = {
-    'client-login': 'clientLoginModal',
-    'client-reg-step1': 'clientRegStep1Modal',
-    'client-reg-step2': 'clientRegStep2Modal',
-    'client-forgot-pin': 'clientForgotPinModal',
-    'store-login': 'storeLoginModal',
-    'store-forgot-pass': 'storeForgotPassModal'
-  };
-  if (modalMap[viewId]) {
-    document.getElementById(modalMap[viewId]).classList.add('open');
-    if (viewId === 'client-reg-step2') loadAvailableStores();
-  }
-}
-
-// --- LÓGICA CLIENTE ---
-const esc = (t) => String(t ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
-
-// Guarda la sesión (una por tienda donde el cliente tiene cuenta) y entra a su área
-function saveClientSession(data, chosen) {
-  const stores = (data.stores && data.stores.length)
-    ? data.stores
-    : [{ slug: data.portfolio.slug, name: data.portfolio.name, token: data.token, user: data.user }];
-  const cur = chosen || stores[0];
-  localStorage.setItem('pk_stores', JSON.stringify(stores));
-  localStorage.setItem('pk_token', cur.token);
-  localStorage.setItem('pk_user', JSON.stringify(cur.user));
-  localStorage.setItem('pk_slug', cur.slug);
-  closeAllModals();
-  window.location.href = '/client.html';
-}
-
-function showStorePicker(data) {
-  window.__loginData = data;
-  closeAllModals();
-  document.getElementById('storePickList').innerHTML = data.stores.map((s, i) =>
-    `<button class="btn btn-outline" style="padding:14px;font-size:15px" onclick="saveClientSession(window.__loginData, window.__loginData.stores[${i}])">🏪 ${esc(s.name)}</button>`).join('');
-  document.getElementById('clientStorePickModal').classList.add('open');
-}
-
-async function handleClientLogin(e) {
-  e.preventDefault();
-  const err = document.getElementById('cliLoginErr');
-  err.className = 'form-error';
-  err.textContent = 'Verificando...';
-  try {
-    const res = await fetch('/api/auth/client/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        whatsapp: document.getElementById('cliWa').value,
-        pin: document.getElementById('cliPin').value
-      })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Error al ingresar');
-    if (data.stores && data.stores.length > 1) { showStorePicker(data); return; }
-    saveClientSession(data);
-  } catch (e) {
-    err.textContent = e.message;
-  }
-}
-
-let regDataTemp = {};
-async function handleClientRegStep1(e) {
-  e.preventDefault();
-  const err = document.getElementById('regStep1Err');
-  const pin = document.getElementById('regPin').value.trim();
-  const pin2 = document.getElementById('regPin2').value.trim();
-  if (!/^\d{6,8}$/.test(pin)) { err.textContent = 'El PIN debe tener de 6 a 8 dígitos (solo números).'; return; }
-  if (pin !== pin2) { err.textContent = 'Los PIN no coinciden.'; return; }
-  regDataTemp = {
-    name: document.getElementById('regName').value.trim(),
-    whatsapp: document.getElementById('regWa').value.trim(),
-    email: document.getElementById('regEmail').value.trim(),
-    city: document.getElementById('regCity').value.trim(),
-    address: document.getElementById('regAddress').value.trim(),
-    pin
-  };
-  switchAuthView('client-reg-step2'); // carga las tiendas
-}
-
-async function loadAvailableStores() {
-  const list = document.getElementById('storeSelectionList');
-  list.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:10px;">Cargando tiendas...</p>';
-  try {
-    const res = await fetch('/api/auth/client/portfolios');
-    const data = await res.json();
-    const stores = res.ok && Array.isArray(data) ? data : [];
-    if (stores.length === 0) {
-      list.innerHTML = '<p style="text-align:center; color:var(--danger); padding:10px;">No hay tiendas disponibles.</p>';
-      return;
+  <!-- =====================================================================
+       JAVASCRIPT: TEMA CLARO / OSCURO, SIMULADOR COMPRA EN VIVO Y MODAL LOGIN
+       ===================================================================== -->
+  <script>
+    // 1. Control de Tema Claro (Predeterminado) / Oscuro
+    function toggleTheme() {
+      const htmlEl = document.documentElement;
+      const isDark = htmlEl.classList.toggle('dark');
+      try {
+        localStorage.setItem('tuliveshop-theme', isDark ? 'dark' : 'light');
+      } catch (e) {}
     }
-    const pre = new URLSearchParams(location.search).get('t'); // si llegó por el enlace de una tienda, viene marcada
-    list.innerHTML = stores.map(s => `
-      <label class="store-checkbox-label">
-        <input type="checkbox" name="store" value="${esc(s.slug)}" ${s.slug === pre ? 'checked' : ''}>
-        <span>🏪 ${esc(s.name)}</span>
-      </label>
-    `).join('');
-  } catch (e) {
-    list.innerHTML = '<p style="text-align:center; color:var(--danger); padding:10px;">Error al cargar tiendas.</p>';
-  }
-}
 
-async function handleClientRegStep2(e) {
-  e.preventDefault();
-  const err = document.getElementById('regStep2Err');
-  const selectedStores = Array.from(document.querySelectorAll('input[name="store"]:checked')).map(cb => cb.value);
-  if (selectedStores.length === 0) {
-    err.textContent = 'Debes seleccionar al menos una tienda.';
-    return;
-  }
-  err.textContent = 'Creando cuenta...';
-  try {
-    const res = await fetch('/api/auth/client/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...regDataTemp, portfolios: selectedStores })
+    (function initTheme() {
+      try {
+        const saved = localStorage.getItem('tuliveshop-theme');
+        if (saved === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      } catch (e) {
+        document.documentElement.classList.remove('dark');
+      }
+    })();
+
+    // 2. Menú Hamburguesa Móvil
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobileMenu');
+      const btn = document.getElementById('mobileMenuBtn');
+      const hamburger = document.getElementById('hamburgerIcon');
+      const closeIcon = document.getElementById('closeMenuIcon');
+      const isHidden = menu.classList.toggle('hidden');
+
+      btn.setAttribute('aria-expanded', String(!isHidden));
+      hamburger.classList.toggle('hidden', !isHidden);
+      closeIcon.classList.toggle('hidden', isHidden);
+    }
+
+    function closeMobileMenu() {
+      const menu = document.getElementById('mobileMenu');
+      const btn = document.getElementById('mobileMenuBtn');
+      const hamburger = document.getElementById('hamburgerIcon');
+      const closeIcon = document.getElementById('closeMenuIcon');
+
+      menu.classList.add('hidden');
+      btn.setAttribute('aria-expanded', 'false');
+      hamburger.classList.remove('hidden');
+      closeIcon.classList.add('hidden');
+    }
+
+    // 3. Simulador Interactivo: El cliente agrega productos mientras ve el live
+    let demoCart = [
+      { name: 'Blusa Satinada Azul Rey', price: 85000, qty: 1 }
+    ];
+    let demoStocks = {
+      stockProd1: 4,
+      stockProd2: 3
+    };
+    let demoPaymentState = 'Abonado';
+
+    function highlightDemoPanel() {
+      const card = document.getElementById('demoPanelCard');
+      if (!card) return;
+      card.classList.add('ring-4', 'ring-[#1D4ED8]/30');
+      setTimeout(() => {
+        card.classList.remove('ring-4', 'ring-[#1D4ED8]/30');
+      }, 1200);
+    }
+
+    function clientAddProductToLiveOrder(productName, price, stockKey) {
+      if (demoStocks[stockKey] <= 0) return;
+
+      demoStocks[stockKey] -= 1;
+      document.getElementById(stockKey).textContent = demoStocks[stockKey];
+
+      const existing = demoCart.find(item => item.name === productName);
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        demoCart.push({ name: productName, price: price, qty: 1 });
+      }
+
+      renderDemoInvoice();
+    }
+
+    function toggleDemoPaymentState(state) {
+      demoPaymentState = state;
+      const btnAbonado = document.getElementById('btnStateAbonado');
+      const btnPagado = document.getElementById('btnStatePagado');
+
+      if (state === 'Abonado') {
+        btnAbonado.className = 'px-2.5 py-1 rounded-lg font-display text-[11px] font-bold bg-sky-500/15 text-[#0284C7] dark:text-[#38BDF8] border border-sky-400/40';
+        btnPagado.className = 'px-2.5 py-1 rounded-lg font-display text-[11px] font-bold bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300';
+      } else {
+        btnPagado.className = 'px-2.5 py-1 rounded-lg font-display text-[11px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-400/40';
+        btnAbonado.className = 'px-2.5 py-1 rounded-lg font-display text-[11px] font-bold bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300';
+      }
+
+      renderDemoInvoice();
+    }
+
+    function resetDemoInvoice() {
+      demoCart = [{ name: 'Blusa Satinada Azul Rey', price: 85000, qty: 1 }];
+      demoStocks = { stockProd1: 4, stockProd2: 3 };
+      document.getElementById('stockProd1').textContent = '4';
+      document.getElementById('stockProd2').textContent = '3';
+      toggleDemoPaymentState('Abonado');
+    }
+
+    function renderDemoInvoice() {
+      const listEl = document.getElementById('demoInvoiceItemsList');
+      const countEl = document.getElementById('demoItemsCount');
+      let totalAmount = 0;
+      let totalUnits = 0;
+
+      listEl.innerHTML = '';
+      demoCart.forEach(item => {
+        const lineTotal = item.price * item.qty;
+        totalAmount += lineTotal;
+        totalUnits += item.qty;
+
+        const li = document.createElement('li');
+        li.className = 'flex justify-between items-center py-1 px-2.5 rounded-lg bg-white/80 dark:bg-slate-950/50 text-slate-700 dark:text-slate-200';
+        li.innerHTML = `
+          <span class="font-semibold">${item.qty}x ${item.name}</span>
+          <span class="font-display font-bold">$${lineTotal.toLocaleString('es-CO')}</span>
+        `;
+        listEl.appendChild(li);
+      });
+
+      countEl.textContent = totalUnits;
+
+      const paidAmount = demoPaymentState === 'Pagado' ? totalAmount : Math.min(40000, totalAmount);
+      const balanceAmount = totalAmount - paidAmount;
+
+      document.getElementById('invTotal').textContent = '$' + totalAmount.toLocaleString('es-CO');
+      document.getElementById('invPaid').textContent = '$' + paidAmount.toLocaleString('es-CO');
+      document.getElementById('invBalance').textContent = '$' + balanceAmount.toLocaleString('es-CO');
+    }
+
+    // 4. Acordeón de Preguntas Frecuentes
+    function toggleFaq(button) {
+      const content = button.nextElementSibling;
+      const icon = button.querySelector('.faq-icon');
+      const isExpanded = button.getAttribute('aria-expanded') === 'true';
+
+      button.setAttribute('aria-expanded', String(!isExpanded));
+      content.classList.toggle('hidden', isExpanded);
+      icon.classList.toggle('rotate-45', !isExpanded);
+    }
+
+    // 5. Control del Modal de Login ("¿Cómo deseas ingresar?")
+    function openLoginModal(initialView = 'selector') {
+      const modal = document.getElementById('loginModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      document.body.style.overflow = 'hidden';
+      clearModalFeedback();
+      switchLoginView(initialView);
+    }
+
+    function closeLoginModal() {
+      const modal = document.getElementById('loginModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      document.body.style.overflow = '';
+      clearModalFeedback();
+    }
+
+    function switchLoginView(viewName) {
+      clearModalFeedback();
+      const views = document.querySelectorAll('.login-view');
+      views.forEach((v) => v.classList.add('hidden'));
+
+      const target = document.getElementById('view-' + viewName);
+      if (target) {
+        target.classList.remove('hidden');
+      }
+    }
+
+    function showModalFeedback(message, type = 'info') {
+      const box = document.getElementById('modalFeedback');
+      box.classList.remove('hidden');
+      const base = 'mb-4 p-3.5 rounded-2xl text-xs sm:text-sm font-semibold ';
+      box.className = base + (type === 'success'
+        ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+        : type === 'error'
+          ? 'bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-300'
+          : 'bg-blue-500/15 border border-blue-500/30 text-[#1D4ED8] dark:text-[#38BDF8]');
+      box.textContent = message;
+    }
+
+    function clearModalFeedback() {
+      const box = document.getElementById('modalFeedback');
+      box.classList.add('hidden');
+      box.textContent = '';
+    }
+
+    /* ===== Conexión real con el servidor ===== */
+    const escHtml = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+
+    async function postJSON(url, body) {
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      let data = {};
+      try { data = await res.json(); } catch (e) {}
+      if (!res.ok) throw new Error(data.error || data.message || 'No se pudo completar la solicitud. Intenta de nuevo.');
+      return data;
+    }
+
+    // Deshabilita el botón de envío mientras el servidor responde
+    async function withBusy(e, fn) {
+      e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      const label = btn ? btn.textContent : '';
+      if (btn) { btn.disabled = true; btn.textContent = 'Un momento…'; }
+      showModalFeedback('Verificando…');
+      try { await fn(); }
+      catch (err) { showModalFeedback(err.message, 'error'); }
+      finally { if (btn) { btn.disabled = false; btn.textContent = label; } }
+    }
+
+    // Guarda la sesión del cliente (una por tienda donde tiene cuenta) y entra a su área
+    function saveClientSession(data, chosen) {
+      const stores = (data.stores && data.stores.length)
+        ? data.stores
+        : [{ slug: data.portfolio.slug, name: data.portfolio.name, token: data.token, user: data.user }];
+      const cur = chosen || stores[0];
+      localStorage.setItem('pk_stores', JSON.stringify(stores));
+      localStorage.setItem('pk_token', cur.token);
+      localStorage.setItem('pk_user', JSON.stringify(cur.user));
+      localStorage.setItem('pk_slug', cur.slug);
+      window.location.href = '/client.html';
+    }
+
+    let loginData = null;
+    function showStorePicker(data) {
+      loginData = data;
+      document.getElementById('storePickList').innerHTML = data.stores.map((s, i) => `
+        <button type="button" onclick="saveClientSession(loginData, loginData.stores[${i}])" class="w-full flex items-center justify-between p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-[#1D4ED8] dark:hover:border-[#38BDF8] transition-all text-left">
+          <span class="font-display font-bold text-sm text-[#0F172A] dark:text-white">${escHtml(s.name)}</span>
+          <span class="font-display text-xs font-bold text-[#1D4ED8] dark:text-[#38BDF8]">Entrar →</span>
+        </button>`).join('');
+      switchLoginView('multi-tienda');
+      showModalFeedback('Credenciales verificadas. Selecciona la tienda a la que deseas entrar:', 'success');
+    }
+
+    function handleClienteLogin(e) {
+      return withBusy(e, async () => {
+        const data = await postJSON('/api/auth/client/login', {
+          whatsapp: document.getElementById('clienteWhatsapp').value.trim(),
+          pin: document.getElementById('clientePin').value.trim(),
+        });
+        if (data.stores && data.stores.length > 1) return showStorePicker(data);
+        saveClientSession(data);
+      });
+    }
+
+    let regDataTemp = {};
+    function goToRegisterStep2(e) {
+      e.preventDefault();
+      const pin = document.getElementById('regPin').value.trim();
+      const pin2 = document.getElementById('regPin2').value.trim();
+      if (!/^\d{6,8}$/.test(pin)) return showModalFeedback('El PIN debe tener de 6 a 8 dígitos (solo números).', 'error');
+      if (pin !== pin2) return showModalFeedback('Los PIN no coinciden.', 'error');
+      regDataTemp = {
+        name: document.getElementById('regName').value.trim(),
+        whatsapp: document.getElementById('regWa').value.trim(),
+        email: document.getElementById('regEmail').value.trim(),
+        pin,
+      };
+      switchLoginView('crear-cuenta-2');
+      loadAvailableStores();
+    }
+
+    async function loadAvailableStores() {
+      const list = document.getElementById('storeSelectionList');
+      list.innerHTML = '<p class="text-center text-sm text-slate-500 py-3">Cargando tiendas…</p>';
+      try {
+        const res = await fetch('/api/auth/client/portfolios');
+        const stores = res.ok ? await res.json() : [];
+        if (!Array.isArray(stores) || !stores.length) { list.innerHTML = '<p class="text-center text-sm text-red-600 py-3">No hay tiendas disponibles.</p>'; return; }
+        const pre = new URLSearchParams(location.search).get('t');
+        list.innerHTML = stores.map((s) => `
+          <label class="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 cursor-pointer">
+            <input type="checkbox" name="store" value="${escHtml(s.slug)}" ${s.slug === pre ? 'checked' : ''} class="w-4 h-4 rounded text-[#1D4ED8] focus:ring-[#1D4ED8]" />
+            <span class="text-sm font-bold text-[#0F172A] dark:text-white">${escHtml(s.name)}</span>
+          </label>`).join('');
+      } catch (err) {
+        list.innerHTML = '<p class="text-center text-sm text-red-600 py-3">Error al cargar las tiendas.</p>';
+      }
+    }
+
+    function finishClienteRegistration(e) {
+      const chosen = Array.from(document.querySelectorAll('#storeSelectionList input[name="store"]:checked')).map((c) => c.value);
+      if (!chosen.length) { e.preventDefault(); return showModalFeedback('Debes seleccionar al menos una tienda.', 'error'); }
+      return withBusy(e, async () => {
+        showModalFeedback('Creando cuenta…');
+        const data = await postJSON('/api/auth/client/register', { ...regDataTemp, portfolios: chosen });
+        regDataTemp = {};
+        saveClientSession(data);
+      });
+    }
+
+    function handleRecoverPin(e) {
+      return withBusy(e, async () => {
+        await postJSON('/api/auth/client/forgot-pin', {
+          whatsapp: document.getElementById('recWa').value.trim(),
+          email: document.getElementById('recEmail').value.trim(),
+        });
+        showModalFeedback('Si los datos coinciden, recibirás un PIN temporal en tu correo.', 'success');
+      });
+    }
+
+    function handleTiendaLogin(e) {
+      return withBusy(e, async () => {
+        const data = await postJSON('/api/auth/admin/login', {
+          email: document.getElementById('tiendaEmail').value.trim(),
+          password: document.getElementById('tiendaPassword').value,
+        });
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        if (data.portfolio) localStorage.setItem('portfolio', JSON.stringify(data.portfolio));
+        window.location.href = data.user && data.user.role === 'super_admin' ? '/super.html' : '/admin.html';
+      });
+    }
+
+    function handleRecoverPassword(e) {
+      return withBusy(e, async () => {
+        await postJSON('/api/auth/admin/forgot-password', { email: document.getElementById('recAdminEmail').value.trim() });
+        showModalFeedback('Si el correo existe, te enviamos una contraseña temporal. Revisa tu bandeja (y el spam).', 'success');
+      });
+    }
+
+    // Enlace directo: /?login=client abre el acceso de clientes
+    if (new URLSearchParams(location.search).get('login') === 'client') openLoginModal('cliente-login');
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeLoginModal();
+      }
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Error al registrarse');
-    regDataTemp = {};
-    saveClientSession(data); // entra a la primera tienda elegida
-  } catch (e) {
-    err.textContent = e.message;
-  }
-}
 
-async function handleClientForgotPin(e) {
-  e.preventDefault();
-  const err = document.getElementById('recPinErr');
-  err.textContent = 'Enviando...';
-  try {
-    const res = await fetch('/api/auth/client/forgot-pin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        whatsapp: document.getElementById('recWa').value,
-        email: document.getElementById('recEmail').value
-      })
+    document.getElementById('loginModal').addEventListener('click', (e) => {
+      if (e.target.id === 'loginModal') {
+        closeLoginModal();
+      }
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'No se pudo enviar el PIN.');
-    err.className = 'form-error success';
-    err.textContent = '✔ Si los datos coinciden, recibirás un PIN temporal en tu correo.';
-  } catch (e) {
-    err.className = 'form-error';
-    err.textContent = e.message;
-  }
-}
-
-// --- LÓGICA TIENDA (ADMIN) ---
-async function handleStoreLogin(e) {
-  e.preventDefault();
-  const err = document.getElementById('storeLoginErr');
-  err.textContent = 'Verificando...';
-  try {
-    const res = await fetch('/api/auth/admin/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: document.getElementById('storeEmail').value,
-        password: document.getElementById('storePass').value
-      })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Credenciales inválidas');
-    
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    if (data.portfolio) localStorage.setItem('portfolio', JSON.stringify(data.portfolio));
-    
-    closeAllModals();
-    window.location.href = '/admin.html';
-  } catch (e) {
-    err.textContent = e.message;
-  }
-}
-
-async function handleStoreForgotPass(e) {
-  e.preventDefault();
-  const err = document.getElementById('storeRecErr');
-  err.textContent = 'Enviando...';
-  try {
-    const res = await fetch('/api/auth/admin/forgot-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: document.getElementById('storeRecEmail').value,
-        document: document.getElementById('storeRecDoc').value
-      })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'No se pudo procesar la solicitud.');
-    err.className = 'form-error success';
-    err.textContent = '✔ Si los datos coinciden, recibirás una contraseña temporal en tu correo.';
-  } catch (e) {
-    err.className = 'form-error';
-    err.textContent = e.message;
-  }
-}
-
-if (new URLSearchParams(location.search).get('login') === 'client') openAuthModal('client');
-</script>
+  </script>
 </body>
 </html>

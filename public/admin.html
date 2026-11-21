@@ -263,6 +263,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .dz-prev .pv-b { border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 600; border: 1px solid var(--pv-btn-border); background: var(--pv-btn); color: var(--pv-text); }
 </style>
 <link rel="stylesheet" href="/theme.css?v=2">
+<link rel="stylesheet" href="/wallets.css?v=1">
 <script src="/theme.js?v=2"></script>
 </head>
 <body>
@@ -438,6 +439,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
       <h3>Productos</h3>
       <div class="fgrid" style="align-items:end">
         <div class="field" style="flex:2"><label>Producto</label><select id="vProd"></select></div>
+        <div class="field" style="flex:1.5"><label>Código de barras</label><div style="display:flex;gap:6px"><input id="vScan" placeholder="Escanea y Enter" style="flex:1;min-width:0" onkeydown="ventaScanKey(event)"><button type="button" class="btn" onclick="ventaScanCam()" title="Escanear con la cámara">📷</button></div></div>
         <div class="field" style="flex:0.5"><label>Cant.</label><input id="vQty" type="number" min="1" value="1"></div>
         <div class="field" style="flex:0.5"><label>Precio</label><input id="vPrice" type="number" min="0"></div>
         <div class="field" style="flex:0.5"><label>&nbsp;</label><button class="btn primary" onclick="addVentaRow()">+ Agregar</button></div>
@@ -478,7 +480,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
     <h1>Abonos</h1>
     <div class="panel glass" id="manualPay"></div>
     <h2>Abonos por confirmar</h2>
-    <p class="note">Reportes de pago Bre-b enviados por los clientes (llegan en tiempo real).</p>
+    <p class="note">Reportes de pago enviados por los clientes (llegan en tiempo real).</p>
     <div id="reports"></div>
   </section>
 
@@ -488,7 +490,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
     <p class="note">El stock disponible descuenta bolsitas activas y ventas.</p>
     <div class="toolbar">
       <button class="btn primary" onclick="openProduct()">+ Agregar producto</button>
-      <input id="invSearch" placeholder="Buscar producto o código" oninput="renderInventory()">
+      <button class="btn" onclick="scanInventory()" title="Escanear código de barras con la cámara">📷 Escanear</button>
+      <input id="invSearch" placeholder="Buscar producto o código" oninput="renderInventory()" onkeydown="invScanKey(event)">
       <select id="invFilter" onchange="renderInventory()"><option value="">Todos</option><option>EN STOCK</option><option>REPOSICIÓN</option><option>AGOTADO</option></select>
       <button class="btn" onclick="loadTab('inv')">🔄</button>
     </div>
@@ -624,7 +627,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
     <div class="panel glass">
       <h2>Pagos, WhatsApp y numeración</h2>
       <div class="fgrid">
-        <div class="field"><label>Llave Bre-b</label><input id="gBreb"></div>
+        <div class="field" style="grid-column:1/-1"><label>Medio de pago (billetera)</label><div id="walletSummary" style="margin-bottom:8px"></div><button type="button" class="btn" id="walletBtn" onclick="openWalletModal()">Configurar medio de pago</button></div>
         <div class="field"><label>WhatsApp (con código de país)</label><input id="gWa"></div>
         <div class="field"><label>Abono mínimo (COP)</label><input id="gMin" type="number" min="0"></div>
         <div class="field"><label>Iniciales numeración</label><input id="gPrefix" maxlength="6" style="text-transform:uppercase"></div>
@@ -669,12 +672,20 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 </main>
 
 <!-- MODAL: Producto -->
+<div id="walletModal" class="modal-backdrop"><div class="modal">
+  <h3 style="margin-top:0">Configurar medio de pago</h3>
+  <p class="wsteps" id="wStep"></p>
+  <div id="wBody"></div>
+  <div class="error" id="wErr" style="color:var(--danger);min-height:18px"></div>
+  <div class="modal-actions"><button class="btn" id="wBack" onclick="walletBack()" style="display:none">Atrás</button><button class="btn" onclick="closeModal('walletModal')">Cancelar</button><button class="btn primary" id="wSave" onclick="saveWallet()" style="display:none">Guardar</button></div>
+</div></div>
+
 <div id="productModal" class="modal-backdrop"><div class="modal">
   <h2 id="prodTitle">Producto</h2>
   <input type="hidden" id="pId">
   <div class="fgrid">
     <div class="field"><label>Nombre</label><input id="pName"></div>
-    <div class="field"><label>Código de barras</label><input id="pCode"></div>
+    <div class="field"><label>Código de barras</label><div style="display:flex;gap:6px"><input id="pCode" style="flex:1;min-width:0" onkeydown="if(event.key==='Enter'){event.preventDefault()}"><button type="button" class="btn" onclick="scanIntoField('pCode')" title="Escanear con la cámara">📷</button></div></div>
     <div class="field"><label>Categoría</label><select id="pCat"></select></div>
     <div class="field"><label>Fecha de compra</label><input id="pDate" type="date"></div>
     <div class="field"><label>Costo</label><input id="pCost" type="number" min="0"></div>
@@ -803,7 +814,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="/legal-docs.js?v=2"></script>
-<script src="/admin.js?v=11"></script>
+<script src="/wallets.js?v=1"></script>
+<script src="/scanner.js?v=1"></script>
+<script src="/admin.js?v=13"></script>
 <script>
 // Toggle de tema
 function toggleTheme() {

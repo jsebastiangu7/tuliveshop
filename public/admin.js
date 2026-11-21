@@ -1213,6 +1213,7 @@ function orderModalHtml(o) {
 ${o.items.map(i => `<tr><td>${esc(i.kit_name ? i.kit_name : i.product_name)}</td><td>${i.quantity}</td><td>${money(i.price)}</td><td>${money(i.price * i.quantity)}</td><td class="acts"><button class="btn danger" onclick="delOrderItem('${o.id}','${i.id}')">✕</button></td></tr>`).join('') || '<tr><td colspan="5" class="empty">Sin productos</td></tr>'}
 </tbody></table></div>
 <h3>Agregar productos (Enter agrega y crea la siguiente fila enfocada)</h3>
+<div class="fgrid" style="margin-bottom:8px"><div class="field" style="grid-column:1/-1"><label>Código de barras (lector o cámara: cada lectura suma 1 unidad)</label><div style="display:flex;gap:6px"><input id="omScan" placeholder="Escanea o escribe el código y Enter" style="flex:1;min-width:0" onkeydown="omScanKey(event)"><button type="button" class="btn" onclick="omScanCam()">📷 Cámara</button></div></div></div>
 <div class="tablewrap"><table class="adm"><tbody id="omRows"></tbody></table></div>
 <div class="actions"><button class="btn" onclick="omAddRow(true)">+ Producto</button></div>
 <div style="display:flex;gap:18px;justify-content:flex-end;font-weight:800;margin:8px 0" id="omTotals">
@@ -1260,12 +1261,15 @@ async function omCommit(row, thenNew) {
   try {
     await api('/api/admin/orders/' + curOrderId + '/items', { method: 'POST', body });
     row.remove();
-    const o = await api('/api/admin/orders/' + curOrderId);
-    $('omItems').innerHTML = o.items.map(i => `<tr><td>${esc(i.kit_name ? i.kit_name : i.product_name)}</td><td>${i.quantity}</td><td>${money(i.price)}</td><td>${money(i.price * i.quantity)}</td><td class="acts"><button class="btn danger" onclick="delOrderItem('${o.id}','${i.id}')">✕</button></td></tr>`).join('') || '<tr><td colspan="5" class="empty">Sin productos</td></tr>';
-    $('omTotals').innerHTML = `<span>Total: ${money(o.total)}</span><span>Abonado: ${money(o.paid)}</span><span>Saldo: ${money(o.balance)}</span>`;
+    await omRefresh();
     toast('✔ Producto agregado');
     if (thenNew) omAddRow(true);
   } catch (e) { toast('⚠ ' + e.message); }
+}
+async function omRefresh() {
+    const o = await api('/api/admin/orders/' + curOrderId);
+    $('omItems').innerHTML = o.items.map(i => `<tr><td>${esc(i.kit_name ? i.kit_name : i.product_name)}</td><td>${i.quantity}</td><td>${money(i.price)}</td><td>${money(i.price * i.quantity)}</td><td class="acts"><button class="btn danger" onclick="delOrderItem('${o.id}','${i.id}')">✕</button></td></tr>`).join('') || '<tr><td colspan="5" class="empty">Sin productos</td></tr>';
+    $('omTotals').innerHTML = `<span>Total: ${money(o.total)}</span><span>Abonado: ${money(o.paid)}</span><span>Saldo: ${money(o.balance)}</span>`;
 }
 async function orderStatusChanged(status) {
   try { await api('/api/admin/orders/' + curOrderId, { method: 'PUT', body: { status } }); toast('✔ Estado actualizado'); openOrder(curOrderId); loadOrders(); }
@@ -1377,7 +1381,7 @@ async function loadConfig() {
   logoData = ic.logo || null; wmData = ic.watermark || null; wmW = ic.watermarkW || 0; wmH = ic.watermarkH || 0;
   const lp = $('iLogoPrev'); if (lp) { lp.src = logoData || ''; lp.style.display = logoData ? 'inline-block' : 'none'; }
   const wp = $('iWmPrev'); if (wp) { wp.src = wmData || ''; wp.style.display = wmData ? 'inline-block' : 'none'; }
-  set('gBreb', CFG.bre_b_key || ''); set('gWa', CFG.whatsapp_number || ''); set('gTpl', CFG.whatsapp_template || '');
+  renderWalletSummary(); set('gWa', CFG.whatsapp_number || ''); set('gTpl', CFG.whatsapp_template || '');
   set('gBagsLabel', CFG.bags_label || ''); set('gBagsIcon', typeof CFG.bags_icon === 'string' ? CFG.bags_icon : '🛍️'); set('gShipTpl', CFG.shipping_template || ''); set('gHelpTpl', CFG.help_template || '');
   set('gPrefix', CFG.order_prefix || ''); set('gStart', CFG.order_start || 1); set('gDigits', CFG.order_digits || 5);
   set('gMin', CFG.min_payment_amount || 0);
@@ -1474,7 +1478,7 @@ async function saveInvoiceCfg() {
 async function saveGeneral() {
   try {
     await api('/api/admin/settings', { method: 'PUT', body: {
-      bre_b_key: $('gBreb').value.trim(), whatsapp_number: $('gWa').value.trim(), whatsapp_template: $('gTpl').value,
+      whatsapp_number: $('gWa').value.trim(), whatsapp_template: $('gTpl').value,
       order_prefix: $('gPrefix').value.trim(), order_digits: Number($('gDigits').value) || 5, order_start: Number($('gStart').value) || 1,
       min_payment_amount: Number($('gMin').value) || 0,
       bags_label: $('gBagsLabel').value.trim(), bags_icon: $('gBagsIcon').value, shipping_template: $('gShipTpl').value, help_template: $('gHelpTpl').value,
@@ -2121,7 +2125,7 @@ async function executeWipe() {
       logoData = ic.logo || null; wmData = ic.watermark || null; wmW = ic.watermarkW || 0; wmH = ic.watermarkH || 0;
       var lp = $('iLogoPrev'); if (lp) { lp.src = logoData || ''; lp.style.display = logoData ? 'inline-block' : 'none'; }
       var wp = $('iWmPrev'); if (wp) { wp.src = wmData || ''; wp.style.display = wmData ? 'inline-block' : 'none'; }
-      set('gBreb', CFG.bre_b_key || ''); set('gWa', CFG.whatsapp_number || ''); set('gTpl', CFG.whatsapp_template || '');
+      renderWalletSummary(); set('gWa', CFG.whatsapp_number || ''); set('gTpl', CFG.whatsapp_template || '');
   set('gBagsLabel', CFG.bags_label || ''); set('gBagsIcon', typeof CFG.bags_icon === 'string' ? CFG.bags_icon : '🛍️'); set('gShipTpl', CFG.shipping_template || ''); set('gHelpTpl', CFG.help_template || '');
       set('gPrefix', CFG.order_prefix || ''); set('gStart', CFG.order_start || 1); set('gDigits', CFG.order_digits || 5);
       set('gMin', CFG.min_payment_amount || 0);
@@ -2611,3 +2615,118 @@ async function dzReset() {
   } catch (e) { toast('⚠ ' + e.message); }
 }
 (function () { try { var t = TLSTheme.cacheGet('admin'); if (t) TLSTheme.apply(t); } catch (e) {} })();
+
+
+/* ---------- Medio de pago (billeteras por país) ---------- */
+let W = { step: 1, cat: null, country: null, provider: null };
+function renderWalletSummary() {
+  const el = $('walletSummary'); if (!el) return;
+  el.innerHTML = CFG.wallet ? Wallets.card(CFG.wallet, { size: 48 }) : '<div class="note" style="color:var(--warn)">⚠ Aún no has configurado cómo te pagan tus clientes.</div>';
+  const b = $('walletBtn'); if (b) b.textContent = CFG.wallet ? 'Cambiar medio de pago' : 'Configurar medio de pago';
+}
+async function openWalletModal() {
+  try { W.cat = await Wallets.catalog(); } catch (e) { return toast('⚠ ' + e.message); }
+  W.country = CFG.wallet ? CFG.wallet.country : null; W.provider = null;
+  openModal('walletModal'); walletStep(1);
+}
+function walletStep(n) {
+  W.step = n; $('wErr').textContent = '';
+  $('wBack').style.display = n > 1 ? '' : 'none'; $('wSave').style.display = n === 3 ? '' : 'none';
+  const esc2 = t => String(t).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  if (n === 1) {
+    $('wStep').textContent = 'Paso 1 de 3 · Elige el país de tu cuenta';
+    $('wBody').innerHTML = '<div class="wcountry">' + W.cat.countries.map(c =>
+      `<button type="button" class="wbtn ${W.country === c.code ? 'sel' : ''}" onclick="walletPickCountry('${c.code}')"><span style="font-size:1.4rem">${c.flag}</span> ${esc2(c.name)}</button>`).join('') + '</div>';
+  } else if (n === 2) {
+    const c = W.cat.countries.find(x => x.code === W.country);
+    $('wStep').textContent = 'Paso 2 de 3 · Elige tu billetera en ' + c.name;
+    $('wBody').innerHTML = '<div class="wgrid">' + c.wallets.map(w =>
+      `<button type="button" class="wbtn" onclick="walletPickProvider('${w.id}')">${Wallets.logo(w.id, w.name, 52)}<span>${esc2(w.name)}</span></button>`).join('') + '</div>';
+  } else {
+    const c = W.cat.countries.find(x => x.code === W.country), w = c.wallets.find(x => x.id === W.provider), f = Wallets.fieldInfo(w);
+    $('wStep').textContent = 'Paso 3 de 3 · ' + w.name + ' (' + c.name + ')';
+    const cur = CFG.wallet && CFG.wallet.provider === w.id ? CFG.wallet.value : '';
+    $('wBody').innerHTML = `<div class="wcard" style="margin-bottom:10px">${Wallets.logo(w.id, w.name, 52)}<div class="wname">${esc2(w.name)}</div></div>` +
+      `<div class="field"><label>${esc2(f.label)}</label><input id="wValue" maxlength="60" placeholder="${esc2(f.ph)}" value="${esc2(cur)}" ${w.kind === 'email' ? 'type="email"' : w.kind === 'phone' ? 'type="tel" inputmode="tel"' : ''}></div>` +
+      '<p class="note">Tus clientes verán este logo y este dato al momento de pagar.</p>';
+    setTimeout(() => { const i = $('wValue'); if (i) i.focus(); }, 50);
+  }
+}
+function walletPickCountry(code) { W.country = code; W.provider = null; walletStep(2); }
+function walletPickProvider(id) { W.provider = id; walletStep(3); }
+function walletBack() { walletStep(W.step - 1); }
+async function saveWallet() {
+  const value = ($('wValue') || {}).value || '';
+  try {
+    await api('/api/admin/settings', { method: 'PUT', body: { wallet: { country: W.country, provider: W.provider, value: value.trim() } } });
+    closeModal('walletModal'); toast('✔ Medio de pago guardado'); await loadConfig();
+  } catch (e) { $('wErr').textContent = e.message; }
+}
+
+
+/* ---------- Código de barras: inventario, pedido y venta ---------- */
+const norm = c => String(c || '').trim().toLowerCase();
+const findByCode = c => PRODUCTS.find(p => p.code && norm(p.code) === norm(c));
+
+// Inventario: producto existente → sumar stock; código nuevo → formulario de producto con el código ya escrito
+function inventoryCode(code) {
+  const p = findByCode(code);
+  if (p) { toast('Producto encontrado: ' + p.name); openStock(p.id); }
+  else { openProduct(); $('pCode').value = String(code).trim(); toast('Código nuevo: completa los datos del producto'); }
+}
+async function scanInventory() { if (!PRODUCTS.length) await fetchCaches(); Scanner.open({ title: 'Escanear producto', onCode: inventoryCode }); }
+function invScanKey(ev) {
+  if (ev.key !== 'Enter') return;
+  const v = ev.target.value.trim(); if (!v) return;
+  ev.preventDefault();
+  if (findByCode(v)) { ev.target.value = ''; renderInventory(); inventoryCode(v); }
+}
+function scanIntoField(id) { Scanner.open({ title: 'Escanear código', onCode: c => { $(id).value = String(c).trim(); return '✔ ' + c; } }); }
+
+// Pedido: cada lectura suma 1 unidad del producto
+async function omAddScanned(code) {
+  const p = findByCode(code);
+  if (!p) return '⚠ Código no registrado: ' + code;
+  try {
+    await api('/api/admin/orders/' + curOrderId + '/items', { method: 'POST', body: { product_id: p.id, quantity: 1 } });
+    await omRefresh(); fetchCaches();
+    return '✔ ' + p.name + ' · +1';
+  } catch (e) { return '⚠ ' + p.name + ': ' + e.message; }
+}
+async function omScanKey(ev) {
+  if (ev.key !== 'Enter') return;
+  ev.preventDefault();
+  const v = ev.target.value.trim(); if (!v) return;
+  ev.target.value = '';
+  const r = await omAddScanned(v); toast(r);
+  ev.target.focus();
+}
+function omScanCam() { Scanner.open({ title: 'Agregar al pedido', continuous: true, onCode: omAddScanned }); }
+
+// Venta: suma una fila (o +1 si el producto ya está en la lista)
+function ventaAddProduct(p) {
+  if (p.available <= 0) return '⚠ ' + p.name + ' sin stock disponible';
+  const tb = $('vItems');
+  const row = Array.from(tb.querySelectorAll('tr')).find(r => r.dataset.productId === p.id);
+  if (row) {
+    const q = parseInt(row.dataset.qty) + 1;
+    if (q > p.available) return '⚠ ' + p.name + ': solo hay ' + p.available + ' disponibles';
+    row.dataset.qty = q; row.children[1].textContent = q; row.children[3].textContent = money(q * Number(row.dataset.price));
+  } else {
+    const price = Number(p.price) || 0;
+    const tr = document.createElement('tr');
+    tr.dataset.productId = p.id; tr.dataset.qty = 1; tr.dataset.price = price;
+    tr.innerHTML = `<td>${esc(p.name)}</td><td>1</td><td>${money(price)}</td><td>${money(price)}</td><td class="acts"><button class="btn danger" style="padding:4px 8px" onclick="this.closest('tr').remove(); calcVentaTotal()">✕</button></td>`;
+    tb.appendChild(tr);
+  }
+  calcVentaTotal();
+  return '✔ ' + p.name + ' agregado';
+}
+function ventaScanCode(code) { const p = findByCode(code); return p ? ventaAddProduct(p) : '⚠ Código no registrado: ' + code; }
+function ventaScanKey(ev) {
+  if (ev.key !== 'Enter') return;
+  ev.preventDefault();
+  const v = ev.target.value.trim(); if (!v) return;
+  ev.target.value = ''; toast(ventaScanCode(v));
+}
+function ventaScanCam() { Scanner.open({ title: 'Agregar a la venta', continuous: true, onCode: ventaScanCode }); }

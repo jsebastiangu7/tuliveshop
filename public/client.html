@@ -135,6 +135,7 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
 .pay-step { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 14px; font-size: 14px; line-height: 1.4; }
 .pay-step .n { flex: 0 0 24px; height: 24px; border-radius: 50%; background: var(--brand); color: #fff; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; }
 .pay-key { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--brand); background: var(--bg); }
+.pay-copy { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .pay-key code { flex: 1; font-size: 17px; font-weight: 800; letter-spacing: .03em; word-break: break-all; }
 .pay-key button { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .pay-amt { display: flex; gap: 8px; margin-top: 6px; }
@@ -184,6 +185,7 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
 }
 </style>
 <link rel="stylesheet" href="/theme.css?v=2">
+<link rel="stylesheet" href="/wallets.css?v=1">
 <script src="/theme.js?v=2"></script>
 </head>
 <body>
@@ -319,6 +321,7 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
 
 <div id="toast" class="toast"></div>
 
+<script src="/wallets.js?v=1"></script>
 <script src="/client-invoice.js"></script>
 <script>
 let token = localStorage.getItem('pk_token') || '';
@@ -571,9 +574,9 @@ async function loadOrders(quiet) {
 let PAY = null;
 function closePay() { $('payModal').classList.remove('open'); PAY = null; loadOrders(true); }
 async function copyKey() {
-  const k = PAY && PAY.cfg && PAY.cfg.bre_b_key; if (!k) return;
-  try { await navigator.clipboard.writeText(k); toast('✔ Llave copiada'); }
-  catch (_) { const r = document.createRange(); r.selectNodeContents($('payKey')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('Selecciona y copia la llave'); }
+  const k = PAY && PAY.cfg && PAY.cfg.wallet && PAY.cfg.wallet.value; if (!k) return;
+  try { await navigator.clipboard.writeText(k); toast('✔ Copiado'); }
+  catch (_) { const r = document.createRange(); r.selectNodeContents($('payKey')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('Selecciona y copia el dato'); }
 }
 function payFull() { $('payAmt').value = Number(PAY.o.balance).toLocaleString('es-CO'); }
 function payAmtFmt(el) { const d = el.value.replace(/\D/g, ''); el.value = d ? Number(d).toLocaleString('es-CO') : ''; }
@@ -590,15 +593,15 @@ async function openPay(orderId) {
 }
 function renderPay() {
   const { o, cfg } = PAY;
-  const key = String(cfg.bre_b_key || '').trim(), wa = String(cfg.whatsapp_number || '').replace(/\D/g, '');
-  const warn = (!key ? '<div class="pay-warn">⚠ La tienda aún no configuró su llave Bre-B. Escríbele por otro medio.</div>' : '') +
+  const wl = cfg.wallet, key = String((wl && wl.value) || '').trim(), wa = String(cfg.whatsapp_number || '').replace(/\D/g, '');
+  const warn = (!key ? '<div class="pay-warn">⚠ La tienda aún no configuró su medio de pago. Escríbele por otro medio.</div>' : '') +
                (!wa ? '<div class="pay-warn">⚠ La tienda aún no configuró su WhatsApp.</div>' : '');
   $('payBody').innerHTML = `
     <h3>💸 Reportar pago · ${escH(o.order_number)}</h3>
     <div class="pay-sum"><div>Total<b>${money(o.total)}</b></div><div>Abonado<b>${money(o.paid)}</b></div><div class="saldo">Saldo<b>${money(o.balance)}</b></div></div>
     ${warn}
-    <div class="pay-step"><span class="n">1</span><div>Transfiere por <b>Bre-B</b> a la llave de <b>${escH(cfg.name || 'la tienda')}</b>:
-      <div class="pay-key"><code id="payKey">${escH(key || '—')}</code>${key ? '<button type="button" onclick="copyKey()">Copiar</button>' : ''}</div></div></div>
+    <div class="pay-step"><span class="n">1</span><div style="flex:1;min-width:0">Transfiere por <b>${escH(wl ? wl.name : 'billetera')}</b> a <b>${escH(cfg.name || 'la tienda')}</b>:
+      ${wl ? `<div class="wcard" style="margin-top:6px">${Wallets.logo(wl.provider, wl.name, 52)}<div class="wtxt" style="flex:1"><div class="wname">${escH(wl.name)}</div><div class="wval" id="payKey">${escH(key)}</div></div><button type="button" class="pay-copy" onclick="copyKey()">Copiar</button></div>` : '<div class="pay-key"><code id="payKey">—</code></div>'}</div></div>
     <div class="pay-step"><span class="n">2</span><div style="flex:1;min-width:0">Escribe el monto que transferiste:
       <div class="pay-amt"><input id="payAmt" inputmode="numeric" autocomplete="off" placeholder="$ 0" value="${Number(o.balance).toLocaleString('es-CO')}" oninput="payAmtFmt(this)"><button type="button" onclick="payFull()">Saldo completo</button></div></div></div>
     <div class="pay-step"><span class="n">3</span><div>Toca <b>Reportar por WhatsApp</b>, envía el mensaje y <b>adjunta la captura del comprobante</b> en el chat. La tienda lo revisará y aprobará tu pago.</div></div>
@@ -674,7 +677,7 @@ function orderActions(o) {
   const sent = ['shipped', 'delivered'].includes(o.status);
   const canShip = !closed && !sent && total > 0 && bal <= 0;
   const shipTitle = sent ? 'Esta bolsita ya fue enviada' : closed ? 'Bolsita cerrada' : canShip ? 'Pedir el envío por WhatsApp' : 'Disponible cuando la bolsita esté totalmente pagada';
-  const reportTitle = canReport ? (pending ? 'Reenviar el comprobante a la tienda' : 'Reportar un pago por Bre-B') : 'Sin saldo pendiente';
+  const reportTitle = canReport ? (pending ? 'Reenviar el comprobante a la tienda' : 'Reportar un pago') : 'Sin saldo pendiente';
   return `<div class="bolsita-actions">
     ${pending ? '<span class="review">⏳ Tu pago está en revisión</span>' : ''}
     <button class="btn btn-wa btn-sm" ${canReport ? '' : 'disabled'} title="${reportTitle}" onclick="openPay('${id}')">${pending ? '📎 Reenviar comprobante' : '💸 Reportar pago'}</button>

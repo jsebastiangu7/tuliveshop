@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Allow: /legal
+Disallow: /api/
+Disallow: /admin.html
+Disallow: /super.html
+Disallow: /client.html
+
+Sitemap: https://tuliveshop.onrender.com/sitemap.xml

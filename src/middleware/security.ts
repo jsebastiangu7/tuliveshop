@@ -8,7 +8,7 @@ export function securityHeaders(_req: Request, res: Response, next: NextFunction
   // Referrer policy
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   // Permissions policy (limitar APIs del navegador)
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
   // Content Security Policy (solo recursos de confianza)
   res.setHeader(
     'Content-Security-Policy',

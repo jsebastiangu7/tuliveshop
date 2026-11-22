@@ -247,10 +247,20 @@ th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; font-
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('dpModal')">Cerrar</button></div>
   </div>
 </div>
+<div class="modal-overlay" id="delModal">
+  <div class="modal-box">
+    <h3 style="color:var(--danger)">⚠ Eliminar tienda</h3>
+    <p style="margin:8px 0">Vas a eliminar <b id="delName"></b> y <b>toda su información</b>: administradores y su documento de identidad, clientes, productos y fotos, pedidos, pagos, envíos y configuración.</p>
+    <p id="delCounts" style="color:var(--text-muted);font-size:.9rem"></p>
+    <p style="margin:10px 0 6px"><b>Esta acción no se puede deshacer.</b> Para confirmar escribe exactamente <code>Borrar tienda</code>:</p>
+    <input id="delText" autocomplete="off" placeholder="Borrar tienda" oninput="$('delBtn').disabled = this.value !== 'Borrar tienda'" style="width:100%">
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('delModal')">Cancelar</button><button class="btn btn-danger" id="delBtn" disabled onclick="confirmDeletePortfolio()">Eliminar definitivamente</button></div>
+  </div>
+</div>
 <input id="docReplace" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" class="hidden">
 
 <div id="toast" class="toast"></div>
 <script src="/legal-docs.js?v=2"></script>
-<script src="/super.js?v=2"></script>
+<script src="/super.js?v=3"></script>
 </body>
 </html>

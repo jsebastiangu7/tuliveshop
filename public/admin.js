@@ -1024,8 +1024,54 @@ function renderInventory() {
       return `<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.code || '—')}</td><td>${esc(p.category || '—')}</td><td>${money(p.cost)}</td><td>${money(p.shipping_cost)}</td><td>${p.stock}</td><td>${p.available}</td><td>${pillStock(p.status)}</td><td>${money(p.price)}</td><td>${marg}</td><td>${esc(fmtDMY(p.purchase_date) || '—')}</td><td class="acts"><button class="btn" onclick="openStock('${p.id}')">+ Stock</button><button class="btn" onclick="openProduct('${p.id}')">Editar</button><button class="btn danger" onclick="delProduct('${p.id}')">Eliminar</button></td></tr>`;
     }).join('') : '<tr><td colspan="12" class="empty">Sin productos.</td></tr>') + '</tbody></table></div>');
 }
+// ---- Foto del producto (se sube directo a media.tuliveshop.com con un permiso firmado por la app) ----
+let PIMG = '';
+function showProductImage(url, msg) {
+  PIMG = url || '';
+  $('pImgBox').innerHTML = PIMG ? `<img src="${esc(PIMG)}" alt="">` : '<span>Sin foto</span>';
+  $('pImgDel').style.display = PIMG ? '' : 'none';
+  if (msg !== undefined) $('pImgMsg').textContent = msg;
+}
+function clearProductImage() { showProductImage('', 'Foto quitada. Guarda el producto para aplicar el cambio.'); }
+// Reduce la foto en el navegador: lado máximo 1000 px, WebP (o JPG si el navegador no soporta WebP)
+function shrinkImage(file, maxSide = 1000) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader(); // data: (la política de seguridad no permite blob:)
+    fr.onerror = () => reject(new Error('No se pudo leer la foto'));
+    fr.onload = () => {
+      const im = new Image();
+      im.onload = () => {
+        const k = Math.min(1, maxSide / Math.max(im.width, im.height));
+        const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+        const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height);
+        c.toBlob(b => {
+          if (b && b.type === 'image/webp') return resolve(b);
+          c.toBlob(j => j ? resolve(j) : reject(new Error('No se pudo reducir la foto')), 'image/jpeg', 0.85);
+        }, 'image/webp', 0.82);
+      };
+      im.onerror = () => reject(new Error('No se pudo leer la foto'));
+      im.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+async function pickProductImage(input) {
+  const file = input.files && input.files[0]; input.value = ''; if (!file) return;
+  try {
+    $('pImgMsg').textContent = 'Subiendo foto…';
+    const blob = await shrinkImage(file);
+    const perm = await api('/api/admin/products/image-token', { method: 'POST', body: {} });
+    if (blob.size > perm.max_bytes) throw new Error('La foto sigue siendo muy pesada; prueba con otra');
+    const fd = new FormData(); fd.append('token', perm.token); fd.append('file', blob, 'foto.webp');
+    const r = await fetch(perm.upload_url, { method: 'POST', body: fd });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.url) throw new Error(j.error || 'No se pudo subir la foto');
+    showProductImage(j.url, 'Foto lista. Guarda el producto para aplicarla.');
+  } catch (e) { $('pImgMsg').textContent = '⚠ ' + e.message; }
+}
 function openProduct(id) {
   const p = id ? PRODUCTS.find(x => x.id === id) : null;
+  showProductImage(p ? p.image_url : '', 'Una foto por producto. Se reduce sola antes de subir.');
   $('prodTitle').textContent = p ? 'Editar producto' : 'Nuevo producto';
   $('pId').value = p ? p.id : '';
   $('pName').value = p ? p.name : '';
@@ -1041,7 +1087,7 @@ async function saveProduct() {
     name: $('pName').value.trim(), code: $('pCode').value.trim(), category_id: $('pCat').value || null,
     cost: Number($('pCost').value) || 0, shipping_cost: Number($('pShip').value) || 0, price: Number($('pPrice').value) || 0,
     stock: Math.max(0, Math.floor(Number($('pStock').value) || 0)), min_stock: Math.max(0, Math.floor(Number($('pMin').value) || 0)),
-    purchase_date: $('pDate').value || null,
+    purchase_date: $('pDate').value || null, image_url: PIMG || '',
   };
   try {
     const id = $('pId').value;

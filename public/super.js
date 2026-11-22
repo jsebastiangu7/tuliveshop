@@ -132,13 +132,34 @@ function showDataPolicy() {
 }
 
 /* ---------- Tiendas ---------- */
+// ---- Eliminar tienda (exige escribir «Borrar tienda») ----
+let DEL_ID = null;
+function openDeletePortfolio(id) {
+  const p = PORTFOLIOS.find(x => x.id === id); if (!p) return;
+  DEL_ID = id;
+  $('delName').textContent = p.name;
+  $('delCounts').textContent = `Contiene ${p.admins} administrador(es), ${p.clients} cliente(s), ${p.products} producto(s) y ${p.orders} pedido(s).`;
+  $('delText').value = ''; $('delBtn').disabled = true;
+  openModal('delModal'); setTimeout(() => $('delText').focus(), 50);
+}
+async function confirmDeletePortfolio() {
+  if (!DEL_ID || $('delText').value !== 'Borrar tienda') return;
+  $('delBtn').disabled = true;
+  try {
+    const r = await api('/api/super/portfolios/' + DEL_ID, { method: 'DELETE', body: { confirmText: $('delText').value } });
+    closeModal('delModal'); DEL_ID = null;
+    toast('✔ Tienda «' + r.name + '» eliminada con toda su información');
+    loadPortfolios();
+  } catch (e) { toast('⚠ ' + e.message); $('delBtn').disabled = false; }
+}
+
 async function loadPortfolios() {
   try {
     PORTFOLIOS = await api('/api/super/portfolios');
     $('pfTable').innerHTML = PORTFOLIOS.length ?
       '<div class="tablewrap"><table><thead><tr><th>Tienda</th><th>Enlace público</th><th>Bre-B</th><th>WhatsApp</th><th>Num.</th><th>Admins</th><th>Clientes</th><th>Productos</th><th>Pedidos</th><th></th></tr></thead><tbody>' +
       PORTFOLIOS.map(p => `<tr><td><b>${esc(p.name)}</b></td><td><a href="/?t=${esc(p.slug)}" target="_blank" rel="noopener" style="color:var(--brand)">/?t=${esc(p.slug)}</a></td><td>${esc(p.bre_b_key || '—')}</td><td>${esc(p.whatsapp_number || '—')}</td><td>${esc(p.order_prefix || '')}</td><td>${p.admins}</td><td>${p.clients}</td><td>${p.products}</td><td>${p.orders}</td>
-        <td><div class="acts"><button class="btn btn-ghost btn-sm" onclick="openAdmins('${p.id}')">Administradores</button><button class="btn btn-ghost btn-sm" onclick="openPortfolio('${p.id}')">Editar</button></div></td></tr>`).join('') +
+        <td><div class="acts"><button class="btn btn-ghost btn-sm" onclick="openAdmins('${p.id}')">Administradores</button><button class="btn btn-ghost btn-sm" onclick="openPortfolio('${p.id}')">Editar</button><button class="btn btn-danger btn-sm" onclick="openDeletePortfolio('${p.id}')">Eliminar</button></div></td></tr>`).join('') +
       '</tbody></table></div>' :
       '<p class="empty">Aún no hay tiendas. Crea la primera con «+ Nueva tienda».</p>';
   } catch (e) { toast('⚠ ' + e.message); }

@@ -22,29 +22,29 @@
   <link rel="apple-touch-icon" href="/img/apple-touch-icon.png" />
 
   <!-- URL Canónica y alternativas de idioma -->
-  <link rel="canonical" href="https://tuliveshop.onrender.com/" />
-  <link rel="alternate" hreflang="es-419" href="https://tuliveshop.onrender.com/" />
-  <link rel="alternate" hreflang="es-CO" href="https://tuliveshop.onrender.com/" />
-  <link rel="alternate" hreflang="x-default" href="https://tuliveshop.onrender.com/" />
+  <link rel="canonical" href="https://tuliveshop.com/" />
+  <link rel="alternate" hreflang="es-419" href="https://tuliveshop.com/" />
+  <link rel="alternate" hreflang="es-CO" href="https://tuliveshop.com/" />
+  <link rel="alternate" hreflang="x-default" href="https://tuliveshop.com/" />
 
   <!-- Open Graph / Facebook / WhatsApp -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Tu Live Shop" />
   <meta property="og:locale" content="es_LA" />
-  <meta property="og:url" content="https://tuliveshop.onrender.com/" />
+  <meta property="og:url" content="https://tuliveshop.com/" />
   <meta property="og:title" content="Tu Live Shop | Vende en vivo, factura al instante y controla tu negocio" />
   <meta property="og:description" content="Tus clientes agregan sus productos mientras ven el live. Tú creas facturas al instante, controlas abonos, saldos e inventario automático." />
-  <meta property="og:image" content="https://tuliveshop.onrender.com/img/og-image.png" />
+  <meta property="og:image" content="https://tuliveshop.com/img/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Tu Live Shop: vende en vivo, factura al instante y controla abonos e inventario" />
 
   <!-- Twitter Cards -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:url" content="https://tuliveshop.onrender.com/" />
+  <meta name="twitter:url" content="https://tuliveshop.com/" />
   <meta name="twitter:title" content="Tu Live Shop | Software para Lives de TikTok y Tiendas en Vivo" />
   <meta name="twitter:description" content="Tus clientes agregan productos mientras ven el live y tú controlas facturas, abonos e inventario. Plan único de lanzamiento $21.000 COP / mes." />
-  <meta name="twitter:image" content="https://tuliveshop.onrender.com/img/og-image.png" />
+  <meta name="twitter:image" content="https://tuliveshop.com/img/og-image.png" />
   <meta name="twitter:image:alt" content="Tu Live Shop: vende en vivo, factura al instante y controla abonos e inventario" />
 
   <!-- Datos Estructurados JSON-LD (Schema.org: SoftwareApplication + FAQPage) -->
@@ -54,15 +54,15 @@
     "@graph": [
       {
         "@type": "SoftwareApplication",
-        "@id": "https://tuliveshop.onrender.com/#software",
+        "@id": "https://tuliveshop.com/#software",
         "name": "Tu Live Shop",
         "alternateName": "Sistema para Tiendas en Vivo Tu Live Shop",
-        "url": "https://tuliveshop.onrender.com/",
+        "url": "https://tuliveshop.com/",
         "applicationCategory": "BusinessApplication",
         "applicationSubCategory": "Live Commerce, Facturación y Control de Inventario",
         "operatingSystem": "Web",
-        "image": "https://tuliveshop.onrender.com/img/og-image.png",
-        "logo": "https://tuliveshop.onrender.com/img/logo.png",
+        "image": "https://tuliveshop.com/img/og-image.png",
+        "logo": "https://tuliveshop.com/img/logo.png",
         "inLanguage": "es-419",
         "description": "Software para lives de TikTok, Instagram y Facebook donde tus clientes agregan productos directamente mientras ven el live, y tú generas facturas al instante, controlas abonos y gestionas inventario en tiempo real en Colombia y toda Latinoamérica.",
         "areaServed": [
@@ -90,13 +90,13 @@
           "priceCurrency": "COP",
           "priceValidUntil": "2027-12-31",
           "availability": "https://schema.org/InStock",
-          "url": "https://tuliveshop.onrender.com/#precio",
+          "url": "https://tuliveshop.com/#precio",
           "description": "Plan único de lanzamiento mensual: pedidos en vivo, clientes agregando productos durante el live, inventario, abonos, facturas, logística, kits, panel de ganancias, importación de Excel y tienda en línea 24/7."
         }
       },
       {
         "@type": "FAQPage",
-        "@id": "https://tuliveshop.onrender.com/#faq",
+        "@id": "https://tuliveshop.com/#faq",
         "mainEntity": [
           {
             "@type": "Question",
@@ -1059,7 +1059,7 @@
       </div>
 
       <div class="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
-        <p>© 2026 Tu Live Shop (<a href="https://tuliveshop.onrender.com/" class="underline hover:text-[#1D4ED8] dark:hover:text-[#38BDF8]">tuliveshop.onrender.com</a>). Todos los derechos reservados.</p>
+        <p>© 2026 Tu Live Shop (<a href="https://tuliveshop.com/" class="underline hover:text-[#1D4ED8] dark:hover:text-[#38BDF8]">tuliveshop.com</a>). Todos los derechos reservados.</p>
         <div class="flex flex-col sm:items-end gap-1.5">
           <nav aria-label="Legal" class="flex flex-wrap gap-x-4 gap-y-1 justify-center">
             <a href="/legal#terminos" class="underline hover:text-[#1D4ED8] dark:hover:text-[#38BDF8]">Términos y condiciones</a>
@@ -1498,7 +1498,10 @@
     }
 
     // 5. Control del Modal de Login ("¿Cómo deseas ingresar?")
+    // En tuliveshop.com (marketing) el acceso vive en app.tuliveshop.com; en la app se abre el modal directamente.
+    const APP_URL = ['tuliveshop.com', 'www.tuliveshop.com'].includes(location.hostname) ? 'https://app.tuliveshop.com' : '';
     function openLoginModal(initialView = 'selector') {
+      if (APP_URL) { location.href = APP_URL + '/?login=' + encodeURIComponent(initialView); return; }
       const modal = document.getElementById('loginModal');
       modal.classList.remove('hidden');
       modal.classList.add('flex');
@@ -1693,6 +1696,14 @@
         closeLoginModal();
       }
     });
+  
+    (function () {
+      const v = new URLSearchParams(location.search).get('login');
+      if (v && ['selector','cliente-login','crear-cuenta-1','tienda-login'].includes(v) && !APP_URL) {
+        const go = () => openLoginModal(v);
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
+      }
+    })();
   </script>
 </body>
 </html>

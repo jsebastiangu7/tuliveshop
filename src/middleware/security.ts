@@ -17,7 +17,7 @@ export function securityHeaders(_req: Request, res: Response, next: NextFunction
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; " +
     "font-src 'self' https://fonts.gstatic.com; " +
     "img-src 'self' data: https:; " +
-    "connect-src 'self' https://api.render.com;"
+    `connect-src 'self' https://api.render.com ${(process.env.MEDIA_BASE_URL || '').replace(/\/+$/, '')};`
   );
   next();
 }

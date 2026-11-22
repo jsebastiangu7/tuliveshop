@@ -1,4 +1,5 @@
 import express from 'express';
+import { blockHiddenForClients } from './utils/hidden.js';
 import cors from 'cors';
 import path from 'node:path';
 import { createServer } from 'http';
@@ -39,6 +40,7 @@ app.use('/api/orders', (req, res, next) => {
   next();
 });
 
+app.use('/api/orders', blockHiddenForClients);
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);

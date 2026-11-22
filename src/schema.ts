@@ -20,4 +20,6 @@ export async function ensureSchema() {
   await pool.query(`ALTER TABLE admin_documents ADD COLUMN IF NOT EXISTS consent_version TEXT`);
   // Foto del producto (URL en media.tuliveshop.com)
   await pool.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT`);
+  // Tienda oculta para los clientes (la maneja el superadministrador)
+  await pool.query(`ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS hidden BOOLEAN NOT NULL DEFAULT FALSE`);
 }

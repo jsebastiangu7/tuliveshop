@@ -4,6 +4,7 @@ import { pool } from '../db.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import type { AuthRequest } from '../middleware/auth.js';
 import { wipeStoreMedia } from '../utils/media.js';
+import { clearHiddenCache } from '../utils/hidden.js';
 
 const router = Router();
 
@@ -39,7 +40,7 @@ router.use(authenticate, requireRole('super_admin'));
 router.get('/portfolios', async (_req: AuthRequest, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT p.id, p.name, p.slug, p.bre_b_key, p.whatsapp_number, p.order_prefix, p.created_at,
+      `SELECT p.id, p.name, p.slug, p.hidden, p.bre_b_key, p.whatsapp_number, p.order_prefix, p.created_at,
         (SELECT COUNT(*) FROM users u WHERE u.portfolio_id = p.id AND u.role = 'admin')::int AS admins,
         (SELECT COUNT(*) FROM users u WHERE u.portfolio_id = p.id AND u.role = 'client')::int AS clients,
         (SELECT COUNT(*) FROM products pr WHERE pr.portfolio_id = p.id)::int AS products,
@@ -124,6 +125,17 @@ router.put('/portfolios/:id', async (req: AuthRequest, res) => {
        String(order_prefix || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6),
        whatsapp_template !== undefined ? String(whatsapp_template) : null]);
     if (!pf) return res.status(404).json({ error: 'Portafolio no encontrado' });
+    res.json(pf);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
+});
+
+/* ── Ocultar / mostrar una tienda a los clientes ── */
+router.put('/portfolios/:id/visibility', async (req: AuthRequest, res) => {
+  try {
+    if (typeof req.body?.hidden !== 'boolean') return res.status(400).json({ error: 'Indica si la tienda debe ocultarse' });
+    const { rows: [pf] } = await pool.query(`UPDATE portfolios SET hidden = $2 WHERE id = $1 RETURNING id, name, hidden`, [req.params.id, req.body.hidden]);
+    if (!pf) return res.status(404).json({ error: 'Tienda no encontrada' });
+    clearHiddenCache();
     res.json(pf);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });

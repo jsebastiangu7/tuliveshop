@@ -8,7 +8,7 @@ const router = Router();
 
 const portfolioBySlug = async (slug: string) => {
   const { rows: [pf] } = await pool.query(`SELECT * FROM portfolios WHERE slug = $1`, [slug]);
-  return pf || null;
+  return pf && !pf.hidden ? pf : null; // una tienda oculta no existe para el público
 };
 
 // Catálogo público (stock disponible en tiempo real)

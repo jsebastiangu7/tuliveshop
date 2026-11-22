@@ -122,7 +122,7 @@ const weakPin = (p: string) => /^(\d)\1+$/.test(p) || '01234567890'.includes(p) 
 /* ── Cliente: tiendas disponibles para darse de alta ── */
 router.get('/client/portfolios', async (_req: Request, res: Response) => {
   try {
-    const { rows } = await pool.query(`SELECT name, slug FROM portfolios ORDER BY name`);
+    const { rows } = await pool.query(`SELECT name, slug FROM portfolios WHERE NOT hidden ORDER BY name`);
     res.json(rows);
   } catch (e: any) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });
@@ -136,7 +136,7 @@ router.post('/client/login', validate(clientLoginSchema), async (req: Request, r
     const { whatsapp, pin, portfolio_slug } = req.body;
     const tel = digits(whatsapp);
     const { rows } = await pool.query(
-      `SELECT u.*, p.slug AS p_slug, p.name AS p_name FROM users u JOIN portfolios p ON p.id = u.portfolio_id
+      `SELECT u.*, p.slug AS p_slug, p.name AS p_name, p.hidden AS p_hidden FROM users u JOIN portfolios p ON p.id = u.portfolio_id
        WHERE u.whatsapp=$1 AND u.role='client' AND u.status='Activo' ORDER BY p.name`, [tel]);
 
     const matches: any[] = [];
@@ -154,6 +154,10 @@ router.post('/client/login', validate(clientLoginSchema), async (req: Request, r
       }
     }
     if (!matches.length) return res.status(401).json({ error: 'WhatsApp o PIN incorrectos' });
+    // Tiendas ocultas: no se entra a ellas. Solo se avisa después de verificar el PIN (no revela cuentas a extraños)
+    const visible = matches.filter(u => !u.p_hidden);
+    if (!visible.length) return res.status(403).json({ error: 'Tu tienda no está disponible por ahora. Comunícate con la tienda.' });
+    matches.splice(0, matches.length, ...visible);
 
     const stores = matches.map(u => ({ slug: u.p_slug, name: u.p_name, token: sign(u), user: clientView(u) }));
     const primary = (portfolio_slug && stores.find(s => s.slug === portfolio_slug)) || stores[0];
@@ -181,7 +185,7 @@ router.post('/client/register', validate(clientRegisterSchema), async (req: Requ
     if (tel.length < 8) return res.status(400).json({ error: 'WhatsApp inválido' });
     if (weakPin(String(pin))) return res.status(400).json({ error: 'Ese PIN es muy fácil de adivinar. Elige otro (evita 123456 o 111111).' });
 
-    const { rows: stores } = await db.query(`SELECT id, slug, name FROM portfolios WHERE slug = ANY($1)`, [slugs]);
+    const { rows: stores } = await db.query(`SELECT id, slug, name FROM portfolios WHERE NOT hidden AND slug = ANY($1)`, [slugs]);
     if (stores.length !== slugs.length) return res.status(404).json({ error: 'Alguna de las tiendas elegidas no existe' });
 
     const { rows: [dup] } = await db.query(`SELECT 1 AS x FROM users WHERE whatsapp=$1 AND role='client' LIMIT 1`, [tel]);
@@ -304,7 +308,7 @@ router.post('/client/add-stores', async (req: Request, res: Response) => {
 
     const { rows: [me] } = await db.query(`SELECT * FROM users WHERE id=$1 AND role='client'`, [u.id]);
     if (!me) return res.status(404).json({ error: 'Cuenta no encontrada' });
-    const { rows: stores } = await db.query(`SELECT id, slug, name FROM portfolios WHERE slug = ANY($1)`, [slugs]);
+    const { rows: stores } = await db.query(`SELECT id, slug, name FROM portfolios WHERE NOT hidden AND slug = ANY($1)`, [slugs]);
     if (stores.length !== slugs.length) return res.status(404).json({ error: 'Alguna de las tiendas elegidas no existe' });
 
     await db.query('BEGIN');

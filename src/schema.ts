@@ -18,4 +18,6 @@ export async function ensureSchema() {
   // Constancia de la autorización del titular (Ley 1581 de 2012): fecha y versión de la política aceptada
   await pool.query(`ALTER TABLE admin_documents ADD COLUMN IF NOT EXISTS consent_at TIMESTAMPTZ`);
   await pool.query(`ALTER TABLE admin_documents ADD COLUMN IF NOT EXISTS consent_version TEXT`);
+  // Foto del producto (URL en media.tuliveshop.com)
+  await pool.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT`);
 }

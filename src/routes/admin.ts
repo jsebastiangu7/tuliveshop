@@ -7,6 +7,7 @@ import type { AuthRequest } from '../middleware/auth.js';
 import { productAvailable, kitAvailable, lockProducts, kitProductIds, getOrderTotals, ensureShipmentFor } from '../services/inventory.js';
 import { emitAll } from '../realtime.js';
 import { decrypt } from '../utils/encryption.js';
+import { mediaConfigured, mediaBase, signMediaToken, cleanImageUrl } from '../utils/media.js';
 
 const router = Router();
 
@@ -303,11 +304,19 @@ router.get('/products', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
 });
 
+// Permiso para subir una foto de producto a SiteGround (ver utils/media.ts)
+router.post('/products/image-token', (req: AuthRequest, res: Response) => {
+  if (!mediaConfigured()) return res.status(503).json({ error: 'Las fotos aún no están configuradas en el servidor' });
+  res.json({ upload_url: process.env.MEDIA_UPLOAD_URL, token: signMediaToken(pfOf(req)), base_url: mediaBase(), max_bytes: 600 * 1024 });
+});
+
 router.post('/products', async (req: AuthRequest, res: Response) => {
   try {
     const pf = pfOf(req);
     const { name, code, category_id, cost, shipping_cost, price, stock, min_stock, purchase_date } = req.body;
     if (!String(name || '').trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
+    const img = req.body.image_url !== undefined ? cleanImageUrl(req.body.image_url) : null;
+    if (img && !img.ok) return res.status(400).json({ error: img.error });
     const { rows: [dup] } = await pool.query(`SELECT id FROM products WHERE portfolio_id=$1 AND LOWER(name)=LOWER($2)`, [pf, String(name).trim()]);
     if (dup) return res.status(400).json({ error: 'Ya existe un producto con ese nombre' });
     if (code) {
@@ -316,6 +325,7 @@ router.post('/products', async (req: AuthRequest, res: Response) => {
     }
     const { rows: [p] } = await pool.query(`INSERT INTO products (portfolio_id, category_id, name, code, cost, shipping_cost, price, stock, min_stock, purchase_date) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
       [pf, category_id || null, String(name).trim(), code ? String(code).trim() : null, Number(cost) || 0, Number(shipping_cost) || 0, Number(price) || 0, Math.max(0, Math.floor(Number(stock) || 0)), Math.max(0, Math.floor(Number(min_stock) || 0)), purchase_date || null]);
+    if (img) { await pool.query(`UPDATE products SET image_url=$2 WHERE id=$1`, [p.id, img.url]); p.image_url = img.url; }
     res.json(p);
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
 });
@@ -327,6 +337,8 @@ router.put('/products/:id', async (req: AuthRequest, res: Response) => {
     const pf = pfOf(req);
     const filtered = Object.fromEntries(Object.entries(req.body).filter(([k]) => PRODUCT_FIELDS.includes(k)));
     const { name, code, category_id, cost, shipping_cost, price, stock, min_stock, purchase_date } = filtered as any;
+    const img = req.body.image_url !== undefined ? cleanImageUrl(req.body.image_url) : null;
+    if (img && !img.ok) return res.status(400).json({ error: img.error });
     if (code) {
       const { rows: [dc] } = await pool.query(`SELECT id FROM products WHERE portfolio_id=$1 AND code=$2 AND id <> $3`, [pf, String(code).trim(), req.params.id]);
       if (dc) return res.status(400).json({ error: 'Ese código ya pertenece a otro producto' });
@@ -334,6 +346,7 @@ router.put('/products/:id', async (req: AuthRequest, res: Response) => {
     const { rows: [p] } = await pool.query(`UPDATE products SET name=$3, code=$4, category_id=$5, cost=$6, shipping_cost=$7, price=$8, stock=$9, min_stock=$10, purchase_date=$11 WHERE id=$1 AND portfolio_id=$2 RETURNING *`,
       [req.params.id, pf, String(name || '').trim(), code ? String(code).trim() : null, category_id || null, Number(cost) || 0, Number(shipping_cost) || 0, Number(price) || 0, Math.max(0, Math.floor(Number(stock) || 0)), Math.max(0, Math.floor(Number(min_stock) || 0)), purchase_date || null]);
     if (!p) return res.status(404).json({ error: 'Producto no encontrado' });
+    if (img) { await pool.query(`UPDATE products SET image_url=$3 WHERE id=$1 AND portfolio_id=$2`, [p.id, pf, img.url]); p.image_url = img.url; }
     res.json(p);
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
 });

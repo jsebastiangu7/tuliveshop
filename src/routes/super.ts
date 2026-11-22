@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { pool } from '../db.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import type { AuthRequest } from '../middleware/auth.js';
+import { wipeStoreMedia } from '../utils/media.js';
 
 const router = Router();
 
@@ -125,6 +126,45 @@ router.put('/portfolios/:id', async (req: AuthRequest, res) => {
     if (!pf) return res.status(404).json({ error: 'Portafolio no encontrado' });
     res.json(pf);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
+});
+
+/* ── Eliminar una tienda y TODA su información (irreversible) ── */
+router.delete('/portfolios/:id', async (req: AuthRequest, res) => {
+  const id = String(req.params.id || '');
+  if (String(req.body?.confirmText ?? '') !== 'Borrar tienda') return res.status(400).json({ error: 'Texto de confirmación incorrecto' });
+  const db = await pool.connect();
+  try {
+    const { rows: [pf] } = await db.query(`SELECT id, name FROM portfolios WHERE id = $1`, [id]);
+    if (!pf) return res.status(404).json({ error: 'Tienda no encontrada' });
+    const { rows: [sa] } = await db.query(`SELECT 1 FROM users WHERE portfolio_id = $1 AND role = 'super_admin' LIMIT 1`, [id]);
+    if (sa) return res.status(400).json({ error: 'Esta tienda contiene una cuenta de superadministrador y no se puede eliminar' });
+    await db.query('BEGIN');
+    const del = async (sql: string) => (await db.query(sql, [id])).rowCount ?? 0;
+    await del(`DELETE FROM shipments WHERE portfolio_id=$1`);
+    await del(`DELETE FROM payments WHERE portfolio_id=$1`);
+    await del(`DELETE FROM payment_reports WHERE portfolio_id=$1`);
+    await del(`DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE portfolio_id=$1)`);
+    const orders = await del(`DELETE FROM orders WHERE portfolio_id=$1`);
+    await del(`DELETE FROM kit_components WHERE kit_id IN (SELECT id FROM kits WHERE portfolio_id=$1)`);
+    await del(`DELETE FROM kits WHERE portfolio_id=$1`);
+    const products = await del(`DELETE FROM products WHERE portfolio_id=$1`);
+    await del(`DELETE FROM categories WHERE portfolio_id=$1`);
+    await del(`DELETE FROM goal_payments WHERE portfolio_id=$1`);
+    await del(`DELETE FROM goals WHERE portfolio_id=$1`);
+    await del(`DELETE FROM donations WHERE portfolio_id=$1`);
+    await del(`DELETE FROM settings WHERE portfolio_id=$1`);
+    await del(`DELETE FROM admin_documents WHERE portfolio_id=$1 OR user_id IN (SELECT id FROM users WHERE portfolio_id=$1)`);
+    const users = await del(`DELETE FROM users WHERE portfolio_id=$1`);
+    await del(`DELETE FROM portfolios WHERE id=$1`);
+    await db.query('COMMIT');
+    const media = await wipeStoreMedia(id);
+    console.log(`Tienda eliminada por super_admin: ${pf.name} (${id})`);
+    res.json({ ok: true, name: pf.name, deleted: { users, products, orders }, photos_removed: media });
+  } catch (e: any) {
+    await db.query('ROLLBACK').catch(() => {});
+    console.error('ERROR borrar tienda:', e);
+    res.status(500).json({ error: 'No se pudo eliminar la tienda (no se borró nada): ' + (e.message || 'error') });
+  } finally { db.release(); }
 });
 
 /* ── Administradores de cada tienda ── */

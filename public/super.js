@@ -132,6 +132,21 @@ function showDataPolicy() {
 }
 
 /* ---------- Tiendas ---------- */
+// ---- Ocultar / mostrar tienda a los clientes ----
+async function toggleHidden(id) {
+  const p = PORTFOLIOS.find(x => x.id === id); if (!p) return;
+  const hide = !p.hidden;
+  const msg = hide
+    ? `¿Ocultar «${p.name}»?\n\nLos clientes no podrán verla ni entrar a ella (su enlace dejará de funcionar y no aparecerá al registrarse). El administrador sigue trabajando normal y no se borra nada. Puedes mostrarla de nuevo cuando quieras.`
+    : `¿Mostrar «${p.name}» a los clientes otra vez?`;
+  if (!confirm(msg)) return;
+  try {
+    await api('/api/super/portfolios/' + id + '/visibility', { method: 'PUT', body: { hidden: hide } });
+    toast(hide ? '✔ Tienda oculta para los clientes' : '✔ Tienda visible para los clientes');
+    loadPortfolios();
+  } catch (e) { toast('⚠ ' + e.message); }
+}
+
 // ---- Eliminar tienda (exige escribir «Borrar tienda») ----
 let DEL_ID = null;
 function openDeletePortfolio(id) {
@@ -158,8 +173,8 @@ async function loadPortfolios() {
     PORTFOLIOS = await api('/api/super/portfolios');
     $('pfTable').innerHTML = PORTFOLIOS.length ?
       '<div class="tablewrap"><table><thead><tr><th>Tienda</th><th>Enlace público</th><th>Bre-B</th><th>WhatsApp</th><th>Num.</th><th>Admins</th><th>Clientes</th><th>Productos</th><th>Pedidos</th><th></th></tr></thead><tbody>' +
-      PORTFOLIOS.map(p => `<tr><td><b>${esc(p.name)}</b></td><td><a href="/?t=${esc(p.slug)}" target="_blank" rel="noopener" style="color:var(--brand)">/?t=${esc(p.slug)}</a></td><td>${esc(p.bre_b_key || '—')}</td><td>${esc(p.whatsapp_number || '—')}</td><td>${esc(p.order_prefix || '')}</td><td>${p.admins}</td><td>${p.clients}</td><td>${p.products}</td><td>${p.orders}</td>
-        <td><div class="acts"><button class="btn btn-ghost btn-sm" onclick="openAdmins('${p.id}')">Administradores</button><button class="btn btn-ghost btn-sm" onclick="openPortfolio('${p.id}')">Editar</button><button class="btn btn-danger btn-sm" onclick="openDeletePortfolio('${p.id}')">Eliminar</button></div></td></tr>`).join('') +
+      PORTFOLIOS.map(p => `<tr><td><b>${esc(p.name)}</b>${p.hidden ? ' <span class="pill warn">Oculta</span>' : ''}</td><td><a href="/?t=${esc(p.slug)}" target="_blank" rel="noopener" style="color:var(--brand)">/?t=${esc(p.slug)}</a></td><td>${esc(p.bre_b_key || '—')}</td><td>${esc(p.whatsapp_number || '—')}</td><td>${esc(p.order_prefix || '')}</td><td>${p.admins}</td><td>${p.clients}</td><td>${p.products}</td><td>${p.orders}</td>
+        <td><div class="acts"><button class="btn btn-ghost btn-sm" onclick="openAdmins('${p.id}')">Administradores</button><button class="btn btn-ghost btn-sm" onclick="openPortfolio('${p.id}')">Editar</button><button class="btn btn-ghost btn-sm" onclick="toggleHidden('${p.id}')">${p.hidden ? 'Mostrar tienda' : 'Ocultar tienda'}</button><button class="btn btn-danger btn-sm" onclick="openDeletePortfolio('${p.id}')">Eliminar</button></div></td></tr>`).join('') +
       '</tbody></table></div>' :
       '<p class="empty">Aún no hay tiendas. Crea la primera con «+ Nueva tienda».</p>';
   } catch (e) { toast('⚠ ' + e.message); }

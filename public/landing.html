@@ -1698,7 +1698,9 @@
     });
   
     (function () {
-      const v = new URLSearchParams(location.search).get('login');
+      const alias = { client: 'cliente-login', cliente: 'cliente-login', admin: 'tienda-login', tienda: 'tienda-login' };
+      const raw = new URLSearchParams(location.search).get('login');
+      const v = alias[raw] || raw;
       if (v && ['selector','cliente-login','crear-cuenta-1','tienda-login'].includes(v) && !APP_URL) {
         const go = () => openLoginModal(v);
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();

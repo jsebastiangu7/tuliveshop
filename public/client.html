@@ -342,8 +342,25 @@ async function api(path, opts = {}) {
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
+  if (res.status === 403 && data.code === 'store_hidden') return storeHidden();
   if (!res.ok) throw new Error(data.error || 'Error ' + res.status);
   return data;
+}
+// La tienda fue ocultada por la plataforma: se quita de la lista y se pasa a otra, o se cierra la sesión
+let _storeHiddenDone = false;
+function storeHidden() {
+  if (_storeHiddenDone) throw new Error('Tienda no disponible'); // varias peticiones fallan a la vez: un solo aviso
+  _storeHiddenDone = true;
+  const left = getStores().filter(s => s.slug !== slug);
+  if (left.length) {
+    localStorage.setItem('pk_stores', JSON.stringify(left));
+    alert('Esta tienda no está disponible por ahora. Te llevamos a otra de tus tiendas.');
+    switchStore(left[0].slug);
+  } else {
+    alert('Tu tienda no está disponible por ahora. Comunícate con la tienda.');
+    logout();
+  }
+  throw new Error('Tienda no disponible');
 }
 
 const STATUS = { draft: 'Borrador', pending_confirm: 'Por confirmar', apartada: 'Apartada', paid: 'Pagada', shipped: 'Enviada', delivered: 'Entregada', canceled: 'Cancelada', expired: 'Vencida' };

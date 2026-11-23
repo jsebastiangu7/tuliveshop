@@ -20,6 +20,9 @@ export async function ensureSchema() {
   await pool.query(`ALTER TABLE admin_documents ADD COLUMN IF NOT EXISTS consent_version TEXT`);
   // Foto del producto (URL en media.tuliveshop.com)
   await pool.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT`);
+  // Productos agregados DESPUÉS del primer abono: confirmed=false hasta que el cliente los confirme (mientras tanto puede quitarlos).
+  // Las filas existentes quedan confirmed=true (bloqueadas como hoy).
+  await pool.query(`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS confirmed BOOLEAN NOT NULL DEFAULT TRUE`);
   // Tienda oculta para los clientes (la maneja el superadministrador)
   await pool.query(`ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS hidden BOOLEAN NOT NULL DEFAULT FALSE`);
 }

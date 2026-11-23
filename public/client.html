@@ -553,6 +553,14 @@ async function removeFromBag(orderId, itemId) {
   await Promise.all([loadCatalog(), loadOrders(true)]);
 }
 
+async function confirmItems(orderId) {
+  const ids = [...document.querySelectorAll('.cfmChk')].filter(c => c.checked && c.dataset.o === orderId).map(c => c.value);
+  if (!ids.length) return toast('Marca al menos un producto para confirmar');
+  try { await api('/api/orders/' + orderId + '/items/confirm', { method: 'POST', body: { item_ids: ids } }); toast('✔ Productos confirmados'); }
+  catch (e) { toast('⚠ ' + e.message); }
+  await loadOrders(true);
+}
+
 async function loadOrders(quiet) {
   try {
     const orders = await api('/api/orders/mine');
@@ -567,13 +575,22 @@ async function loadOrders(quiet) {
       return;
     }
     $('ordersList').innerHTML = orders.map(o => {
-      const items = (o.items || []).map(i => `<tr><td>${escH(i.product_name || i.kit_name || '—')}</td><td>${i.quantity}</td><td class="hm">${money(i.price)}</td><td>${money(i.price * i.quantity)}</td><td>${o.status === 'draft' ? `<button class="rm" title="Quitar" onclick="removeFromBag('${escH(o.id)}','${escH(i.id)}')">✕</button>` : ''}</td></tr>`).join('');
+      const postAbono = ['pending_confirm', 'apartada'].includes(o.status);
+      const unc = postAbono ? (o.items || []).filter(i => i.confirmed === false) : [];
+      const items = (o.items || []).map(i => {
+        const isNew = postAbono && i.confirmed === false;
+        const act = (o.status === 'draft' || isNew) ? `<button class="rm" title="Quitar" onclick="removeFromBag('${escH(o.id)}','${escH(i.id)}')">✕</button>` : '';
+        const chk = isNew ? `<label class="cfm"><input type="checkbox" class="cfmChk" data-o="${escH(o.id)}" value="${escH(i.id)}"> Confirmar</label>` : '';
+        return `<tr${isNew ? ' style="background:rgba(245,158,11,.10)"' : ''}><td>${escH(i.product_name || i.kit_name || '—')}${isNew ? '<br><small style="color:var(--text-muted)">Nuevo · sin confirmar</small>' : ''}</td><td>${i.quantity}</td><td class="hm">${money(i.price)}</td><td>${money(i.price * i.quantity)}</td><td style="white-space:nowrap">${chk} ${act}</td></tr>`;
+      }).join('');
+      const cfmBar = unc.length ? `<div class="pay-warn" style="margin:10px 0">Marca los productos nuevos que quieres conservar y pulsa Confirmar. Al confirmarlos quedan bloqueados y ya no podrás quitarlos. Debes confirmarlos o quitarlos antes de abonar.<br><button class="btn btn-primary" style="margin-top:8px" onclick="confirmItems('${escH(o.id)}')">Confirmar seleccionados</button></div>` : '';
       return `<div class="bolsita">
         <div class="bolsita-header">
           <span><span class="bolsita-num">${escH(o.order_number)}</span><span class="bolsita-date">${fmtDMY(o.created_at)}</span></span>
           <span class="badge ${STATUS_CLASS[o.status] || 'badge-muted'}">${STATUS[o.status] || o.status}</span>
         </div>
         <table><thead><tr><th>Producto</th><th>Cant.</th><th class="hm">Precio</th><th>Total</th><th></th></tr></thead><tbody>${items || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Sin productos</td></tr>'}</tbody></table>
+        ${cfmBar}
         <div class="totals">
           <span>Total: ${money(o.total)}</span>
           <span>Abonado: ${money(o.paid)}</span>

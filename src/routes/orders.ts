@@ -36,7 +36,7 @@ router.get('/mine', authenticate, requireRole('client'), async (req: AuthRequest
     const result = [];
     for (const o of orders) {
       const { rows: items } = await pool.query(
-        `SELECT oi.id, oi.quantity, oi.price, p.name AS product_name, k.name AS kit_name
+        `SELECT oi.id, oi.quantity, oi.price, oi.confirmed, p.name AS product_name, k.name AS kit_name
          FROM order_items oi
          LEFT JOIN products p ON p.id = oi.product_id
          LEFT JOIN kits k ON k.id = oi.kit_id
@@ -126,9 +126,10 @@ router.post('/:id/items', authenticate, requireRole('client'), async (req: AuthR
     }
 
     // 4) Reservar (insertar) antes de soltar el candado
+    // Después del primer abono (pendiente o apartada) el producto nuevo queda SIN CONFIRMAR: el cliente puede quitarlo o confirmarlo.
     await db.query(
-      `INSERT INTO order_items (order_id, product_id, kit_id, quantity, price) VALUES ($1,$2,$3,$4,$5)`,
-      [order.id, product_id || null, kit_id || null, qty, price]);
+      `INSERT INTO order_items (order_id, product_id, kit_id, quantity, price, confirmed) VALUES ($1,$2,$3,$4,$5,$6)`,
+      [order.id, product_id || null, kit_id || null, qty, price, order.status === 'draft']);
     if (order.status === 'draft')
       await db.query(`UPDATE orders SET expires_at = NOW() + INTERVAL '12 hours', updated_at = NOW() WHERE id = $1`, [order.id]);
 
@@ -148,10 +149,33 @@ router.delete('/:id/items/:itemId', authenticate, requireRole('client'), async (
   try {
     const { rows: [order] } = await pool.query(`SELECT * FROM orders WHERE id = $1`, [req.params.id]);
     if (!order || order.client_id !== req.user!.id) return res.status(404).json({ error: 'Bolsita no encontrada' });
-    if (order.status !== 'draft')
-      return res.status(403).json({ error: 'Solo el administrador puede quitar productos de una bolsita separada o pagada' });
-    await pool.query(`DELETE FROM order_items WHERE id = $1 AND order_id = $2`, [req.params.itemId, order.id]);
+    if (order.status === 'draft') {
+      await pool.query(`DELETE FROM order_items WHERE id = $1 AND order_id = $2`, [req.params.itemId, order.id]);
+    } else if (['pending_confirm', 'apartada'].includes(order.status)) {
+      // Solo se pueden quitar los productos nuevos aún sin confirmar
+      const r = await pool.query(
+        `DELETE FROM order_items WHERE id = $1 AND order_id = $2 AND confirmed = FALSE`, [req.params.itemId, order.id]);
+      if (!r.rowCount) return res.status(403).json({ error: 'Este producto ya está confirmado. Solo el administrador puede quitarlo.' });
+    } else {
+      return res.status(403).json({ error: 'Solo el administrador puede quitar productos de una bolsita pagada' });
+    }
     res.json({ ok: true, ...(await getOrderTotals(order.id)) });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
+});
+
+// Confirmar productos agregados después del primer abono: quedan bloqueados como los anteriores
+router.post('/:id/items/confirm', authenticate, requireRole('client'), async (req: AuthRequest, res) => {
+  try {
+    const { rows: [order] } = await pool.query(`SELECT * FROM orders WHERE id = $1`, [req.params.id]);
+    if (!order || order.client_id !== req.user!.id) return res.status(404).json({ error: 'Bolsita no encontrada' });
+    if (!['pending_confirm', 'apartada'].includes(order.status))
+      return res.status(400).json({ error: 'Esta bolsita no tiene productos por confirmar' });
+    const ids = Array.isArray(req.body.item_ids) ? req.body.item_ids.map(String) : [];
+    if (!ids.length) return res.status(400).json({ error: 'Selecciona al menos un producto' });
+    const r = await pool.query(
+      `UPDATE order_items SET confirmed = TRUE WHERE order_id = $1 AND confirmed = FALSE AND id::text = ANY($2::text[])`,
+      [order.id, ids]);
+    res.json({ ok: true, confirmed: r.rowCount, ...(await getOrderTotals(order.id)) });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Error del servidor' }); }
 });
 
@@ -215,6 +239,11 @@ router.post('/:id/separar', authenticate, requireRole('client'), async (req: Aut
     if (!order || order.client_id !== req.user!.id) return res.status(404).json({ error: 'Bolsita no encontrada' });
     if (!['draft', 'pending_confirm', 'apartada'].includes(order.status))
       return res.status(400).json({ error: 'Esta bolsita no admite abonos' });
+
+    // No se abona sobre productos sin decidir: el saldo debe ser el definitivo
+    const { rows: [unc] } = await pool.query(
+      `SELECT 1 FROM order_items WHERE order_id = $1 AND confirmed = FALSE LIMIT 1`, [order.id]);
+    if (unc) return res.status(409).json({ error: 'Tienes productos nuevos sin confirmar. Confírmalos o quítalos antes de abonar.' });
 
     const totals = await getOrderTotals(order.id);
     if (totals.total <= 0) return res.status(400).json({ error: 'La bolsita no tiene productos' });
@@ -345,6 +374,7 @@ router.post('/reports/:id/resolve', authenticate, requireRole('admin', 'super_ad
           [report.order_id]);
       } else {
         newStatus = 'draft';
+        await pool.query(`UPDATE order_items SET confirmed = TRUE WHERE order_id = $1::uuid`, [report.order_id]);
         await pool.query(
           `UPDATE orders SET status = 'draft', expires_at = NOW() + INTERVAL '12 hours', updated_at = NOW() WHERE id = $1::uuid`,
           [report.order_id]);

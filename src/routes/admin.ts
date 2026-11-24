@@ -391,8 +391,10 @@ router.get('/categories', async (req: AuthRequest, res: Response) => {
 router.post('/categories', async (req: AuthRequest, res: Response) => {
   try {
     const pf = pfOf(req);
-    const name = String(req.body.name || '').trim().toUpperCase();
+    const name = String(req.body.name || '').replace(/\s+/g, ' ').trim().toUpperCase();
     if (!name) return res.status(400).json({ error: 'Nombre obligatorio' });
+    const { rows: [dupN] } = await pool.query(`SELECT id FROM categories WHERE portfolio_id=$1 AND UPPER(TRIM(REGEXP_REPLACE(name, '\\s+', ' ', 'g')))=$2`, [pf, name]);
+    if (dupN) return res.status(400).json({ error: 'Esa categoría ya existe' });
     const { rows: [c] } = await pool.query(`INSERT INTO categories (portfolio_id, name) VALUES ($1,$2) RETURNING *`, [pf, name]);
     res.json(c);
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
@@ -401,9 +403,10 @@ router.post('/categories', async (req: AuthRequest, res: Response) => {
 router.put('/categories/:id', async (req: AuthRequest, res: Response) => {
   try {
     const pf = pfOf(req);
-    const name = String(req.body.name || '').trim().toUpperCase();
+    const name = String(req.body.name || '').replace(/\s+/g, ' ').trim().toUpperCase();
     if (!name) return res.status(400).json({ error: 'Nombre obligatorio' });
-    const { rows: [dup] } = await pool.query(`SELECT id FROM categories WHERE portfolio_id=$1 AND name=$2 AND id <> $3`, [pf, name, req.params.id]);
+    // compara sin espacios sobrantes para detectar duplicados reales (incluidas las importadas con espacios)
+    const { rows: [dup] } = await pool.query(`SELECT id FROM categories WHERE portfolio_id=$1 AND UPPER(TRIM(REGEXP_REPLACE(name, '\\s+', ' ', 'g')))=$2 AND id <> $3`, [pf, name, req.params.id]);
     if (dup) return res.status(400).json({ error: 'Esa categoría ya existe' });
     const { rows: [c] } = await pool.query(`UPDATE categories SET name=$3 WHERE id=$1 AND portfolio_id=$2 RETURNING *`, [req.params.id, pf, name]);
     if (!c) return res.status(404).json({ error: 'Categoría no encontrada' });
@@ -411,15 +414,33 @@ router.put('/categories/:id', async (req: AuthRequest, res: Response) => {
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
 });
 
+// Eliminar categoría. Si tiene productos hay que decidir a dónde van: ?move_to=<id de otra categoría> o ?move_to=none (sin categoría)
 router.delete('/categories/:id', async (req: AuthRequest, res: Response) => {
+  const db = await pool.connect();
   try {
     const pf = pfOf(req);
-    const { rows: [use] } = await pool.query(`SELECT 1 FROM products WHERE category_id=$1 LIMIT 1`, [req.params.id]);
-    if (use) return res.status(409).json({ error: 'No se puede eliminar: tiene productos asignados' });
-    const { rowCount } = await pool.query(`DELETE FROM categories WHERE id=$1 AND portfolio_id=$2`, [req.params.id, pf]);
-    if (!rowCount) return res.status(404).json({ error: 'Categoría no encontrada' });
-    res.json({ ok: true });
-  } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
+    await db.query('BEGIN');
+    const { rows: [cat] } = await db.query(`SELECT id, name FROM categories WHERE id=$1 AND portfolio_id=$2 FOR UPDATE`, [req.params.id, pf]);
+    if (!cat) { await db.query('ROLLBACK'); return res.status(404).json({ error: 'Categoría no encontrada' }); }
+    const { rows: [cnt] } = await db.query(`SELECT COUNT(*)::int AS n FROM products WHERE category_id=$1 AND portfolio_id=$2`, [cat.id, pf]);
+    if (cnt.n > 0) {
+      const moveTo = String(req.query.move_to || '');
+      if (!moveTo) { await db.query('ROLLBACK'); return res.status(409).json({ error: `La categoría tiene ${cnt.n} producto(s). Elige a dónde moverlos.`, code: 'has_products', product_count: cnt.n }); }
+      let target: string | null = null;
+      if (moveTo !== 'none') {
+        const { rows: [t] } = await db.query(`SELECT id FROM categories WHERE id=$1 AND portfolio_id=$2 AND id <> $3`, [moveTo, pf, cat.id]);
+        if (!t) { await db.query('ROLLBACK'); return res.status(400).json({ error: 'La categoría de destino no es válida' }); }
+        target = t.id;
+      }
+      await db.query(`UPDATE products SET category_id=$1 WHERE category_id=$2 AND portfolio_id=$3`, [target, cat.id, pf]);
+    }
+    await db.query(`DELETE FROM categories WHERE id=$1 AND portfolio_id=$2`, [cat.id, pf]);
+    await db.query('COMMIT');
+    res.json({ ok: true, moved: cnt.n });
+  } catch (e: any) {
+    try { await db.query('ROLLBACK'); } catch { /* cerrada */ }
+    res.status(500).json({ error: 'Error del servidor: ' + e.message });
+  } finally { db.release(); }
 });
 
 /* ─────────────── Kits ─────────────── */
@@ -932,15 +953,16 @@ router.post('/import-json', async (req: AuthRequest, res: Response) => {
     await client.query('BEGIN');
     const counts = { categories: 0, products: 0, kits: 0, clients: 0, orders: 0, payments: 0, paymentsOmitidos: 0 };
     const cats = new Set<string>();
-    (st.categories || []).forEach((c: any) => { if (c) cats.add(String(c).toUpperCase()); });
-    (st.inventory || []).forEach((p: any) => { if (p.categoria) cats.add(String(p.categoria).toUpperCase()); });
+    const normCat = (v: any) => String(v ?? '').replace(/\s+/g, ' ').trim().toUpperCase();   // sin espacios sobrantes (evita "CAT" y "CAT " duplicadas)
+    (st.categories || []).forEach((c: any) => { const n = normCat(c); if (n) cats.add(n); });
+    (st.inventory || []).forEach((p: any) => { const n = normCat(p.categoria); if (n) cats.add(n); });
     for (const name of cats) {
       if (!name) continue;
       const r = await client.query(`SELECT id FROM categories WHERE portfolio_id=$1 AND name=$2`, [pf, name]);
       if (!r.rows.length) { await client.query(`INSERT INTO categories (portfolio_id, name) VALUES ($1,$2)`, [pf, name]); counts.categories++; }
     }
     const catId = async (name: string) => {
-      const r = await client.query(`SELECT id FROM categories WHERE portfolio_id=$1 AND name=$2`, [pf, String(name || '').toUpperCase()]);
+      const r = await client.query(`SELECT id FROM categories WHERE portfolio_id=$1 AND name=$2`, [pf, normCat(name)]);
       return r.rows[0]?.id || null;
     };
     const prodIdByName = new Map<string, string>();

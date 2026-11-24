@@ -722,6 +722,14 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   <div class="modal-actions"><button class="btn" onclick="closeModal('payEditModal')">Cancelar</button><button class="btn primary" id="peSave" onclick="savePayEdit()">Guardar cambios</button></div>
 </div></div>
 
+<!-- MODAL: Eliminar categoría con productos -->
+<div id="catDelModal" class="modal-backdrop"><div class="modal">
+  <h2>Eliminar categoría</h2><input type="hidden" id="cdId">
+  <p id="cdMsg" class="note"></p>
+  <div class="field"><label>Mover los productos a</label><select id="cdTarget"></select></div>
+  <div class="modal-actions"><button class="btn" onclick="closeModal('catDelModal')">Cancelar</button><button class="btn danger" onclick="confirmDelCategory()">Mover y eliminar</button></div>
+</div></div>
+
 <!-- MODAL: Kit -->
 <div id="kitModal" class="modal-backdrop"><div class="modal">
   <h2 id="kitTitle">Kit</h2><input type="hidden" id="kId">
@@ -828,7 +836,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 <script src="/legal-docs.js?v=2"></script>
 <script src="/wallets.js?v=1"></script>
 <script src="/scanner.js?v=1"></script>
-<script src="/admin.js?v=15"></script>
+<script src="/admin.js?v=16"></script>
 <script>
 // Toggle de tema
 function toggleTheme() {

@@ -1160,8 +1160,8 @@ async function delKit() { const id = $('kId').value; if (id) await delKitDirect(
 /* ---------- Categorías ---------- */
 async function loadCats() {
   CATS = await api('/api/admin/categories');
-  put('catsBox', CATS.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Categoría</th><th>Acciones</th></tr></thead><tbody>' +
-    CATS.map(c => `<tr><td><b>${esc(c.name)}</b></td><td class="acts"><button class="btn" onclick="renameCategory('${c.id}')">Renombrar</button><button class="btn danger" onclick="delCategory('${c.id}')">Eliminar</button></td></tr>`).join('') +
+  put('catsBox', CATS.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>Categoría</th><th>Productos</th><th>Acciones</th></tr></thead><tbody>' +
+    CATS.map(c => `<tr><td><b>${esc(c.name)}</b></td><td>${Number(c.product_count) || 0}</td><td class="acts"><button class="btn" onclick="renameCategory('${c.id}')">Renombrar</button><button class="btn danger" onclick="delCategory('${c.id}')">Eliminar</button></td></tr>`).join('') +
     '</tbody></table></div>' : '<p class="note">Sin categorías.</p>');
 }
 async function addCategory() {
@@ -1179,9 +1179,24 @@ async function renameCategory(id) {
 }
 async function delCategory(id) {
   const c = CATS.find(x => x.id === id); if (!c) return;
+  const n = Number(c.product_count) || 0;
+  if (n > 0) {   // tiene productos: elegir a dónde moverlos
+    $('cdId').value = id;
+    $('cdMsg').textContent = `"${c.name}" tiene ${n} producto(s). Elige a dónde moverlos antes de eliminarla.`;
+    $('cdTarget').innerHTML = '<option value="none">Sin categoría</option>' + CATS.filter(x => x.id !== id).map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('');
+    return openModal('catDelModal');
+  }
   if (!confirm(`¿Eliminar la categoría "${c.name}"?`)) return;
   try { await api('/api/admin/categories/' + id, { method: 'DELETE' }); toast('Categoría eliminada'); loadCats(); }
   catch (e) { toast('⚠ ' + e.message); }
+}
+async function confirmDelCategory() {
+  const id = $('cdId').value, to = $('cdTarget').value;
+  try {
+    const r = await api('/api/admin/categories/' + id + '?move_to=' + encodeURIComponent(to), { method: 'DELETE' });
+    closeModal('catDelModal'); toast(`Categoría eliminada · ${r.moved || 0} producto(s) movidos`);
+    loadCats(); fetchCaches().catch(() => {});
+  } catch (e) { toast('⚠ ' + e.message); }
 }
 
 /* ---------- Clientes ---------- */

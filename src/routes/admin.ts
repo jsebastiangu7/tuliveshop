@@ -609,7 +609,7 @@ router.get('/orders/:id', async (req: AuthRequest, res: Response) => {
     const pf = pfOf(req);
     const { rows: [o] } = await pool.query(`SELECT o.*, u.name AS client_name, u.whatsapp AS client_whatsapp, u.city AS client_city, u.address AS client_address FROM orders o LEFT JOIN users u ON u.id = o.client_id WHERE o.id=$1 AND o.portfolio_id=$2`, [req.params.id, pf]);
     if (!o) return res.status(404).json({ error: 'Pedido no encontrado' });
-    const { rows: items } = await pool.query(`SELECT oi.id, oi.quantity, oi.price, oi.added_at, p.name AS product_name, k.name AS kit_name FROM order_items oi LEFT JOIN products p ON p.id=oi.product_id LEFT JOIN kits k ON k.id=oi.kit_id WHERE oi.order_id=$1 ORDER BY oi.added_at`, [o.id]);
+    const { rows: items } = await pool.query(`SELECT oi.id, oi.product_id, oi.kit_id, oi.quantity, oi.price, oi.added_at, p.name AS product_name, k.name AS kit_name FROM order_items oi LEFT JOIN products p ON p.id=oi.product_id LEFT JOIN kits k ON k.id=oi.kit_id WHERE oi.order_id=$1 ORDER BY oi.added_at`, [o.id]);
     const { rows: payments } = await pool.query(`SELECT * FROM payments WHERE order_id=$1 ORDER BY payment_date, created_at`, [o.id]);
     res.json({ ...o, items, payments, ...(await getOrderTotals(o.id)) });
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
@@ -675,6 +675,55 @@ router.post('/orders/:id/items', async (req: AuthRequest, res: Response) => {
   } finally {
     db.release();
   }
+});
+
+/* Editar una línea del pedido: producto/kit, cantidad, precio y fecha */
+router.put('/orders/:id/items/:itemId', async (req: AuthRequest, res: Response) => {
+  const pf = pfOf(req);
+  const product_id = req.body.product_id || null, kit_id = req.body.kit_id || null;
+  const qty = parseInt(req.body.quantity);
+  const price = Number(req.body.price);
+  if ((!product_id && !kit_id) || (product_id && kit_id)) return res.status(400).json({ error: 'Elige un producto o un kit' });
+  if (!(qty >= 1)) return res.status(400).json({ error: 'Cantidad inválida' });
+  if (!(price >= 0)) return res.status(400).json({ error: 'Precio inválido' });
+  const lineDate = /^\d{4}-\d{2}-\d{2}$/.test(String(req.body.date || '')) ? String(req.body.date) : null;
+  const db = await pool.connect();
+  try {
+    await db.query('BEGIN');
+    const { rows: [order] } = await db.query(`SELECT * FROM orders WHERE id=$1 AND portfolio_id=$2 FOR UPDATE`, [req.params.id, pf]);
+    if (!order) { await db.query('ROLLBACK'); return res.status(404).json({ error: 'Pedido no encontrado' }); }
+    if (['canceled', 'expired'].includes(order.status)) { await db.query('ROLLBACK'); return res.status(400).json({ error: 'Pedido cerrado' }); }
+    const { rows: [old] } = await db.query(`SELECT * FROM order_items WHERE id=$1 AND order_id=$2 FOR UPDATE`, [req.params.itemId, order.id]);
+    if (!old) { await db.query('ROLLBACK'); return res.status(404).json({ error: 'Línea no encontrada' }); }
+    if (product_id) {
+      const { rows: [p] } = await db.query(`SELECT id FROM products WHERE id=$1 AND portfolio_id=$2`, [product_id, pf]);
+      if (!p) { await db.query('ROLLBACK'); return res.status(404).json({ error: 'Producto no encontrado' }); }
+    } else {
+      const { rows: [k] } = await db.query(`SELECT id FROM kits WHERE id=$1 AND portfolio_id=$2`, [kit_id, pf]);
+      if (!k) { await db.query('ROLLBACK'); return res.status(404).json({ error: 'Kit no encontrado' }); }
+    }
+    const involved = [
+      ...(old.product_id ? [old.product_id] : []), ...(old.kit_id ? await kitProductIds(old.kit_id, db) : []),
+      ...(product_id ? [product_id] : []), ...(kit_id ? await kitProductIds(kit_id, db) : []),
+    ];
+    await lockProducts(db, involved);
+    await db.query(`UPDATE order_items SET product_id=$1, kit_id=$2, quantity=$3, price=$4,
+      added_at = COALESCE((($5::date)::timestamp + interval '12 hours') AT TIME ZONE '${TZ}', added_at) WHERE id=$6`,
+      [product_id, kit_id, qty, price, lineDate, old.id]);
+    // Verifica que ningún producto afectado quede con stock negativo (sin recortar a 0)
+    const { rows: neg } = await db.query(`
+      SELECT p.name, p.stock - (
+        COALESCE((SELECT SUM(oi.quantity) FROM order_items oi JOIN orders o ON o.id=oi.order_id WHERE oi.product_id=p.id AND o.status NOT IN ('canceled','expired')),0) +
+        COALESCE((SELECT SUM(oi.quantity*kc.quantity) FROM order_items oi JOIN orders o ON o.id=oi.order_id JOIN kit_components kc ON kc.kit_id=oi.kit_id WHERE kc.product_id=p.id AND o.status NOT IN ('canceled','expired')),0)
+      ) AS left FROM products p WHERE p.id = ANY($1)`, [[...new Set(involved)]]);
+    const bad = neg.find((r: any) => Number(r.left) < 0);
+    if (bad) { await db.query('ROLLBACK'); return res.status(409).json({ error: `Stock insuficiente de ${bad.name}. Faltan ${-Number(bad.left)}` }); }
+    await db.query('COMMIT');
+    res.json({ ok: true, ...(await getOrderTotals(order.id)) });
+  } catch (e: any) {
+    try { await db.query('ROLLBACK'); } catch { /* ya cerrada */ }
+    res.status(500).json({ error: 'Error del servidor: ' + e.message });
+  } finally { db.release(); }
 });
 
 router.delete('/orders/:id/items/:itemId', async (req: AuthRequest, res: Response) => {

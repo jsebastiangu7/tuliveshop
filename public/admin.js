@@ -2428,7 +2428,8 @@ function vSearch(q) {
   const words = normTxt(q).split(/\s+/).filter(Boolean);
   const all = vCatalog().filter(it => { const n = normTxt(it.name + ' ' + it.code); return words.every(w => n.includes(w)); });
   all.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'p' ? -1 : 1) || a.name.localeCompare(b.name, 'es'));
-  return all.slice(0, 150);
+  // El tope solo aplica a productos: los kits SIEMPRE aparecen completos (antes quedaban cortados en tiendas con muchos productos)
+  return [...all.filter(x => x.kind === 'p').slice(0, 600), ...all.filter(x => x.kind === 'k')];
 }
 function vPlace(row) {
   const box = $('vProdList'), r = row.querySelector('.vp').getBoundingClientRect();

@@ -217,6 +217,22 @@ th.sortable { cursor: pointer; user-select: none; }
   opacity: 0; pointer-events: none; transition: opacity 0.3s;
 }
 #toast.show { opacity: 1; }
+
+/* Ventas */
+.vhead{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.vhead .field small.note{display:block;margin-top:6px}
+.vbtns{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}
+.vlines{border:1px solid var(--border);border-radius:16px;padding:6px 12px 12px;overflow-x:auto;background:rgba(127,127,127,.06)}
+.vgrid{display:grid;grid-template-columns:minmax(260px,1fr) 160px 100px 130px 140px 48px;gap:10px;align-items:center;min-width:820px}
+.vgh span{font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--text-muted);padding:10px 4px 6px}
+.vrow{margin-top:8px}
+.vrow input{width:100%;min-width:0}
+.vrow .vt{font-weight:700}
+.vtotals{display:flex;gap:28px;justify-content:flex-end;font-weight:800;font-size:20px;margin:16px 4px}
+.vfoot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-radius:14px;background:rgba(127,127,127,.12)}
+#vProdList{display:none;position:fixed;z-index:2000;overflow:auto;background:var(--bg);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow)}
+@media (max-width:1000px){.vhead{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.vhead{grid-template-columns:1fr}}
 @media (max-width: 900px) {
   header { padding: 10px 14px; }
   nav#tabs { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: thin; }
@@ -432,44 +448,35 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 
   <!-- VENTAS RÁPIDAS -->
   <section id="view-ventas" class="view">
-    <h1>🛒 Venta rápida (Live)</h1>
-    <p class="note">Captura el pedido mientras haces el LIVE. El botón Guardar registra todo en un solo paso.</p>
     <div class="panel glass">
-      <div class="fgrid">
-        <div class="field"><label>Cliente</label><select id="vClient"><option value="">Seleccionar cliente…</option><option value="new">+ Nuevo cliente</option></select></div>
-        <div class="field"><label>Fecha</label><input id="vDate" type="date"></div>
-        <div class="field"><label>Estado inicial</label><select id="vStatus"><option value="apartada">Apartada</option><option value="draft">Borrador</option><option value="pending_confirm">Por confirmar</option><option value="paid">Pagada</option></select></div>
+      <div class="vhead">
+        <div class="field"><label>N.º de pedido</label><input id="vNum" readonly tabindex="-1"><small class="note">Generado automáticamente</small></div>
+        <div class="field"><label>Cliente</label><select id="vClient"><option value="">Seleccionar cliente…</option></select></div>
+        <div class="field"><label>Fecha de la factura</label><input id="vDate" type="date"><small class="note">Solo define la fecha de la factura; cada producto tiene su propia fecha.</small></div>
+        <div class="field"><label>Estado</label><select id="vStatus"><option value="apartada">Pendiente</option><option value="paid">Pagado</option></select></div>
       </div>
-      <h3>Productos</h3>
-      <div class="fgrid" style="align-items:end">
-        <div class="field" style="flex:2;position:relative"><label>Producto</label>
-          <input id="vProdTxt" autocomplete="off" placeholder="Escribe cualquier palabra y Enter…" role="combobox" aria-expanded="false" aria-controls="vProdList">
-          <input type="hidden" id="vProd">
-          <div id="vProdList" role="listbox" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:60;max-height:260px;overflow:auto;background:var(--bg);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow)"></div>
-        </div>
-        <div class="field" style="flex:1"><label>Fecha</label><input id="vLineDate" type="date"></div>
-        <div class="field" style="flex:1.5"><label>Código de barras</label><div style="display:flex;gap:6px"><input id="vScan" placeholder="Escanea y Enter" style="flex:1;min-width:0" onkeydown="ventaScanKey(event)"><button type="button" class="btn" onclick="ventaScanCam()" title="Escanear con la cámara">📷</button></div></div>
-        <div class="field" style="flex:0.5"><label>Cant.</label><input id="vQty" type="number" min="1" value="1"></div>
-        <div class="field" style="flex:0.5"><label>Precio</label><input id="vPrice" type="number" min="0"></div>
-        <div class="field" style="flex:0.5"><label>&nbsp;</label><button class="btn primary" onclick="addVentaRow()">+ Agregar</button></div>
+      <div class="vbtns">
+        <button type="button" class="btn" onclick="ventaNewClient()">+ Cliente</button>
+        <button type="button" class="btn" onclick="ventaNewProduct()">+ Producto</button>
+        <button type="button" class="btn" onclick="ventaScanCam()">📷 Escanear producto</button>
+        <button type="button" class="btn" onclick="clearVenta()">Limpiar</button>
       </div>
-      <div class="tablewrap" style="margin-top:12px"><table class="adm"><thead><tr><th>Producto</th><th>Fecha</th><th>Cant.</th><th>Precio</th><th>Total</th><th></th></tr></thead><tbody id="vItems"></tbody></table></div>
-      <div style="margin-top:16px; display:flex; gap:18px; justify-content:flex-end; font-weight:800"><span>Total: <b id="vTotal">$0</b></span></div>
-      <h3>Abono inicial (opcional)</h3>
-      <div class="fgrid">
-        <div class="field"><label>Valor</label><input id="vPayAmount" type="number" min="0" value="0"></div>
-        <div class="field"><label>Medio</label><select id="vPayMethod"><option>Transferencia</option><option>Nequi</option><option>Daviplata</option><option>Efectivo</option><option>Bre-b</option><option>Otro</option></select></div>
-        <div class="field"><label>Referencia</label><input id="vPayRef"></div>
-        <div class="field"><label>Fecha</label><input id="vPayDate" type="date"></div>
+      <div class="vlines">
+        <div class="vgrid vgh"><span>Producto</span><span>Fecha</span><span>Cantidad</span><span>Precio</span><span>Total</span><span></span></div>
+        <div id="vRows"></div>
       </div>
-      <div class="actions" style="margin-top:20px; justify-content:flex-end">
-        <button class="btn" onclick="clearVenta()">Limpiar</button>
-        <button class="btn primary" onclick="saveVenta()">💾 Guardar pedido</button>
+      <div class="vhead" style="margin-top:18px">
+        <div class="field"><label>Abono recibido</label><input id="vPayAmount" type="number" min="0" value="0" inputmode="numeric"></div>
+        <div class="field"><label>Fecha del abono</label><input id="vPayDate" type="date"></div>
+        <div class="field"><label>Medio de pago</label><select id="vPayMethod"><option>Transferencia</option><option>Nequi</option><option>Daviplata</option><option>Efectivo</option><option>Bre-b</option><option>Otro</option></select></div>
+        <div class="field"><label>Referencia</label><input id="vPayRef" placeholder="Opcional"></div>
+        <div class="field"><label>Notas (del pedido y del abono)</label><input id="vNotes" placeholder="Opcional"></div>
       </div>
+      <div class="vtotals"><span>Total: <b id="vTotal">$ 0</b></span><span>Saldo: <b id="vBalance">$ 0</b></span></div>
+      <div class="vfoot"><span id="vStatusTxt">Nuevo pedido</span><button type="button" class="btn primary" onclick="saveVenta()">Guardar pedido</button></div>
     </div>
   </section>
 
-  <!-- VENTAS POR PRODUCTO -->
   <section id="view-ventas-prod" class="view">
     <h1>📦 Ventas por producto</h1>
     <p class="note">Elige un producto y asigna sus unidades disponibles a los clientes activos.</p>
@@ -649,10 +656,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
       <div class="actions" style="margin-top:12px"><button class="btn primary" onclick="saveGeneral()">Guardar configuración</button></div>
     </div>
     <div class="panel glass">
-      <h2>📥 Importar datos de la versión anterior (JSON)</h2>
-      <p class="note">Carga el archivo JSON de tu software anterior. Agrega y actualiza categorías, productos, kits, clientes, pedidos y abonos. <b>No borra</b> lo que ya tienes y, si algo falla, no se guarda nada.</p>
+      <h2>🗂️ Datos JSON</h2>
+      <p class="note"><b>Exportar JSON</b> descarga a tu PC una copia de seguridad de la tienda: categorías, productos, kits, clientes, pedidos y abonos (sin PIN de clientes ni fotos; las fotos quedan como enlaces). <b>Importar JSON</b> carga un archivo con ese mismo formato o el de tu software anterior: agrega y actualiza, <b>no borra</b> lo que ya tienes y, si algo falla, no se guarda nada.</p>
       <div class="actions">
-        <button class="btn primary" onclick="document.getElementById('importFile').click()">Seleccionar archivo JSON</button>
+        <button class="btn primary" onclick="exportJson()">⬇ Exportar JSON</button>
+        <button class="btn" onclick="document.getElementById('importFile').click()">⬆ Importar JSON</button>
         <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="onImportFile(event)">
       </div>
       <div id="importResult" class="note" style="margin-top:12px"></div>
@@ -806,6 +814,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   <div class="modal-actions"><button class="btn" onclick="closeModal('goalPayModal')">Cancelar</button><button class="btn primary" onclick="saveGoalPayment()">Registrar aporte</button></div>
 </div></div>
 
+<div id="vProdList" role="listbox"></div>
+
 <!-- MODAL: Importar inventario -->
 <div id="invImportModal" class="modal-backdrop"><div class="modal" style="width:min(1080px,100%)">
   <h2>Revisar archivo de inventario</h2>
@@ -841,7 +851,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 <script src="/legal-docs.js?v=2"></script>
 <script src="/wallets.js?v=1"></script>
 <script src="/scanner.js?v=1"></script>
-<script src="/admin.js?v=17"></script>
+<script src="/admin.js?v=18"></script>
 <script>
 // Toggle de tema
 function toggleTheme() {

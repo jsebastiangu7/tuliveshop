@@ -1094,6 +1094,7 @@ async function saveProduct() {
     if (id) await api('/api/admin/products/' + id, { method: 'PUT', body });
     else await api('/api/admin/products', { method: 'POST', body });
     closeModal('productModal'); toast('✔ Producto guardado'); loadInventory();
+    if (VENTA_NEW_PRODUCT) { VENTA_NEW_PRODUCT = false; fetchCaches().catch(() => {}); }
   } catch (e) { toast('⚠ ' + e.message); }
 }
 async function openStock(id) {
@@ -1559,6 +1560,24 @@ function openImportModal() {
 function closeImportModal() { 
   const modal = $('importModal'); 
   if (modal) modal.classList.remove('open'); 
+}
+
+/* ---------- Exportar JSON (copia de seguridad al PC) ---------- */
+async function exportJson() {
+  try {
+    toast('Preparando copia de seguridad…');
+    const data = await api('/api/admin/backup-json');
+    let slug = 'tienda'; try { slug = (JSON.parse(localStorage.getItem('portfolio') || '{}').slug || slug); } catch (e) { /* sin slug */ }
+    const name = `respaldo-${String(slug).replace(/[^\w-]+/g, '')}-${today()}.json`;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    const r = $('importResult');
+    if (r) r.textContent = `✔ Copia guardada como ${name}: ${data.inventory.length} productos, ${data.clients.length} clientes, ${data.orders.length} pedidos, ${data.payments.length} abonos.`;
+    toast('✔ Copia de seguridad descargada');
+  } catch (e) { toast('⚠ ' + e.message); }
 }
 
 function onImportFile(ev) {
@@ -2308,10 +2327,11 @@ async function executeWipe() {
    ===================================================================== */
 
 // --- VENTA RÁPIDA (LIVE) ---
-let VENTA_NEW_CLIENT = false;   // true cuando el modal de cliente se abrió desde Ventas: al guardar, se selecciona el cliente nuevo
-let VSEL = null;                // producto elegido en el buscador {id,name,price,available}
-let VHL = -1;                   // fila resaltada en la lista del buscador
-let VMATCH = [];
+let VENTA_NEW_CLIENT = false;    // el modal de cliente se abrió desde Ventas: al guardar, se selecciona el cliente nuevo
+let VENTA_NEW_PRODUCT = false;   // el modal de producto se abrió desde Ventas: al guardar, se refresca el catálogo
+let VROW = null;                 // fila cuyo buscador está abierto
+let VMATCH = [];                 // coincidencias mostradas
+let VHL = -1;                    // coincidencia resaltada
 
 const normTxt = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -2320,156 +2340,221 @@ async function refreshVentaClients(selectId) {
   CLIENTS = clients;
   const cSelect = $('vClient');
   const keep = selectId || cSelect.value;
-  cSelect.innerHTML = '<option value="">Seleccionar cliente…</option><option value="new">+ Nuevo cliente</option>' +
+  cSelect.innerHTML = '<option value="">Seleccionar cliente…</option>' +
     clients.filter(c => c.status === 'Activo').map(c => `<option value="${c.id}">${esc(c.name)} (${esc(c.whatsapp || 'Sin tel')})</option>`).join('');
   cSelect.value = [...cSelect.options].some(o => o.value === keep) ? keep : '';
 }
+function ventaNewClient() { VENTA_NEW_CLIENT = true; openClient(); }
+function ventaNewProduct() { VENTA_NEW_PRODUCT = true; openProduct(); }
+function ventaMsg(t) { const e = $('vStatusTxt'); if (e) e.textContent = t; }
 
 async function loadVentaView() {
   if (!$('vDate').value) $('vDate').value = today();
   if (!$('vPayDate').value) $('vPayDate').value = today();
-  if (!$('vLineDate').value) $('vLineDate').value = today();   // se conserva: la fecha elegida se hereda a la siguiente fila
-
-  await refreshVentaClients();
-  $('vClient').onchange = function () {
-    if (this.value === 'new') { VENTA_NEW_CLIENT = true; this.value = ''; openClient(); }
-  };
-
-  await fetchCaches();
-  vProdClear();
-  const txt = $('vProdTxt');
-  txt.oninput = () => { VSEL = null; $('vProd').value = ''; vProdShow(); };
-  txt.onfocus = () => { if (!VSEL) vProdShow(); };
-  txt.onblur = () => setTimeout(vProdHide, 150);   // deja tiempo al clic en la lista
-  txt.onkeydown = vProdKey;
-  ['vLineDate', 'vQty', 'vPrice'].forEach(id => {
-    $(id).onkeydown = function (e) {
-      if (e.key !== 'Enter' || e.isComposing) return;
-      e.preventDefault();
-      addVentaRow();
-    };
-  });
+  await Promise.all([refreshVentaClients(), fetchCaches()]);
+  try { $('vNum').value = (await api('/api/admin/orders/next-number')).order_number; } catch (e) { $('vNum').value = ''; }
+  if (!$('vRows').children.length) vAddRow();
+  $('vPayAmount').oninput = calcVentaTotal;
+  calcVentaTotal();
 }
 
-// Buscador: cualquier palabra contenida en el nombre (sin importar tildes ni mayúsculas ni el orden de las palabras)
-function vProdSearch(q) {
+/* ---- Filas de productos ---- */
+function vLastDate() {
+  const rows = [...$('vRows').querySelectorAll('.vrow')];
+  return (rows.length && rows[rows.length - 1].querySelector('.vd').value) || today();
+}
+function vAddRow() {
+  const row = document.createElement('div');
+  row.className = 'vgrid vrow';
+  row.innerHTML = `
+    <input class="vp" autocomplete="off" placeholder="Buscar o seleccionar…" role="combobox" aria-expanded="false">
+    <input class="vd" type="date">
+    <input class="vq" type="number" min="1" value="1" inputmode="numeric">
+    <input class="vpr" type="number" min="0" value="0" inputmode="numeric">
+    <input class="vt" readonly tabindex="-1" value="0">
+    <button type="button" class="btn danger vx" title="Quitar fila" style="padding:6px 10px">✕</button>`;
+  row.querySelector('.vd').value = vLastDate();   // la fecha se hereda de la fila anterior
+  const p = row.querySelector('.vp');
+  p.addEventListener('input', () => { row._sel = null; vSetRowTotal(row); calcVentaTotal(); vOpen(row); });
+  p.addEventListener('focus', () => { if (!row._sel) vOpen(row); else p.select(); });
+  p.addEventListener('blur', () => setTimeout(() => { if (VROW === row) vClose(); }, 150));
+  p.addEventListener('keydown', e => vKey(e, row));
+  // Al cambiar la fecha, las filas vacías que siguen la heredan (las que ya tienen producto conservan la suya)
+  row.querySelector('.vd').addEventListener('input', () => {
+    const v = row.querySelector('.vd').value;
+    for (let n = row.nextElementSibling; n; n = n.nextElementSibling) if (!n._sel && !n.querySelector('.vp').value.trim()) n.querySelector('.vd').value = v;
+  });
+  row.querySelector('.vq').addEventListener('input', () => vQtyCheck(row));
+  row.querySelector('.vpr').addEventListener('input', () => { vSetRowTotal(row); calcVentaTotal(); });
+  [row.querySelector('.vq'), row.querySelector('.vpr'), row.querySelector('.vd')].forEach(el => el.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || e.isComposing) return;
+    e.preventDefault(); vNextRowFocus(row);
+  }));
+  row.querySelector('.vx').onclick = () => { if (VROW === row) vClose(); row.remove(); if (!$('vRows').children.length) vAddRow(); calcVentaTotal(); };
+  $('vRows').appendChild(row);
+  return row;
+}
+function vNextRowFocus(row) {
+  const next = row.nextElementSibling || vAddRow();
+  next.querySelector('.vp').focus();
+}
+function vSetRowTotal(row) {
+  const q = parseInt(row.querySelector('.vq').value) || 0, pr = Number(row.querySelector('.vpr').value) || 0;
+  row.querySelector('.vt').value = money(q * pr);
+}
+// Cantidad total pedida de un mismo producto/kit en todas las filas (para no pasarse del stock)
+function vUsed(kind, id, except) {
+  return [...$('vRows').querySelectorAll('.vrow')].filter(r => r !== except && r._sel && r._sel.kind === kind && r._sel.id === id)
+    .reduce((a, r) => a + (parseInt(r.querySelector('.vq').value) || 0), 0);
+}
+function vQtyCheck(row) {
+  const s = row._sel;
+  if (s) {
+    const max = Number(s.available) - vUsed(s.kind, s.id, row);
+    const q = parseInt(row.querySelector('.vq').value) || 0;
+    if (q > max) { row.querySelector('.vq').value = Math.max(1, max); toast(`⚠ ${s.name}: solo hay ${s.available} disponibles`); }
+  }
+  vSetRowTotal(row); calcVentaTotal();
+}
+
+/* ---- Buscador: cualquier palabra contenida en el nombre, sin importar tildes, mayúsculas ni orden ---- */
+function vCatalog() {
+  return [
+    ...PRODUCTS.map(p => ({ kind: 'p', id: p.id, name: p.name, price: Number(p.price) || 0, available: Number(p.available) || 0, code: p.code || '' })),
+    ...KITS.map(k => ({ kind: 'k', id: k.id, name: k.name, price: Number(k.price) || 0, available: Number(k.available) || 0, code: '' })),
+  ];
+}
+function vSearch(q) {
   const words = normTxt(q).split(/\s+/).filter(Boolean);
-  const list = PRODUCTS.filter(p => Number(p.available) > 0);
-  const res = !words.length ? list : list.filter(p => { const n = normTxt(p.name + ' ' + (p.code || p.barcode || '')); return words.every(w => n.includes(w)); });
-  return res.slice(0, 60);
+  const all = vCatalog().filter(it => { const n = normTxt(it.name + ' ' + it.code); return words.every(w => n.includes(w)); });
+  all.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'p' ? -1 : 1) || a.name.localeCompare(b.name, 'es'));
+  return all.slice(0, 150);
 }
-function vProdShow() {
-  VMATCH = vProdSearch($('vProdTxt').value);
-  VHL = VMATCH.length ? 0 : -1;
+function vPlace(row) {
+  const box = $('vProdList'), r = row.querySelector('.vp').getBoundingClientRect();
+  const w = Math.max(r.width, 340), maxH = 320, below = window.innerHeight - r.bottom - 12;
+  box.style.left = Math.min(r.left, Math.max(8, window.innerWidth - w - 8)) + 'px'; box.style.width = w + 'px';
+  if (below >= 180 || below >= r.top) { box.style.top = (r.bottom + 4) + 'px'; box.style.bottom = 'auto'; box.style.maxHeight = Math.min(maxH, Math.max(140, below)) + 'px'; }
+  else { box.style.bottom = (window.innerHeight - r.top + 4) + 'px'; box.style.top = 'auto'; box.style.maxHeight = Math.min(maxH, r.top - 12) + 'px'; }
+}
+function vOpen(row) {
+  VROW = row;
+  VMATCH = vSearch(row.querySelector('.vp').value);
   const box = $('vProdList');
-  box.innerHTML = VMATCH.length
-    ? VMATCH.map((p, i) => `<div role="option" data-i="${i}" style="padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;gap:10px"><span>${esc(p.name)}</span><span style="color:var(--text-muted);white-space:nowrap">${money(p.price)} · disp ${p.available}</span></div>`).join('')
-    : '<div style="padding:10px 12px;color:var(--text-muted)">Sin coincidencias con stock</div>';
-  box.style.display = 'block'; $('vProdTxt').setAttribute('aria-expanded', 'true');
-  box.onmousedown = e => { const r = e.target.closest('[data-i]'); if (r) { e.preventDefault(); vProdPick(Number(r.dataset.i)); $('vQty').focus(); $('vQty').select(); } };
-  vProdMark();
+  const li = (it, i) => {
+    const out = it.available <= 0;
+    return `<div role="option" data-i="${i}" ${out ? 'aria-disabled="true"' : ''} style="padding:9px 14px;${out ? 'opacity:.45;cursor:not-allowed' : 'cursor:pointer'}">${esc(it.name)} — ${money(it.price)}${out ? ' — AGOTADO' : ' <span style="color:var(--text-muted)">(disp ' + it.available + ')</span>'}</div>`;
+  };
+  const grp = t => `<div style="padding:7px 14px;font-size:12px;letter-spacing:.08em;font-weight:800;color:var(--text-muted);text-transform:uppercase;background:var(--surface)">${t}</div>`;
+  let html = '', last = '';
+  VMATCH.forEach((it, i) => { if (it.kind !== last) { html += grp(it.kind === 'p' ? 'Productos' : 'Kits'); last = it.kind; } html += li(it, i); });
+  box.innerHTML = html || '<div style="padding:12px 14px;color:var(--text-muted)">Sin coincidencias</div>';
+  VHL = VMATCH.findIndex(it => it.available > 0);
+  box.style.display = 'block'; row.querySelector('.vp').setAttribute('aria-expanded', 'true');
+  vPlace(row); vMark();
 }
-function vProdHide() { $('vProdList').style.display = 'none'; $('vProdTxt').setAttribute('aria-expanded', 'false'); }
-function vProdMark() {
-  [...$('vProdList').querySelectorAll('[data-i]')].forEach((r, i) => {
-    r.style.background = i === VHL ? 'var(--surface-hover)' : '';
-    if (i === VHL) r.scrollIntoView({ block: 'nearest' });
+function vClose() {
+  const box = $('vProdList'); if (box) box.style.display = 'none';
+  if (VROW) VROW.querySelector('.vp').setAttribute('aria-expanded', 'false');
+  VROW = null;
+}
+function vMark() {
+  [...$('vProdList').querySelectorAll('[data-i]')].forEach(r => {
+    const on = Number(r.dataset.i) === VHL;
+    r.style.background = on ? 'var(--surface-hover)' : '';
+    if (on) r.scrollIntoView({ block: 'nearest' });
   });
 }
-function vProdPick(i) {
-  const p = VMATCH[i]; if (!p) return;
-  VSEL = p; $('vProd').value = p.id; $('vProdTxt').value = p.name; $('vPrice').value = p.price;
-  vProdHide();
+function vMove(dir) {
+  if (!VMATCH.length) return;
+  let i = VHL;
+  for (let n = 0; n < VMATCH.length; n++) { i = (i + dir + VMATCH.length) % VMATCH.length; if (VMATCH[i].available > 0) break; }
+  VHL = i; vMark();
 }
-function vProdClear() { VSEL = null; $('vProd').value = ''; $('vProdTxt').value = ''; vProdHide(); }
-function vProdKey(e) {
+function vPick(row, it) {
+  if (!it || it.available <= 0) return toast('⚠ Producto agotado');
+  const left = it.available - vUsed(it.kind, it.id, row);
+  if (left <= 0) return toast(`⚠ ${it.name}: ya agregaste todo lo disponible (${it.available})`);
+  row._sel = it;
+  row.querySelector('.vp').value = it.name;
+  row.querySelector('.vpr').value = it.price;
+  const q = row.querySelector('.vq'); if (!(parseInt(q.value) >= 1)) q.value = 1; if (parseInt(q.value) > left) q.value = left;
+  vSetRowTotal(row); calcVentaTotal(); vClose();
+  if (!row.nextElementSibling) vAddRow();   // siempre queda una fila vacía lista (hereda la fecha)
+  q.focus(); q.select();
+}
+function vKey(e, row) {
   if (e.isComposing) return;
-  const open = $('vProdList').style.display !== 'none';
+  const open = VROW === row && $('vProdList').style.display !== 'none';
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
     e.preventDefault();
-    if (!open) return vProdShow();
-    if (!VMATCH.length) return;
-    VHL = (VHL + (e.key === 'ArrowDown' ? 1 : -1) + VMATCH.length) % VMATCH.length; vProdMark();
+    if (!open) return vOpen(row);
+    vMove(e.key === 'ArrowDown' ? 1 : -1);
   } else if (e.key === 'Enter') {
     e.preventDefault();
-    if (open && VMATCH.length) { vProdPick(VHL < 0 ? 0 : VHL); $('vQty').focus(); $('vQty').select(); }
-    else if (VSEL) addVentaRow();
-    else toast('⚠ No hay un producto con ese texto');
-  } else if (e.key === 'Escape') vProdHide();
-}
-
-function ventaRowHtml(name, date, qty, price) {
-  return `<td>${esc(name)}</td>
-    <td><input type="date" class="v-row-date" value="${esc(date)}" style="min-width:140px" onchange="this.closest('tr').dataset.date=this.value"></td>
-    <td>${qty}</td><td>${money(price)}</td><td>${money(qty * price)}</td>
-    <td class="acts"><button class="btn danger" style="padding:4px 8px" onclick="this.closest('tr').remove(); calcVentaTotal()">✕</button></td>`;
-}
-
-function addVentaRow() {
-  if (!VSEL || !$('vProd').value) return toast('⚠ Busca y selecciona un producto (Enter)');
-  const qty = Math.max(1, parseInt($('vQty').value) || 1);
-  const price = Number($('vPrice').value) || 0;
-  const date = $('vLineDate').value || today();
-  const inList = Array.from($('vItems').querySelectorAll('tr')).filter(r => r.dataset.productId === VSEL.id).reduce((a, r) => a + Number(r.dataset.qty), 0);
-  if (inList + qty > Number(VSEL.available)) return toast(`⚠ ${VSEL.name}: solo hay ${VSEL.available} disponibles (ya agregaste ${inList})`);
-
-  const tr = document.createElement('tr');
-  tr.dataset.productId = VSEL.id; tr.dataset.qty = qty; tr.dataset.price = price; tr.dataset.date = date;
-  tr.innerHTML = ventaRowHtml(VSEL.name, date, qty, price);
-  $('vItems').appendChild(tr);
-  calcVentaTotal();
-
-  // La fecha se queda (hereda a la siguiente fila); se limpian producto, cantidad y precio
-  vProdClear();
-  $('vQty').value = '1'; $('vPrice').value = '';
-  $('vProdTxt').focus();
+    const txt = row.querySelector('.vp').value.trim();
+    const byCode = txt && typeof findByCode === 'function' ? findByCode(txt) : null;   // lector USB: el código escrito + Enter
+    if (byCode && !row._sel) return vPick(row, vCatalog().find(x => x.kind === 'p' && x.id === byCode.id));
+    if (open && VMATCH.length && VHL >= 0) return vPick(row, VMATCH[VHL]);
+    if (row._sel) return row.querySelector('.vq').focus();
+    toast('⚠ No hay un producto con ese texto');
+  } else if (e.key === 'Escape') vClose();
 }
 
 function calcVentaTotal() {
   let total = 0;
-  $('vItems').querySelectorAll('tr').forEach(tr => { total += (parseInt(tr.dataset.qty) || 0) * (Number(tr.dataset.price) || 0); });
+  $('vRows').querySelectorAll('.vrow').forEach(r => { if (r._sel) total += (parseInt(r.querySelector('.vq').value) || 0) * (Number(r.querySelector('.vpr').value) || 0); });
   $('vTotal').textContent = money(total);
+  $('vBalance').textContent = money(Math.max(0, total - (Number($('vPayAmount').value) || 0)));
 }
 
 function clearVenta() {
-  $('vClient').value = '';
-  $('vItems').innerHTML = '';
-  $('vPayAmount').value = '0';
-  $('vPayRef').value = '';
-  vProdClear();
-  calcVentaTotal();
-  loadVentaView();
+  $('vClient').value = ''; $('vRows').innerHTML = ''; $('vPayAmount').value = '0'; $('vPayRef').value = ''; $('vNotes').value = '';
+  $('vStatus').value = 'apartada'; $('vDate').value = today(); $('vPayDate').value = today();
+  vClose(); ventaMsg('Nuevo pedido'); loadVentaView();
 }
 
 async function saveVenta() {
   const clientId = $('vClient').value;
-  if (!clientId || clientId === 'new') return toast('⚠ Selecciona o crea un cliente');
-  const rows = [...$('vItems').querySelectorAll('tr')];
+  if (!clientId) return toast('⚠ Selecciona o crea un cliente');
+  const rows = [...$('vRows').querySelectorAll('.vrow')].filter(r => r._sel);
   if (!rows.length) return toast('⚠ Agrega al menos un producto');
-  const btn = document.querySelector('#view-ventas button[onclick="saveVenta()"]');
+  const total = rows.reduce((a, r) => a + (parseInt(r.querySelector('.vq').value) || 0) * (Number(r.querySelector('.vpr').value) || 0), 0);
+  const payAmount = Number($('vPayAmount').value) || 0;
+  const wanted = $('vStatus').value;
+  if (rows.some(r => !(parseInt(r.querySelector('.vq').value) >= 1))) return toast('⚠ Revisa las cantidades');
+  if (wanted === 'paid' && payAmount < total) return toast('⚠ Para marcarlo Pagado, el abono debe cubrir el total (' + money(total) + ')');
+  const btn = document.querySelector('#view-ventas .vfoot button.primary');
   if (btn) btn.disabled = true;
+  ventaMsg('Guardando…');
   let orderId = null;
   try {
-    const wanted = $('vStatus').value;
-    // Se crea como "apartada" y al final se pasa al estado elegido (así "Pagada" genera su envío)
-    const orderRes = await api('/api/admin/orders', { method: 'POST', body: { client_id: clientId, status: wanted === 'paid' ? 'apartada' : wanted, date: $('vDate').value || undefined } });
+    const notes = $('vNotes').value.trim();
+    const orderRes = await api('/api/admin/orders', { method: 'POST', body: { client_id: clientId, status: 'apartada', date: $('vDate').value || undefined, notes: notes || undefined } });
     orderId = orderRes.id;
-    for (const row of rows) {
-      await api(`/api/admin/orders/${orderId}/items`, { method: 'POST', body: { product_id: row.dataset.productId, quantity: parseInt(row.dataset.qty), price: Number(row.dataset.price), date: row.dataset.date || undefined } });
+    for (const r of rows) {
+      const s = r._sel;
+      await api(`/api/admin/orders/${orderId}/items`, { method: 'POST', body: { [s.kind === 'k' ? 'kit_id' : 'product_id']: s.id, quantity: parseInt(r.querySelector('.vq').value), price: Number(r.querySelector('.vpr').value) || 0, date: r.querySelector('.vd').value || undefined } });
     }
-    const payAmount = Number($('vPayAmount').value) || 0;
     if (payAmount > 0) {
-      await api(`/api/admin/orders/${orderId}/payments`, { method: 'POST', body: { amount: payAmount, method: $('vPayMethod').value, reference: $('vPayRef').value, payment_date: $('vPayDate').value || today() } });
+      await api(`/api/admin/orders/${orderId}/payments`, { method: 'POST', body: { amount: payAmount, method: $('vPayMethod').value, reference: $('vPayRef').value, note: notes || undefined, payment_date: $('vPayDate').value || today() } });
     }
     if (wanted === 'paid') await api(`/api/admin/orders/${orderId}`, { method: 'PUT', body: { status: 'paid' } });
-    toast('✔ Pedido guardado exitosamente');
-    clearVenta();
+    toast('✔ Pedido ' + orderRes.order_number + ' guardado');
+    clearVenta(); ventaMsg('✔ Pedido ' + orderRes.order_number + ' guardado');
     loadOrders().catch(() => {});
   } catch (e) {
-    // Si algo falló a mitad de camino, avisa del pedido parcial para que no quede una bolsita fantasma sin saberlo
+    ventaMsg('⚠ ' + e.message);
     toast('⚠ ' + e.message + (orderId ? ' — el pedido quedó creado a medias; revísalo en Pedidos' : ''));
   } finally { if (btn) btn.disabled = false; }
 }
+
+document.addEventListener('mousedown', e => {   // clic en una opción del buscador
+  const opt = e.target.closest && e.target.closest('#vProdList [data-i]');
+  if (opt && VROW) { e.preventDefault(); vPick(VROW, VMATCH[Number(opt.dataset.i)]); }
+});
+window.addEventListener('resize', () => { if (VROW) vPlace(VROW); });
+window.addEventListener('scroll', () => { if (VROW) vPlace(VROW); }, true);
 
 // --- VENTAS POR PRODUCTO (ASIGNACIÓN MASIVA) ---
 async function loadVpView() {
@@ -2796,30 +2881,23 @@ async function omScanKey(ev) {
 }
 function omScanCam() { Scanner.open({ title: 'Agregar al pedido', continuous: true, onCode: omAddScanned }); }
 
-// Venta: suma una fila (o +1 si el producto ya está en la lista)
+// Venta: el escáner llena la siguiente fila (o suma +1 si ese producto ya está en la lista)
 function ventaAddProduct(p) {
-  if (p.available <= 0) return '⚠ ' + p.name + ' sin stock disponible';
-  const tb = $('vItems');
-  const row = Array.from(tb.querySelectorAll('tr')).find(r => r.dataset.productId === p.id);
-  if (row) {
-    const q = parseInt(row.dataset.qty) + 1;
-    if (q > p.available) return '⚠ ' + p.name + ': solo hay ' + p.available + ' disponibles';
-    row.dataset.qty = q; row.children[2].textContent = q; row.children[4].textContent = money(q * Number(row.dataset.price));
+  const item = vCatalog().find(x => x.kind === 'p' && x.id === p.id);
+  if (!item || item.available <= 0) return '⚠ ' + p.name + ' sin stock disponible';
+  const rows = [...$('vRows').querySelectorAll('.vrow')];
+  const same = rows.find(r => r._sel && r._sel.kind === 'p' && r._sel.id === p.id);
+  if (same) {
+    const q = (parseInt(same.querySelector('.vq').value) || 0) + 1;
+    if (q + vUsed('p', p.id, same) > item.available) return '⚠ ' + p.name + ': solo hay ' + item.available + ' disponibles';
+    same.querySelector('.vq').value = q; vSetRowTotal(same); calcVentaTotal();
   } else {
-    const price = Number(p.price) || 0, date = $('vLineDate').value || today();
-    const tr = document.createElement('tr');
-    tr.dataset.productId = p.id; tr.dataset.qty = 1; tr.dataset.price = price; tr.dataset.date = date;
-    tr.innerHTML = ventaRowHtml(p.name, date, 1, price);
-    tb.appendChild(tr);
+    const empty = rows.find(r => !r._sel && !r.querySelector('.vp').value.trim()) || vAddRow();
+    empty._sel = item; empty.querySelector('.vp').value = item.name; empty.querySelector('.vpr').value = item.price; empty.querySelector('.vq').value = 1;
+    vSetRowTotal(empty); calcVentaTotal();
+    if (!empty.nextElementSibling) vAddRow();
   }
-  calcVentaTotal();
   return '✔ ' + p.name + ' agregado';
 }
 function ventaScanCode(code) { const p = findByCode(code); return p ? ventaAddProduct(p) : '⚠ Código no registrado: ' + code; }
-function ventaScanKey(ev) {
-  if (ev.key !== 'Enter') return;
-  ev.preventDefault();
-  const v = ev.target.value.trim(); if (!v) return;
-  ev.target.value = ''; toast(ventaScanCode(v));
-}
 function ventaScanCam() { Scanner.open({ title: 'Agregar a la venta', continuous: true, onCode: ventaScanCode }); }

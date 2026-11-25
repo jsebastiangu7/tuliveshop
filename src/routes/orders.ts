@@ -15,7 +15,7 @@ async function expireStaleOrders(clientId: string) {
     [clientId]);
 }
 
-async function nextOrderNumber(portfolioId: string): Promise<string> {
+export async function nextOrderNumber(portfolioId: string): Promise<string> {
   const { rows: [pf] } = await pool.query(
     `SELECT order_prefix, order_digits, order_start FROM portfolios WHERE id = $1`, [portfolioId]);
   const { rows: [mx] } = await pool.query(

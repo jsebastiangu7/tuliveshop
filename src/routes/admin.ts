@@ -8,6 +8,7 @@ import { productAvailable, kitAvailable, lockProducts, kitProductIds, getOrderTo
 import { emitAll } from '../realtime.js';
 import { decrypt } from '../utils/encryption.js';
 import { mediaConfigured, mediaBase, signMediaToken, cleanImageUrl } from '../utils/media.js';
+import { nextOrderNumber } from './orders.js';
 
 const router = Router();
 
@@ -557,9 +558,24 @@ router.put('/clients/:id', async (req: AuthRequest, res: Response) => {
 router.post('/orders', async (req: AuthRequest, res: Response) => {
   try {
     const pf = pfOf(req);
-    const { client_id, status = 'apartada' } = req.body;
-    const { rows: [o] } = await pool.query(`INSERT INTO orders (portfolio_id, client_id, status, created_at) VALUES ($1, $2, $3, NOW()) RETURNING *`, [pf, client_id || null, status]);
-    res.json(o);
+    const { client_id } = req.body;
+    const status = String(req.body.status || 'apartada');
+    if (!['draft', 'pending_confirm', 'apartada'].includes(status)) return res.status(400).json({ error: 'Estado inicial inválido' });
+    if (!client_id || !/^[0-9a-f-]{36}$/i.test(String(client_id))) return res.status(400).json({ error: 'Selecciona un cliente' });
+    const { rows: [cl] } = await pool.query(`SELECT id FROM users WHERE id=$1 AND portfolio_id=$2 AND role='client'`, [client_id, pf]);
+    if (!cl) return res.status(404).json({ error: 'Cliente no encontrado en esta tienda' });
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.body.date || '')) ? String(req.body.date) : null;
+    const expires = status === 'draft' ? new Date(Date.now() + 12 * 3600 * 1000).toISOString() : null;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const order_number = await nextOrderNumber(pf);
+        const { rows: [o] } = await pool.query(
+          `INSERT INTO orders (portfolio_id, client_id, order_number, status, expires_at, created_at)
+           VALUES ($1,$2,$3,$4,$5, COALESCE((($6::date)::timestamp + interval '12 hours') AT TIME ZONE '${TZ}', NOW())) RETURNING *`,
+          [pf, client_id, order_number, status, expires, date]);
+        return res.json(o);
+      } catch (e: any) { if (e.code === '23505' && attempt < 3) continue; throw e; }   // número de pedido repetido por concurrencia: reintenta
+    }
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
 });
 
@@ -642,7 +658,9 @@ router.post('/orders/:id/items', async (req: AuthRequest, res: Response) => {
     }
 
     if (priceOverride !== null) price = priceOverride;
-    await db.query(`INSERT INTO order_items (order_id, product_id, kit_id, quantity, price) VALUES ($1,$2,$3,$4,$5)`, [order.id, product_id || null, kit_id || null, qty, price]);
+    // Fecha de la línea (Ventas): define en qué día cuenta la venta en reportes. Sin fecha = ahora.
+    const lineDate = /^\d{4}-\d{2}-\d{2}$/.test(String(req.body.date || '')) ? String(req.body.date) : null;
+    await db.query(`INSERT INTO order_items (order_id, product_id, kit_id, quantity, price, added_at) VALUES ($1,$2,$3,$4,$5, COALESCE((($6::date)::timestamp + interval '12 hours') AT TIME ZONE '${TZ}', NOW()))`, [order.id, product_id || null, kit_id || null, qty, price, lineDate]);
     await db.query('COMMIT');
     res.json({ ok: true, ...(await getOrderTotals(order.id)) });
   } catch (e: any) {

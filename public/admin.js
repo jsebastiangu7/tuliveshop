@@ -1224,9 +1224,11 @@ async function saveClient() {
   const body = { name: $('cName').value.trim(), whatsapp: $('cWa').value.trim(), city: $('cCity').value.trim(), address: $('cAddr').value.trim(), status: $('cStatus').value };
   try {
     const id = $('cId').value;
+    let created = null;
     if (id) await api('/api/admin/clients/' + id, { method: 'PUT', body });
-    else { if ($('cPin').value.trim()) body.pin = $('cPin').value.trim(); await api('/api/admin/clients', { method: 'POST', body }); }
+    else { if ($('cPin').value.trim()) body.pin = $('cPin').value.trim(); created = await api('/api/admin/clients', { method: 'POST', body }); }
     closeModal('clientModal'); toast('✔ Cliente guardado'); loadClients();
+    if (VENTA_NEW_CLIENT) { VENTA_NEW_CLIENT = false; if (created && created.id) refreshVentaClients(created.id).catch(() => {}); }
   } catch (e) { toast('⚠ ' + e.message); }
 }
 
@@ -2306,37 +2308,42 @@ async function executeWipe() {
    ===================================================================== */
 
 // --- VENTA RÁPIDA (LIVE) ---
-async function loadVentaView() {
-  $('vDate').value = today();
-  $('vPayDate').value = today();
-  
-  // Cargar clientes
+let VENTA_NEW_CLIENT = false;   // true cuando el modal de cliente se abrió desde Ventas: al guardar, se selecciona el cliente nuevo
+let VSEL = null;                // producto elegido en el buscador {id,name,price,available}
+let VHL = -1;                   // fila resaltada en la lista del buscador
+let VMATCH = [];
+
+const normTxt = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+async function refreshVentaClients(selectId) {
   const clients = await api('/api/admin/clients');
+  CLIENTS = clients;
   const cSelect = $('vClient');
-  cSelect.innerHTML = '<option value="new">+ Nuevo cliente</option>' + 
+  const keep = selectId || cSelect.value;
+  cSelect.innerHTML = '<option value="">Seleccionar cliente…</option><option value="new">+ Nuevo cliente</option>' +
     clients.filter(c => c.status === 'Activo').map(c => `<option value="${c.id}">${esc(c.name)} (${esc(c.whatsapp || 'Sin tel')})</option>`).join('');
-  
-  // Si el usuario selecciona "Nuevo cliente", abrimos el modal
-  cSelect.onchange = function() {
-    if (this.value === 'new') {
-      openClient();
-      this.value = ''; // Resetear para que elija el nuevo después
-    }
+  cSelect.value = [...cSelect.options].some(o => o.value === keep) ? keep : '';
+}
+
+async function loadVentaView() {
+  if (!$('vDate').value) $('vDate').value = today();
+  if (!$('vPayDate').value) $('vPayDate').value = today();
+  if (!$('vLineDate').value) $('vLineDate').value = today();   // se conserva: la fecha elegida se hereda a la siguiente fila
+
+  await refreshVentaClients();
+  $('vClient').onchange = function () {
+    if (this.value === 'new') { VENTA_NEW_CLIENT = true; this.value = ''; openClient(); }
   };
 
-  // Cargar productos
   await fetchCaches();
-  const pSelect = $('vProd');
-  pSelect.innerHTML = '<option value="">Seleccionar…</option>' + 
-    PRODUCTS.filter(p => p.available > 0).map(p => `<option value="${p.id}" data-price="${p.price}">${esc(p.name)} (Disp: ${p.available})</option>`).join('');
-  
-  pSelect.onchange = function() {
-    const opt = this.options[this.selectedIndex];
-    if (opt.value) $('vPrice').value = opt.dataset.price;
-  };
-  // Enter en cualquier campo de la fila agrega el producto y deja la fila nueva lista con el producto enfocado
-  ['vProd', 'vQty', 'vPrice'].forEach(id => {
-    $(id).onkeydown = function(e) {
+  vProdClear();
+  const txt = $('vProdTxt');
+  txt.oninput = () => { VSEL = null; $('vProd').value = ''; vProdShow(); };
+  txt.onfocus = () => { if (!VSEL) vProdShow(); };
+  txt.onblur = () => setTimeout(vProdHide, 150);   // deja tiempo al clic en la lista
+  txt.onkeydown = vProdKey;
+  ['vLineDate', 'vQty', 'vPrice'].forEach(id => {
+    $(id).onkeydown = function (e) {
       if (e.key !== 'Enter' || e.isComposing) return;
       e.preventDefault();
       addVentaRow();
@@ -2344,99 +2351,124 @@ async function loadVentaView() {
   });
 }
 
+// Buscador: cualquier palabra contenida en el nombre (sin importar tildes ni mayúsculas ni el orden de las palabras)
+function vProdSearch(q) {
+  const words = normTxt(q).split(/\s+/).filter(Boolean);
+  const list = PRODUCTS.filter(p => Number(p.available) > 0);
+  const res = !words.length ? list : list.filter(p => { const n = normTxt(p.name + ' ' + (p.code || p.barcode || '')); return words.every(w => n.includes(w)); });
+  return res.slice(0, 60);
+}
+function vProdShow() {
+  VMATCH = vProdSearch($('vProdTxt').value);
+  VHL = VMATCH.length ? 0 : -1;
+  const box = $('vProdList');
+  box.innerHTML = VMATCH.length
+    ? VMATCH.map((p, i) => `<div role="option" data-i="${i}" style="padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;gap:10px"><span>${esc(p.name)}</span><span style="color:var(--text-muted);white-space:nowrap">${money(p.price)} · disp ${p.available}</span></div>`).join('')
+    : '<div style="padding:10px 12px;color:var(--text-muted)">Sin coincidencias con stock</div>';
+  box.style.display = 'block'; $('vProdTxt').setAttribute('aria-expanded', 'true');
+  box.onmousedown = e => { const r = e.target.closest('[data-i]'); if (r) { e.preventDefault(); vProdPick(Number(r.dataset.i)); $('vQty').focus(); $('vQty').select(); } };
+  vProdMark();
+}
+function vProdHide() { $('vProdList').style.display = 'none'; $('vProdTxt').setAttribute('aria-expanded', 'false'); }
+function vProdMark() {
+  [...$('vProdList').querySelectorAll('[data-i]')].forEach((r, i) => {
+    r.style.background = i === VHL ? 'var(--surface-hover)' : '';
+    if (i === VHL) r.scrollIntoView({ block: 'nearest' });
+  });
+}
+function vProdPick(i) {
+  const p = VMATCH[i]; if (!p) return;
+  VSEL = p; $('vProd').value = p.id; $('vProdTxt').value = p.name; $('vPrice').value = p.price;
+  vProdHide();
+}
+function vProdClear() { VSEL = null; $('vProd').value = ''; $('vProdTxt').value = ''; vProdHide(); }
+function vProdKey(e) {
+  if (e.isComposing) return;
+  const open = $('vProdList').style.display !== 'none';
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (!open) return vProdShow();
+    if (!VMATCH.length) return;
+    VHL = (VHL + (e.key === 'ArrowDown' ? 1 : -1) + VMATCH.length) % VMATCH.length; vProdMark();
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (open && VMATCH.length) { vProdPick(VHL < 0 ? 0 : VHL); $('vQty').focus(); $('vQty').select(); }
+    else if (VSEL) addVentaRow();
+    else toast('⚠ No hay un producto con ese texto');
+  } else if (e.key === 'Escape') vProdHide();
+}
+
+function ventaRowHtml(name, date, qty, price) {
+  return `<td>${esc(name)}</td>
+    <td><input type="date" class="v-row-date" value="${esc(date)}" style="min-width:140px" onchange="this.closest('tr').dataset.date=this.value"></td>
+    <td>${qty}</td><td>${money(price)}</td><td>${money(qty * price)}</td>
+    <td class="acts"><button class="btn danger" style="padding:4px 8px" onclick="this.closest('tr').remove(); calcVentaTotal()">✕</button></td>`;
+}
+
 function addVentaRow() {
-  const prodId = $('vProd').value;
-  if (!prodId) return toast('⚠ Selecciona un producto');
-  
-  const opt = $('vProd').options[$('vProd').selectedIndex];
-  const name = opt.text.split(' (Disp:')[0];
+  if (!VSEL || !$('vProd').value) return toast('⚠ Busca y selecciona un producto (Enter)');
   const qty = Math.max(1, parseInt($('vQty').value) || 1);
   const price = Number($('vPrice').value) || 0;
-  const total = qty * price;
+  const date = $('vLineDate').value || today();
+  const inList = Array.from($('vItems').querySelectorAll('tr')).filter(r => r.dataset.productId === VSEL.id).reduce((a, r) => a + Number(r.dataset.qty), 0);
+  if (inList + qty > Number(VSEL.available)) return toast(`⚠ ${VSEL.name}: solo hay ${VSEL.available} disponibles (ya agregaste ${inList})`);
 
-  const tbody = $('vItems');
   const tr = document.createElement('tr');
-  tr.dataset.productId = prodId;
-  tr.dataset.qty = qty;
-  tr.dataset.price = price;
-  tr.innerHTML = `
-    <td>${esc(name)}</td>
-    <td>${qty}</td>
-    <td>${money(price)}</td>
-    <td>${money(total)}</td>
-    <td class="acts"><button class="btn danger" style="padding:4px 8px" onclick="this.closest('tr').remove(); calcVentaTotal()">✕</button></td>
-  `;
-  tbody.appendChild(tr);
+  tr.dataset.productId = VSEL.id; tr.dataset.qty = qty; tr.dataset.price = price; tr.dataset.date = date;
+  tr.innerHTML = ventaRowHtml(VSEL.name, date, qty, price);
+  $('vItems').appendChild(tr);
   calcVentaTotal();
-  
-  // Resetear campos de producto
-  $('vProd').value = '';
-  $('vQty').value = '1';
-  $('vPrice').value = '';
-  $('vProd').focus();
+
+  // La fecha se queda (hereda a la siguiente fila); se limpian producto, cantidad y precio
+  vProdClear();
+  $('vQty').value = '1'; $('vPrice').value = '';
+  $('vProdTxt').focus();
 }
 
 function calcVentaTotal() {
   let total = 0;
-  $('vItems').querySelectorAll('tr').forEach(tr => {
-    const qty = parseInt(tr.dataset.qty);
-    const price = Number(tr.dataset.price) || 0;
-    total += qty * price;
-  });
+  $('vItems').querySelectorAll('tr').forEach(tr => { total += (parseInt(tr.dataset.qty) || 0) * (Number(tr.dataset.price) || 0); });
   $('vTotal').textContent = money(total);
 }
 
 function clearVenta() {
-  $('vClient').value = 'new';
+  $('vClient').value = '';
   $('vItems').innerHTML = '';
   $('vPayAmount').value = '0';
   $('vPayRef').value = '';
+  vProdClear();
   calcVentaTotal();
   loadVentaView();
 }
 
 async function saveVenta() {
   const clientId = $('vClient').value;
-  if (!clientId) return toast('⚠ Selecciona o crea un cliente');
-  
-  const rows = $('vItems').querySelectorAll('tr');
+  if (!clientId || clientId === 'new') return toast('⚠ Selecciona o crea un cliente');
+  const rows = [...$('vItems').querySelectorAll('tr')];
   if (!rows.length) return toast('⚠ Agrega al menos un producto');
-
+  const btn = document.querySelector('#view-ventas button[onclick="saveVenta()"]');
+  if (btn) btn.disabled = true;
+  let orderId = null;
   try {
-    // 1. Crear pedido
-    const orderRes = await api('/api/admin/orders', { 
-      method: 'POST', 
-      body: { client_id: clientId, status: $('vStatus').value } 
-    });
-    const orderId = orderRes.id;
-
-    // 2. Agregar items
+    const wanted = $('vStatus').value;
+    // Se crea como "apartada" y al final se pasa al estado elegido (así "Pagada" genera su envío)
+    const orderRes = await api('/api/admin/orders', { method: 'POST', body: { client_id: clientId, status: wanted === 'paid' ? 'apartada' : wanted, date: $('vDate').value || undefined } });
+    orderId = orderRes.id;
     for (const row of rows) {
-      const pid = row.dataset.productId;
-      const qty = parseInt(row.dataset.qty);
-      await api(`/api/admin/orders/${orderId}/items`, { method: 'POST', body: { product_id: pid, quantity: qty, price: Number(row.dataset.price) } });
+      await api(`/api/admin/orders/${orderId}/items`, { method: 'POST', body: { product_id: row.dataset.productId, quantity: parseInt(row.dataset.qty), price: Number(row.dataset.price), date: row.dataset.date || undefined } });
     }
-
-    // 3. Agregar abono si aplica
     const payAmount = Number($('vPayAmount').value) || 0;
     if (payAmount > 0) {
-      await api(`/api/admin/orders/${orderId}/payments`, { 
-        method: 'POST', 
-        body: { 
-          amount: payAmount, 
-          method: $('vPayMethod').value, 
-          reference: $('vPayRef').value, 
-          payment_date: $('vPayDate').value || today() 
-        } 
-      });
+      await api(`/api/admin/orders/${orderId}/payments`, { method: 'POST', body: { amount: payAmount, method: $('vPayMethod').value, reference: $('vPayRef').value, payment_date: $('vPayDate').value || today() } });
     }
-
+    if (wanted === 'paid') await api(`/api/admin/orders/${orderId}`, { method: 'PUT', body: { status: 'paid' } });
     toast('✔ Pedido guardado exitosamente');
     clearVenta();
-    loadOrders(); // Refrescar la lista de pedidos
+    loadOrders().catch(() => {});
   } catch (e) {
-    toast('⚠ ' + e.message);
-  }
+    // Si algo falló a mitad de camino, avisa del pedido parcial para que no quede una bolsita fantasma sin saberlo
+    toast('⚠ ' + e.message + (orderId ? ' — el pedido quedó creado a medias; revísalo en Pedidos' : ''));
+  } finally { if (btn) btn.disabled = false; }
 }
 
 // --- VENTAS POR PRODUCTO (ASIGNACIÓN MASIVA) ---
@@ -2772,12 +2804,12 @@ function ventaAddProduct(p) {
   if (row) {
     const q = parseInt(row.dataset.qty) + 1;
     if (q > p.available) return '⚠ ' + p.name + ': solo hay ' + p.available + ' disponibles';
-    row.dataset.qty = q; row.children[1].textContent = q; row.children[3].textContent = money(q * Number(row.dataset.price));
+    row.dataset.qty = q; row.children[2].textContent = q; row.children[4].textContent = money(q * Number(row.dataset.price));
   } else {
-    const price = Number(p.price) || 0;
+    const price = Number(p.price) || 0, date = $('vLineDate').value || today();
     const tr = document.createElement('tr');
-    tr.dataset.productId = p.id; tr.dataset.qty = 1; tr.dataset.price = price;
-    tr.innerHTML = `<td>${esc(p.name)}</td><td>1</td><td>${money(price)}</td><td>${money(price)}</td><td class="acts"><button class="btn danger" style="padding:4px 8px" onclick="this.closest('tr').remove(); calcVentaTotal()">✕</button></td>`;
+    tr.dataset.productId = p.id; tr.dataset.qty = 1; tr.dataset.price = price; tr.dataset.date = date;
+    tr.innerHTML = ventaRowHtml(p.name, date, 1, price);
     tb.appendChild(tr);
   }
   calcVentaTotal();

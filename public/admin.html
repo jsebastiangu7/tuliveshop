@@ -436,19 +436,24 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
     <p class="note">Captura el pedido mientras haces el LIVE. El botón Guardar registra todo en un solo paso.</p>
     <div class="panel glass">
       <div class="fgrid">
-        <div class="field"><label>Cliente</label><select id="vClient"><option value="new">+ Nuevo cliente</option></select></div>
+        <div class="field"><label>Cliente</label><select id="vClient"><option value="">Seleccionar cliente…</option><option value="new">+ Nuevo cliente</option></select></div>
         <div class="field"><label>Fecha</label><input id="vDate" type="date"></div>
         <div class="field"><label>Estado inicial</label><select id="vStatus"><option value="apartada">Apartada</option><option value="draft">Borrador</option><option value="pending_confirm">Por confirmar</option><option value="paid">Pagada</option></select></div>
       </div>
       <h3>Productos</h3>
       <div class="fgrid" style="align-items:end">
-        <div class="field" style="flex:2"><label>Producto</label><select id="vProd"></select></div>
+        <div class="field" style="flex:2;position:relative"><label>Producto</label>
+          <input id="vProdTxt" autocomplete="off" placeholder="Escribe cualquier palabra y Enter…" role="combobox" aria-expanded="false" aria-controls="vProdList">
+          <input type="hidden" id="vProd">
+          <div id="vProdList" role="listbox" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:60;max-height:260px;overflow:auto;background:var(--bg);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow)"></div>
+        </div>
+        <div class="field" style="flex:1"><label>Fecha</label><input id="vLineDate" type="date"></div>
         <div class="field" style="flex:1.5"><label>Código de barras</label><div style="display:flex;gap:6px"><input id="vScan" placeholder="Escanea y Enter" style="flex:1;min-width:0" onkeydown="ventaScanKey(event)"><button type="button" class="btn" onclick="ventaScanCam()" title="Escanear con la cámara">📷</button></div></div>
         <div class="field" style="flex:0.5"><label>Cant.</label><input id="vQty" type="number" min="1" value="1"></div>
         <div class="field" style="flex:0.5"><label>Precio</label><input id="vPrice" type="number" min="0"></div>
         <div class="field" style="flex:0.5"><label>&nbsp;</label><button class="btn primary" onclick="addVentaRow()">+ Agregar</button></div>
       </div>
-      <div class="tablewrap" style="margin-top:12px"><table class="adm"><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Total</th><th></th></tr></thead><tbody id="vItems"></tbody></table></div>
+      <div class="tablewrap" style="margin-top:12px"><table class="adm"><thead><tr><th>Producto</th><th>Fecha</th><th>Cant.</th><th>Precio</th><th>Total</th><th></th></tr></thead><tbody id="vItems"></tbody></table></div>
       <div style="margin-top:16px; display:flex; gap:18px; justify-content:flex-end; font-weight:800"><span>Total: <b id="vTotal">$0</b></span></div>
       <h3>Abono inicial (opcional)</h3>
       <div class="fgrid">
@@ -836,7 +841,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 <script src="/legal-docs.js?v=2"></script>
 <script src="/wallets.js?v=1"></script>
 <script src="/scanner.js?v=1"></script>
-<script src="/admin.js?v=16"></script>
+<script src="/admin.js?v=17"></script>
 <script>
 // Toggle de tema
 function toggleTheme() {

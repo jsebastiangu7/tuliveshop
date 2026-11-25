@@ -17,6 +17,8 @@ const parseDMY = (v) => { const m = String(v || '').trim().match(/^(\d{1,2})[-\/
 const pdfMoney = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-CO');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 const STATUS_LABEL = { draft: 'Borrador', pending_confirm: 'Por confirmar', apartada: 'Apartada', paid: 'Pagada', shipped: 'Enviada', delivered: 'Entregada', canceled: 'Cancelada', expired: 'Vencida' };
+// Estados de un pedido (los mismos en Ventas y en Pedidos)
+const ORDER_STATUSES = ['draft', 'pending_confirm', 'apartada', 'paid', 'shipped', 'delivered', 'canceled'];
 const STATUS_CLASS = { draft: '', pending_confirm: 'warn', apartada: 'warn', paid: 'ok', shipped: 'ok', delivered: 'ok', canceled: 'danger', expired: 'danger' };
 const pill = (s) => `<span class="pill ${STATUS_CLASS[s] || ''}">${STATUS_LABEL[s] || esc(s)}</span>`;
 const pillStock = (s) => `<span class="pill ${s === 'EN STOCK' ? 'ok' : s === 'AGOTADO' ? 'danger' : 'warn'}">${s}</span>`;
@@ -1253,6 +1255,7 @@ async function openOrder(id) {
     const o = await api('/api/admin/orders/' + id);
     $('orderBody').innerHTML = orderModalHtml(o);
     openModal('orderModal');
+    omRenderItems(o.items);
     omAddRow(true);
   } catch (e) { toast('⚠ ' + e.message); }
 }
@@ -1266,16 +1269,14 @@ function orderModalHtml(o) {
 </div>
 <div class="fgrid" style="margin:12px 0">
   <div class="field"><label>Estado</label><select onchange="orderStatusChanged(this.value)">
-    ${['draft', 'pending_confirm', 'apartada', 'paid', 'shipped', 'delivered', 'canceled'].map(s => `<option value="${s}" ${s === o.status ? 'selected' : ''}>${STATUS_LABEL[s]}</option>`).join('')}
+    ${ORDER_STATUSES.map(s => `<option value="${s}" ${s === o.status ? 'selected' : ''}>${STATUS_LABEL[s]}</option>`).join('')}
   </select></div>
   <div class="field" style="grid-column:1/-1"><label>Notas</label><input id="oNotes" value="${esc(o.notes || '')}"></div>
 </div>
 <div class="actions" style="margin-bottom:10px"><button class="btn" onclick="saveOrderNotes()">Guardar notas</button>
   <button class="btn primary" onclick="generateInvoice('${o.id}')">📄 Generar factura PDF</button></div>
 <h3>Productos</h3>
-<div class="tablewrap"><table class="adm"><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Total</th><th></th></tr></thead><tbody id="omItems">
-${o.items.map(i => `<tr><td>${esc(i.kit_name ? i.kit_name : i.product_name)}</td><td>${i.quantity}</td><td>${money(i.price)}</td><td>${money(i.price * i.quantity)}</td><td class="acts"><button class="btn danger" onclick="delOrderItem('${o.id}','${i.id}')">✕</button></td></tr>`).join('') || '<tr><td colspan="5" class="empty">Sin productos</td></tr>'}
-</tbody></table></div>
+<div class="vlines" style="overflow-x:auto"><div class="ogrid vgh"><span>Producto</span><span>Fecha</span><span>Cant.</span><span>Precio</span><span>Total</span><span></span></div><div id="omItems"></div></div>
 <h3>Agregar productos (Enter agrega y crea la siguiente fila enfocada)</h3>
 <div class="fgrid" style="margin-bottom:8px"><div class="field" style="grid-column:1/-1"><label>Código de barras (lector o cámara: cada lectura suma 1 unidad)</label><div style="display:flex;gap:6px"><input id="omScan" placeholder="Escanea o escribe el código y Enter" style="flex:1;min-width:0" onkeydown="omScanKey(event)"><button type="button" class="btn" onclick="omScanCam()">📷 Cámara</button></div></div></div>
 <div class="tablewrap"><table class="adm"><tbody id="omRows"></tbody></table></div>
@@ -1330,9 +1331,40 @@ async function omCommit(row, thenNew) {
     if (thenNew) omAddRow(true);
   } catch (e) { toast('⚠ ' + e.message); }
 }
+function omRenderItems(items) {
+  const box = $('omItems'); if (!box) return;
+  box.innerHTML = '';
+  if (!items.length) { box.innerHTML = '<p class="note" style="padding:8px">Sin productos</p>'; return; }
+  items.forEach(i => {
+    const row = vBuildRow('edit');
+    const isKit = !!i.kit_id;
+    const src = isKit ? KITS.find(k => k.id === i.kit_id) : PRODUCTS.find(p => p.id === i.product_id);
+    // disponible = stock libre + lo que ya ocupa esta línea (así se puede dejar igual o subir hasta el tope real)
+    row._sel = { kind: isKit ? 'k' : 'p', id: isKit ? i.kit_id : i.product_id, name: isKit ? i.kit_name : i.product_name, price: Number(i.price), available: (src ? Number(src.available) : 0) + Number(i.quantity) };
+    row.dataset.itemId = i.id;
+    row.querySelector('.vp').value = row._sel.name || '';
+    row.querySelector('.vd').value = i.added_at ? new Date(i.added_at).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) : today();
+    row.querySelector('.vq').value = i.quantity;
+    row.querySelector('.vpr').value = Number(i.price);
+    vSetRowTotal(row);
+    row.querySelector('.vs').onclick = () => omSaveItem(row);
+    row.querySelector('.vx').onclick = () => delOrderItem(curOrderId, i.id);
+    box.appendChild(row);
+  });
+}
+async function omSaveItem(row) {
+  const s = row._sel;
+  if (!s) { toast('⚠ Elige un producto de la lista'); return row.querySelector('.vp').focus(); }
+  const body = { quantity: parseInt(row.querySelector('.vq').value) || 0, price: Number(row.querySelector('.vpr').value) || 0, date: row.querySelector('.vd').value || undefined };
+  if (s.kind === 'k') body.kit_id = s.id; else body.product_id = s.id;
+  try {
+    await api('/api/admin/orders/' + curOrderId + '/items/' + row.dataset.itemId, { method: 'PUT', body });
+    toast('✔ Línea guardada'); await fetchCaches(); await omRefresh(); loadOrders();
+  } catch (e) { toast('⚠ ' + e.message); }
+}
 async function omRefresh() {
     const o = await api('/api/admin/orders/' + curOrderId);
-    $('omItems').innerHTML = o.items.map(i => `<tr><td>${esc(i.kit_name ? i.kit_name : i.product_name)}</td><td>${i.quantity}</td><td>${money(i.price)}</td><td>${money(i.price * i.quantity)}</td><td class="acts"><button class="btn danger" onclick="delOrderItem('${o.id}','${i.id}')">✕</button></td></tr>`).join('') || '<tr><td colspan="5" class="empty">Sin productos</td></tr>';
+    omRenderItems(o.items);
     $('omTotals').innerHTML = `<span>Total: ${money(o.total)}</span><span>Abonado: ${money(o.paid)}</span><span>Saldo: ${money(o.balance)}</span>`;
 }
 async function orderStatusChanged(status) {
@@ -2332,6 +2364,7 @@ let VENTA_NEW_PRODUCT = false;   // el modal de producto se abrió desde Ventas:
 let VROW = null;                 // fila cuyo buscador está abierto
 let VMATCH = [];                 // coincidencias mostradas
 let VHL = -1;                    // coincidencia resaltada
+let VSTATUS_MANUAL = false;      // el usuario eligió el estado a mano: ya no se cambia solo
 
 const normTxt = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -2354,6 +2387,10 @@ async function loadVentaView() {
   await Promise.all([refreshVentaClients(), fetchCaches()]);
   try { $('vNum').value = (await api('/api/admin/orders/next-number')).order_number; } catch (e) { $('vNum').value = ''; }
   if (!$('vRows').children.length) vAddRow();
+  const st = $('vStatus');
+  if (!st.options.length) st.innerHTML = ORDER_STATUSES.map(k => `<option value="${k}">${STATUS_LABEL[k]}</option>`).join('');
+  st.onchange = () => { VSTATUS_MANUAL = true; };
+  if (!VSTATUS_MANUAL) st.value = 'apartada';
   $('vPayAmount').oninput = calcVentaTotal;
   calcVentaTotal();
 }
@@ -2363,36 +2400,46 @@ function vLastDate() {
   const rows = [...$('vRows').querySelectorAll('.vrow')];
   return (rows.length && rows[rows.length - 1].querySelector('.vd').value) || today();
 }
-function vAddRow() {
+// Fila de producto. mode 'venta' = pestaña Ventas · 'edit' = línea existente dentro del modal de un pedido
+function vBuildRow(mode) {
+  const edit = mode === 'edit';
   const row = document.createElement('div');
-  row.className = 'vgrid vrow';
+  row.className = (edit ? 'ogrid' : 'vgrid') + ' vrow';
+  row.dataset.mode = mode || 'venta';
   row.innerHTML = `
     <input class="vp" autocomplete="off" placeholder="Buscar o seleccionar…" role="combobox" aria-expanded="false">
     <input class="vd" type="date">
     <input class="vq" type="number" min="1" value="1" inputmode="numeric">
     <input class="vpr" type="number" min="0" value="0" inputmode="numeric">
     <input class="vt" readonly tabindex="-1" value="0">
-    <button type="button" class="btn danger vx" title="Quitar fila" style="padding:6px 10px">✕</button>`;
-  row.querySelector('.vd').value = vLastDate();   // la fecha se hereda de la fila anterior
+    ${edit ? '<span class="vact"><button type="button" class="btn primary vs" title="Guardar cambios de esta línea" style="padding:6px 10px">Guardar</button> <button type="button" class="btn danger vx" title="Quitar producto" style="padding:6px 10px">✕</button></span>'
+           : '<button type="button" class="btn danger vx" title="Quitar fila" style="padding:6px 10px">✕</button>'}`;
   const p = row.querySelector('.vp');
   p.addEventListener('input', () => { row._sel = null; vSetRowTotal(row); calcVentaTotal(); vOpen(row); });
   p.addEventListener('focus', () => { if (!row._sel) vOpen(row); else p.select(); });
   p.addEventListener('blur', () => setTimeout(() => { if (VROW === row) vClose(); }, 150));
   p.addEventListener('keydown', e => vKey(e, row));
-  // Al cambiar la fecha, las filas vacías que siguen la heredan (las que ya tienen producto conservan la suya)
-  row.querySelector('.vd').addEventListener('input', () => {
-    const v = row.querySelector('.vd').value;
-    for (let n = row.nextElementSibling; n; n = n.nextElementSibling) if (!n._sel && !n.querySelector('.vp').value.trim()) n.querySelector('.vd').value = v;
-  });
+  // La fecha de cada fila es independiente: cambiarla NO toca las demás (solo se hereda al crear una fila nueva)
   row.querySelector('.vq').addEventListener('input', () => vQtyCheck(row));
   row.querySelector('.vpr').addEventListener('input', () => { vSetRowTotal(row); calcVentaTotal(); });
   [row.querySelector('.vq'), row.querySelector('.vpr'), row.querySelector('.vd')].forEach(el => el.addEventListener('keydown', e => {
     if (e.key !== 'Enter' || e.isComposing) return;
-    e.preventDefault(); vNextRowFocus(row);
+    e.preventDefault(); vRowEnter(row);
   }));
+  return row;
+}
+function vAddRow() {
+  const row = vBuildRow('venta');
+  row.querySelector('.vd').value = vLastDate();   // se hereda la fecha de la fila anterior en el momento de crearla
   row.querySelector('.vx').onclick = () => { if (VROW === row) vClose(); row.remove(); if (!$('vRows').children.length) vAddRow(); calcVentaTotal(); };
   $('vRows').appendChild(row);
   return row;
+}
+// Enter en cualquier campo de la fila: pasa a la fila siguiente (la crea si no existe). En el modal de pedido guarda la línea.
+function vRowEnter(row) {
+  if (row.dataset.mode === 'edit') return omSaveItem(row);
+  if (!row._sel) { toast('⚠ Primero elige un producto'); return row.querySelector('.vp').focus(); }
+  vNextRowFocus(row);
 }
 function vNextRowFocus(row) {
   const next = row.nextElementSibling || vAddRow();
@@ -2402,14 +2449,14 @@ function vSetRowTotal(row) {
   const q = parseInt(row.querySelector('.vq').value) || 0, pr = Number(row.querySelector('.vpr').value) || 0;
   row.querySelector('.vt').value = money(q * pr);
 }
-// Cantidad total pedida de un mismo producto/kit en todas las filas (para no pasarse del stock)
+// Cantidad total pedida de un mismo producto/kit en todas las filas de Ventas (para no pasarse del stock)
 function vUsed(kind, id, except) {
   return [...$('vRows').querySelectorAll('.vrow')].filter(r => r !== except && r._sel && r._sel.kind === kind && r._sel.id === id)
     .reduce((a, r) => a + (parseInt(r.querySelector('.vq').value) || 0), 0);
 }
 function vQtyCheck(row) {
   const s = row._sel;
-  if (s) {
+  if (s && row.dataset.mode !== 'edit') {   // en el modal de pedido el servidor valida el stock al guardar
     const max = Number(s.available) - vUsed(s.kind, s.id, row);
     const q = parseInt(row.querySelector('.vq').value) || 0;
     if (q > max) { row.querySelector('.vq').value = Math.max(1, max); toast(`⚠ ${s.name}: solo hay ${s.available} disponibles`); }
@@ -2474,15 +2521,18 @@ function vMove(dir) {
 }
 function vPick(row, it) {
   if (!it || it.available <= 0) return toast('⚠ Producto agotado');
-  const left = it.available - vUsed(it.kind, it.id, row);
-  if (left <= 0) return toast(`⚠ ${it.name}: ya agregaste todo lo disponible (${it.available})`);
+  const edit = row.dataset.mode === 'edit';
+  if (!edit) {
+    const left = it.available - vUsed(it.kind, it.id, row);
+    if (left <= 0) return toast(`⚠ ${it.name}: ya agregaste todo lo disponible (${it.available})`);
+    const q = row.querySelector('.vq'); if (!(parseInt(q.value) >= 1)) q.value = 1; if (parseInt(q.value) > left) q.value = left;
+  }
   row._sel = it;
   row.querySelector('.vp').value = it.name;
   row.querySelector('.vpr').value = it.price;
-  const q = row.querySelector('.vq'); if (!(parseInt(q.value) >= 1)) q.value = 1; if (parseInt(q.value) > left) q.value = left;
   vSetRowTotal(row); calcVentaTotal(); vClose();
-  if (!row.nextElementSibling) vAddRow();   // siempre queda una fila vacía lista (hereda la fecha)
-  q.focus(); q.select();
+  // Solo selecciona: la fila siguiente se crea con el segundo Enter en Producto o con Enter en cualquier otro campo
+  row.querySelector('.vp').focus();
 }
 function vKey(e, row) {
   if (e.isComposing) return;
@@ -2496,8 +2546,8 @@ function vKey(e, row) {
     const txt = row.querySelector('.vp').value.trim();
     const byCode = txt && typeof findByCode === 'function' ? findByCode(txt) : null;   // lector USB: el código escrito + Enter
     if (byCode && !row._sel) return vPick(row, vCatalog().find(x => x.kind === 'p' && x.id === byCode.id));
-    if (open && VMATCH.length && VHL >= 0) return vPick(row, VMATCH[VHL]);
-    if (row._sel) return row.querySelector('.vq').focus();
+    if (open && VMATCH.length && VHL >= 0) return vPick(row, VMATCH[VHL]);   // 1.er Enter: solo selecciona
+    if (row._sel) return vRowEnter(row);                                      // 2.º Enter: siguiente fila
     toast('⚠ No hay un producto con ese texto');
   } else if (e.key === 'Escape') vClose();
 }
@@ -2505,13 +2555,17 @@ function vKey(e, row) {
 function calcVentaTotal() {
   let total = 0;
   $('vRows').querySelectorAll('.vrow').forEach(r => { if (r._sel) total += (parseInt(r.querySelector('.vq').value) || 0) * (Number(r.querySelector('.vpr').value) || 0); });
+  const paid = Number($('vPayAmount').value) || 0;
   $('vTotal').textContent = money(total);
-  $('vBalance').textContent = money(Math.max(0, total - (Number($('vPayAmount').value) || 0)));
+  $('vBalance').textContent = money(Math.max(0, total - paid));
+  // Por defecto "Apartada"; pasa sola a "Pagada" si el abono cubre el total (salvo que el usuario haya elegido otro estado a mano)
+  const st = $('vStatus');
+  if (st && !VSTATUS_MANUAL) st.value = (total > 0 && paid >= total) ? 'paid' : 'apartada';
 }
 
 function clearVenta() {
   $('vClient').value = ''; $('vRows').innerHTML = ''; $('vPayAmount').value = '0'; $('vPayRef').value = ''; $('vNotes').value = '';
-  $('vStatus').value = 'apartada'; $('vDate').value = today(); $('vPayDate').value = today();
+  VSTATUS_MANUAL = false; $('vStatus').value = 'apartada'; $('vPayMethod').selectedIndex = 0; $('vDate').value = today(); $('vPayDate').value = today();
   vClose(); ventaMsg('Nuevo pedido'); loadVentaView();
 }
 
@@ -2524,7 +2578,6 @@ async function saveVenta() {
   const payAmount = Number($('vPayAmount').value) || 0;
   const wanted = $('vStatus').value;
   if (rows.some(r => !(parseInt(r.querySelector('.vq').value) >= 1))) return toast('⚠ Revisa las cantidades');
-  if (wanted === 'paid' && payAmount < total) return toast('⚠ Para marcarlo Pagado, el abono debe cubrir el total (' + money(total) + ')');
   const btn = document.querySelector('#view-ventas .vfoot button.primary');
   if (btn) btn.disabled = true;
   ventaMsg('Guardando…');
@@ -2537,10 +2590,12 @@ async function saveVenta() {
       const s = r._sel;
       await api(`/api/admin/orders/${orderId}/items`, { method: 'POST', body: { [s.kind === 'k' ? 'kit_id' : 'product_id']: s.id, quantity: parseInt(r.querySelector('.vq').value), price: Number(r.querySelector('.vpr').value) || 0, date: r.querySelector('.vd').value || undefined } });
     }
+    let cur = 'apartada';   // el pedido nace Apartada
     if (payAmount > 0) {
-      await api(`/api/admin/orders/${orderId}/payments`, { method: 'POST', body: { amount: payAmount, method: $('vPayMethod').value, reference: $('vPayRef').value, note: notes || undefined, payment_date: $('vPayDate').value || today() } });
+      const pr = await api(`/api/admin/orders/${orderId}/payments`, { method: 'POST', body: { amount: payAmount, method: $('vPayMethod').value, reference: $('vPayRef').value, note: notes || undefined, payment_date: $('vPayDate').value || today() } });
+      if (pr && pr.new_status) cur = pr.new_status;   // si el abono cubre el total, el servidor ya lo pasó a Pagada
     }
-    if (wanted === 'paid') await api(`/api/admin/orders/${orderId}`, { method: 'PUT', body: { status: 'paid' } });
+    if (wanted !== 'apartada' && wanted !== cur) await api(`/api/admin/orders/${orderId}`, { method: 'PUT', body: { status: wanted } });
     toast('✔ Pedido ' + orderRes.order_number + ' guardado');
     clearVenta(); ventaMsg('✔ Pedido ' + orderRes.order_number + ' guardado');
     loadOrders().catch(() => {});

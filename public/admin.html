@@ -223,6 +223,8 @@ th.sortable { cursor: pointer; user-select: none; }
 .vhead .field small.note{display:block;margin-top:6px}
 .vbtns{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}
 .vlines{border:1px solid var(--border);border-radius:16px;padding:6px 12px 12px;overflow-x:auto;background:rgba(127,127,127,.06)}
+.ogrid{display:grid;gap:6px;align-items:center;grid-template-columns:minmax(180px,1fr) 140px 76px 104px 104px 150px;min-width:760px}
+.ogrid input{min-width:0;width:100%}
 .vgrid{display:grid;grid-template-columns:minmax(260px,1fr) 160px 100px 130px 140px 48px;gap:10px;align-items:center;min-width:820px}
 .vgh span{font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:var(--text-muted);padding:10px 4px 6px}
 .vrow{margin-top:8px}
@@ -453,7 +455,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
         <div class="field"><label>N.º de pedido</label><input id="vNum" readonly tabindex="-1"><small class="note">Generado automáticamente</small></div>
         <div class="field"><label>Cliente</label><select id="vClient"><option value="">Seleccionar cliente…</option></select></div>
         <div class="field"><label>Fecha de la factura</label><input id="vDate" type="date"><small class="note">Solo define la fecha de la factura; cada producto tiene su propia fecha.</small></div>
-        <div class="field"><label>Estado</label><select id="vStatus"><option value="apartada">Pendiente</option><option value="paid">Pagado</option></select></div>
+        <div class="field"><label>Estado</label><select id="vStatus"></select></div>
       </div>
       <div class="vbtns">
         <button type="button" class="btn" onclick="ventaNewClient()">+ Cliente</button>
@@ -468,7 +470,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
       <div class="vhead" style="margin-top:18px">
         <div class="field"><label>Abono recibido</label><input id="vPayAmount" type="number" min="0" value="0" inputmode="numeric"></div>
         <div class="field"><label>Fecha del abono</label><input id="vPayDate" type="date"></div>
-        <div class="field"><label>Medio de pago</label><select id="vPayMethod"><option>Transferencia</option><option>Nequi</option><option>Daviplata</option><option>Efectivo</option><option>Bre-b</option><option>Otro</option></select></div>
+        <div class="field"><label>Medio de pago</label><select id="vPayMethod"><option>Bre-b</option><option>Transferencia</option><option>Nequi</option><option>Daviplata</option><option>Efectivo</option><option>Tarjeta</option><option>Otro</option></select></div>
         <div class="field"><label>Referencia</label><input id="vPayRef" placeholder="Opcional"></div>
         <div class="field"><label>Notas (del pedido y del abono)</label><input id="vNotes" placeholder="Opcional"></div>
       </div>
@@ -851,7 +853,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 <script src="/legal-docs.js?v=2"></script>
 <script src="/wallets.js?v=1"></script>
 <script src="/scanner.js?v=1"></script>
-<script src="/admin.js?v=19"></script>
+<script src="/admin.js?v=20"></script>
 <script>
 // Toggle de tema
 function toggleTheme() {

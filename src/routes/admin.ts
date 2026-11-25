@@ -565,14 +565,14 @@ router.post('/orders', async (req: AuthRequest, res: Response) => {
     const { rows: [cl] } = await pool.query(`SELECT id FROM users WHERE id=$1 AND portfolio_id=$2 AND role='client'`, [client_id, pf]);
     if (!cl) return res.status(404).json({ error: 'Cliente no encontrado en esta tienda' });
     const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.body.date || '')) ? String(req.body.date) : null;
-    const expires = status === 'draft' ? new Date(Date.now() + 12 * 3600 * 1000).toISOString() : null;
+    const notes = String(req.body.notes || '').trim().slice(0, 500) || null;   // pedidos creados por el admin no vencen
     for (let attempt = 0; ; attempt++) {
       try {
         const order_number = await nextOrderNumber(pf);
         const { rows: [o] } = await pool.query(
-          `INSERT INTO orders (portfolio_id, client_id, order_number, status, expires_at, created_at)
-           VALUES ($1,$2,$3,$4,$5, COALESCE((($6::date)::timestamp + interval '12 hours') AT TIME ZONE '${TZ}', NOW())) RETURNING *`,
-          [pf, client_id, order_number, status, expires, date]);
+          `INSERT INTO orders (portfolio_id, client_id, order_number, status, notes, expires_at, created_at)
+           VALUES ($1,$2,$3,$4,$5,NULL, COALESCE((($6::date)::timestamp + interval '12 hours') AT TIME ZONE '${TZ}', NOW())) RETURNING *`,
+          [pf, client_id, order_number, status, notes, date]);
         return res.json(o);
       } catch (e: any) { if (e.code === '23505' && attempt < 3) continue; throw e; }   // número de pedido repetido por concurrencia: reintenta
     }
@@ -596,6 +596,12 @@ router.get('/orders', async (req: AuthRequest, res: Response) => {
        ORDER BY o.created_at DESC LIMIT 500`, [pf, status, q]);
     res.json(rows.map(o => ({ ...o, balance: Math.max(0, Number(o.total) - Number(o.paid)) })));
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
+});
+
+// Vista previa del próximo número de pedido (Ventas); el número definitivo se asigna al guardar
+router.get('/orders/next-number', async (req: AuthRequest, res: Response) => {
+  try { res.json({ order_number: await nextOrderNumber(pfOf(req)) }); }
+  catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
 });
 
 router.get('/orders/:id', async (req: AuthRequest, res: Response) => {
@@ -962,6 +968,49 @@ router.put('/settings', async (req: AuthRequest, res: Response) => {
 });
 
 /* ─────────────── Importador JSON (CON LECTURA FLEXIBLE DE WHATSAPP) ─────────────── */
+/* ─────────────── Copia de seguridad en JSON (mismo formato que acepta /import-json) ─────────────── */
+const BACKUP_STATUS: Record<string, string> = { draft: 'Pendiente', pending_confirm: 'Pendiente', apartada: 'Apartado', paid: 'Pagado', shipped: 'Enviado', delivered: 'Entregado', canceled: 'Cancelado' };
+router.get('/backup-json', async (req: AuthRequest, res: Response) => {
+  try {
+    const pf = pfOf(req);
+    const day = (col: string) => `to_char((${col} AT TIME ZONE '${TZ}')::date, 'YYYY-MM-DD')`;
+    const [pfRow, cats, prods, kits, comps, clients, orders, items, pays, inv] = await Promise.all([
+      pool.query(`SELECT name, order_prefix, order_start, order_digits FROM portfolios WHERE id=$1`, [pf]),
+      pool.query(`SELECT name FROM categories WHERE portfolio_id=$1 ORDER BY name`, [pf]),
+      pool.query(`SELECT p.name, c.name AS categoria, p.code, p.cost::float AS cost, p.shipping_cost::float AS ship, p.price::float AS price, p.stock, p.min_stock,
+                         to_char(p.purchase_date::date, 'YYYY-MM-DD') AS fecha, p.image_url
+                  FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.portfolio_id=$1 ORDER BY p.name`, [pf]),
+      pool.query(`SELECT id, name, price::float AS price FROM kits WHERE portfolio_id=$1 ORDER BY name`, [pf]),
+      pool.query(`SELECT kc.kit_id, p.name AS producto, kc.quantity FROM kit_components kc JOIN products p ON p.id = kc.product_id JOIN kits k ON k.id = kc.kit_id WHERE k.portfolio_id=$1`, [pf]),
+      pool.query(`SELECT name, whatsapp, city, address, status FROM users WHERE portfolio_id=$1 AND role='client' ORDER BY name`, [pf]),
+      pool.query(`SELECT o.id, o.order_number, u.name AS cliente, ${day('o.created_at')} AS fecha, o.status, o.notes FROM orders o LEFT JOIN users u ON u.id = o.client_id WHERE o.portfolio_id=$1 ORDER BY o.created_at, o.order_number`, [pf]),
+      pool.query(`SELECT oi.order_id, COALESCE(p.name, k.name, '') AS producto, oi.quantity::int AS cantidad, oi.price::float AS precio, ${day('COALESCE(oi.added_at, o.created_at)')} AS fecha
+                  FROM order_items oi JOIN orders o ON o.id = oi.order_id LEFT JOIN products p ON p.id = oi.product_id LEFT JOIN kits k ON k.id = oi.kit_id
+                  WHERE o.portfolio_id=$1 ORDER BY oi.added_at`, [pf]),
+      pool.query(`SELECT o.order_number AS pedido, pa.payment_date::date::text AS fecha, pa.amount::float AS valor, pa.method AS medio, pa.reference AS referencia, pa.note AS nota
+                  FROM payments pa JOIN orders o ON o.id = pa.order_id WHERE pa.portfolio_id=$1 ORDER BY pa.payment_date, pa.created_at`, [pf]),
+      pool.query(`SELECT value FROM settings WHERE portfolio_id=$1 AND key='invoice_config'`, [pf]),
+    ]);
+    const compByKit = new Map<string, any[]>();
+    comps.rows.forEach((c: any) => { (compByKit.get(c.kit_id) || compByKit.set(c.kit_id, []).get(c.kit_id)!).push({ producto: c.producto, cantidad: c.quantity }); });
+    const linesByOrder = new Map<string, any[]>();
+    items.rows.forEach((l: any) => { (linesByOrder.get(l.order_id) || linesByOrder.set(l.order_id, []).get(l.order_id)!).push({ producto: l.producto, cantidad: l.cantidad, precio: l.precio, fecha: l.fecha }); });
+    let invoiceConfig: any = null; try { invoiceConfig = inv.rows[0] ? JSON.parse(inv.rows[0].value) : null; } catch { /* config ilegible: se omite */ }
+    const f = pfRow.rows[0] || {};
+    res.json({
+      app: 'tuliveshop', version: 1, tienda: f.name || '', exportadoEn: new Date().toISOString(),
+      orderNumbering: { prefix: f.order_prefix, start: f.order_start, digits: f.order_digits },
+      ...(invoiceConfig ? { invoiceConfig } : {}),
+      categories: cats.rows.map((c: any) => c.name),
+      inventory: prods.rows.map((p: any) => ({ producto: p.name, categoria: p.categoria || '', codigo: p.code || '', costo: p.cost, envio: p.ship, precio: p.price, stock: p.stock, minimo: p.min_stock, fechaCompra: p.fecha || '', ...(p.image_url ? { imagen: p.image_url } : {}) })),
+      kits: kits.rows.map((k: any) => ({ nombre: k.name, precioVenta: k.price, componentes: compByKit.get(k.id) || [] })),
+      clients: clients.rows.map((c: any) => ({ nombre: c.name, telefono: decrypt(String(c.whatsapp || '')), tiktok: c.city || '', direccion: c.address || '', estado: c.status || 'Activo' })),
+      orders: orders.rows.map((o: any) => ({ id: o.order_number, cliente: o.cliente || '', fecha: o.fecha, estado: BACKUP_STATUS[o.status] || 'Pendiente', notas: o.notes || '', lineas: linesByOrder.get(o.id) || [] })),
+      payments: pays.rows.map((p: any) => ({ pedido: p.pedido, fecha: p.fecha, valor: p.valor, medio: p.medio || 'Transferencia', referencia: p.referencia || '', nota: p.nota || '' })),
+    });
+  } catch (e: any) { console.error('ERROR backup-json:', e); res.status(500).json({ error: 'Error al exportar: ' + e.message }); }
+});
+
 router.post('/import-json', async (req: AuthRequest, res: Response) => {
   const pf = pfOf(req);
   const st = req.body;
@@ -990,6 +1039,8 @@ router.post('/import-json', async (req: AuthRequest, res: Response) => {
       if (exist.rows.length) { prodIdByName.set(name, exist.rows[0].id); continue; }
       const r = await client.query(`INSERT INTO products (portfolio_id, category_id, name, code, cost, shipping_cost, price, stock, min_stock, purchase_date) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
         [pf, await catId(p.categoria), name, p.codigo ? String(p.codigo).trim() : null, Number(p.costo) || 0, Number(p.envio) || 0, Number(p.precio) || 0, Math.max(0, Math.floor(Number(p.stock) || 0)), Math.max(0, Math.floor(Number(p.minimo) || 0)), p.fechaCompra || null]);
+      const img = cleanImageUrl(p.imagen);   // solo URLs de la carpeta de fotos de esta plataforma
+      if (img.ok && img.url) await client.query(`UPDATE products SET image_url=$2 WHERE id=$1`, [r.rows[0].id, img.url]);
       prodIdByName.set(name, r.rows[0].id); counts.products++;
     }
     const kitIdByName = new Map<string, string>();

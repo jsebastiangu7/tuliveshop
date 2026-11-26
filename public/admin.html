@@ -568,7 +568,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   <!-- CONFIGURACIÓN -->
   <section id="view-config" class="view">
     <h1>Configuración</h1>
-    <p class="note">Apariencia, utilidad, objetivos, donaciones, factura, pagos y numeración.</p>
+    <p class="note">Apariencia, utilidad, objetivos, donaciones, factura, pagos, contacto y voz de alertas.</p>
     <div class="panel glass">
       <h2>Apariencia</h2>
       <div class="fgrid">
@@ -643,9 +643,17 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
       </div>
     </div>
     <div class="panel glass">
-      <h2>Pagos, WhatsApp y numeración</h2>
+      <h2>Personalización Pagos y Contacto</h2>
       <div class="fgrid">
         <div class="field" style="grid-column:1/-1"><label>Medio de pago (billetera)</label><div id="walletSummary" style="margin-bottom:8px"></div><button type="button" class="btn" id="walletBtn" onclick="openWalletModal()">Configurar medio de pago</button></div>
+        <div class="field" style="grid-column:1/-1"><label>🔊 Voz de la alerta de abonos («Has recibido un abono de …»)</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="voiceOn" onchange="pkVoiceToggle(this.checked)"> Activar</label>
+            <select id="voicePick" onchange="pkVoicePick(this.value)" style="min-width:230px"></select>
+            <button type="button" class="btn" onclick="pkVoiceTest()">▶ Probar voz</button>
+          </div>
+          <p class="note" id="voiceNote" style="margin:6px 0 0"></p>
+        </div>
         <div class="field"><label>WhatsApp (con código de país)</label><input id="gWa"></div>
         <div class="field"><label>Abono mínimo (COP)</label><input id="gMin" type="number" min="0"></div>
         <div class="field"><label>Iniciales numeración</label><input id="gPrefix" maxlength="6" style="text-transform:uppercase"></div>
@@ -658,12 +666,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
       <div class="actions" style="margin-top:12px"><button class="btn primary" onclick="saveGeneral()">Guardar configuración</button></div>
     </div>
     <div class="panel glass">
-      <h2>🔊 Voz en las alertas de abonos</h2>
-      <p class="note">Cuando llega un abono por confirmar, la app dice en voz alta «Has recibido un abono de (nombre del cliente)». La voz es en español latino y depende de las voces instaladas en tu dispositivo.</p>
-      <div class="actions">
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="voiceOn" onchange="pkVoiceToggle(this.checked)"> Activar voz</label>
-        <button class="btn" onclick="pkVoiceTest()">🔊 Probar voz</button>
-      </div>
       <h2>🗂️ Datos JSON</h2>
       <p class="note"><b>Exportar JSON</b> descarga a tu PC una copia de seguridad de la tienda: categorías, productos, kits, clientes, pedidos y abonos (sin PIN de clientes ni fotos; las fotos quedan como enlaces). <b>Importar JSON</b> carga un archivo con ese mismo formato o el de tu software anterior: agrega y actualiza, <b>no borra</b> lo que ya tienes y, si algo falla, no se guarda nada.</p>
       <div class="actions">
@@ -866,7 +868,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 <script src="/legal-docs.js?v=2"></script>
 <script src="/wallets.js?v=1"></script>
 <script src="/scanner.js?v=1"></script>
-<script src="/admin.js?v=25"></script>
+<script src="/admin.js?v=26"></script>
 <script>
 // Toggle de tema
 function toggleTheme() {

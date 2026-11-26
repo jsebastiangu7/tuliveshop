@@ -1471,6 +1471,7 @@ async function saveShipment(action) {
 
 /* ---------- Configuración ---------- */
 async function loadConfig() {
+  try { if (window.pkVoiceFill) window.pkVoiceFill(); } catch (e) {}
   try { if ($('voiceOn')) $('voiceOn').checked = localStorage.getItem('pkVoice') !== '0'; } catch (e) {}
   CFG = await api('/api/admin/settings');
   GOALS = await api('/api/admin/goals');
@@ -2237,6 +2238,7 @@ async function executeWipe() {
   };
   loadConfig = async function () {
     var f = [];
+    try { if (window.pkVoiceFill) window.pkVoiceFill(); if ($('voiceOn')) $('voiceOn').checked = localStorage.getItem('pkVoice') !== '0'; } catch (e) {}
     await Promise.all([
       api('/api/admin/settings').then(function (s) { CFG = s; }).catch(function () { f.push('settings'); }),
       api('/api/admin/goals').then(function (g) { GOALS = Array.isArray(g) ? g : []; }).catch(function () { f.push('goals'); }),
@@ -2352,22 +2354,55 @@ async function executeWipe() {
   // --- Voz: "Has recibido un abono de (cliente)" con voz en español latino (la del navegador/dispositivo) ---
   function voiceOn() { try { return localStorage.getItem('pkVoice') !== '0'; } catch (e) { return true; } }
   var LATAM = /^es[-_](419|MX|CO|US|AR|CL|PE|VE|UY|EC|BO|PY|CR|PA|GT|HN|NI|SV|DO|PR|CU)/i;
+  // Nombres conocidos de voces latinas (Edge "Natural", Windows, macOS, Chrome/Android) para etiquetarlas Mujer/Hombre
+  var FEM = /dalia|salome|salomé|paloma|elena|catalina|sabina|paulina|soledad|marisol|valentina|camila|ximena|margarita|lupe|monica|mónica|francisca|karla|renata|fernanda|estrella|luciana|ines|inés|google espa[nñ]ol de estados unidos|female|mujer/i;
+  var MALE = /jorge|gonzalo|alonso|tomas|tomás|lorenzo|raul|raúl|diego|carlos|juan|pablo|andres|andrés|emilio|mateo|nicolas|nicolás|male|hombre/i;
+  function vGender(v) { var n = v.name || ''; if (MALE.test(n) && !/female/i.test(n)) return 'M'; if (FEM.test(n)) return 'F'; return '?'; }
+  function vNatural(v) { return /natural|online|neural|wavenet/i.test(v.name || '') ? 1 : 0; }
+  function vRegion(v) { var m = { 'es-mx': 'México', 'es-co': 'Colombia', 'es-us': 'EE. UU.', 'es-ar': 'Argentina', 'es-cl': 'Chile', 'es-pe': 'Perú', 'es-ve': 'Venezuela', 'es-419': 'Latinoamérica', 'es-uy': 'Uruguay', 'es-ec': 'Ecuador', 'es-bo': 'Bolivia', 'es-py': 'Paraguay', 'es-cr': 'Costa Rica', 'es-pa': 'Panamá', 'es-gt': 'Guatemala', 'es-hn': 'Honduras', 'es-ni': 'Nicaragua', 'es-sv': 'El Salvador', 'es-do': 'Rep. Dominicana', 'es-pr': 'Puerto Rico', 'es-cu': 'Cuba' }; return m[String(v.lang).replace('_', '-').toLowerCase()] || v.lang; }
+  // Hasta 5 voces latinas del dispositivo: 3 de mujer + 2 de hombre, priorizando las naturales (neuronales), que suenan menos robóticas
+  function voiceChoices() {
+    var vs = ((window.speechSynthesis && speechSynthesis.getVoices()) || []).filter(function (v) { return LATAM.test(v.lang); });
+    var rank = function (a, b) { return vNatural(b) - vNatural(a) || (a.localService === b.localService ? 0 : (a.localService ? 1 : -1)) || String(a.name).localeCompare(b.name); };
+    var f = vs.filter(function (v) { return vGender(v) === 'F'; }).sort(rank), m = vs.filter(function (v) { return vGender(v) === 'M'; }).sort(rank);
+    var u = vs.filter(function (v) { return vGender(v) === '?'; }).sort(rank);
+    var out = f.slice(0, 3).concat(m.slice(0, 2));
+    var rest = f.slice(3).concat(m.slice(2), u);
+    while (out.length < 5 && rest.length) out.push(rest.shift());
+    return out;
+  }
   function pickVoice() {
-    var vs = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
-    var latam = vs.filter(function (v) { return LATAM.test(v.lang); });
+    var all = ((window.speechSynthesis && speechSynthesis.getVoices()) || []).filter(function (v) { return LATAM.test(v.lang); });
+    var saved = ''; try { saved = localStorage.getItem('pkVoiceName') || ''; } catch (e) {}
+    var s = saved && all.find(function (v) { return v.name === saved; });
+    if (s) return s;
+    var c = voiceChoices(); if (c.length) return c[0];
     var best = ['es-CO', 'es-MX', 'es-419', 'es-US'];
-    for (var i = 0; i < best.length; i++) { var f = latam.find(function (v) { return v.lang.replace('_', '-').toLowerCase() === best[i].toLowerCase(); }); if (f) return f; }
-    return latam[0] || null;   // nunca una voz de España: si no hay latina, se pide es-419 y el sistema elige
+    for (var i = 0; i < best.length; i++) { var f = all.find(function (v) { return v.lang.replace('_', '-').toLowerCase() === best[i].toLowerCase(); }); if (f) return f; }
+    return all[0] || null;   // nunca una voz de España
   }
   function speak(text) {
     if (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) return false;
     try {
+      speechSynthesis.cancel();
       var u = new SpeechSynthesisUtterance(text), v = pickVoice();
       u.lang = v ? v.lang : 'es-419'; if (v) u.voice = v; u.rate = 0.95;
       speechSynthesis.speak(u); return true;
     } catch (e) { return false; }
   }
-  if ('speechSynthesis' in window) { try { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = function () {}; } catch (e) {} }
+  // Llena el selector con las voces disponibles (se vuelve a llamar cuando el navegador termina de cargarlas)
+  window.pkVoiceFill = function () {
+    var sel = document.getElementById('voicePick'); if (!sel) return;
+    var c = voiceChoices(), saved = ''; try { saved = localStorage.getItem('pkVoiceName') || ''; } catch (e) {}
+    var lab = { F: 'Mujer', M: 'Hombre', '?': 'Voz' };
+    var cnt = { F: 0, M: 0, '?': 0 };
+    sel.innerHTML = c.length ? c.map(function (v) { var g = vGender(v); cnt[g]++; return '<option value="' + esc(v.name) + '">' + lab[g] + ' ' + cnt[g] + ' · ' + esc(String(v.name).replace(/^(Microsoft|Google)\s+/i, '').replace(/\s*Online \(Natural\).*$/i, '').replace(/\s*-\s*.*$/, '')) + ' (' + vRegion(v) + ')' + (vNatural(v) ? ' ★' : '') + '</option>'; }).join('') : '<option value="">Automática (no hay voces latinas instaladas)</option>';
+    if (saved && c.some(function (v) { return v.name === saved; })) sel.value = saved;
+    var note = document.getElementById('voiceNote');
+    if (note) note.textContent = c.length ? ('Voces latinas disponibles en este dispositivo (' + c.length + '). ★ = voz natural, la que menos suena a robot. La elección se guarda en este navegador.') : 'Este dispositivo no trae voces en español latino; se usará la voz por defecto. En Edge (Windows) hay voces naturales gratuitas en español latino.';
+  };
+  if ('speechSynthesis' in window) { try { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = function () { window.pkVoiceFill(); }; } catch (e) {} }
+  window.pkVoicePick = function (name) { try { localStorage.setItem('pkVoiceName', name || ''); } catch (e) {} window.pkAbonoVoice('María Pérez'); };
   window.pkAbonoVoice = function (name) { return speak('Has recibido un abono de ' + (name || 'un cliente')); };
   window.pkVoiceToggle = function (on) { try { localStorage.setItem('pkVoice', on ? '1' : '0'); } catch (e) {} };
   window.pkVoiceTest = function () { if (!window.pkAbonoVoice('María Pérez')) toast('⚠ Este navegador no tiene voz disponible'); };

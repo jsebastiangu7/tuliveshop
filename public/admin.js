@@ -1023,7 +1023,7 @@ function renderInventory() {
   put('invTable', '<div class="tablewrap"><table class="adm"><thead><tr><th>Producto</th><th>Código</th><th>Categoría</th><th>Costo</th><th>Envío</th><th>Stock</th><th>Disponible</th><th>Estado</th><th>Precio</th><th>Margen</th><th>Fecha compra</th><th>Acciones</th></tr></thead><tbody>' +
     (list.length ? list.map(p => {
       const marg = p.price > 0 ? (((Number(p.price) - Number(p.cost) - Number(p.shipping_cost)) / Number(p.price)) * 100).toFixed(1) + '%' : '—';
-      return `<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.code || '—')}</td><td>${esc(p.category || '—')}</td><td>${money(p.cost)}</td><td>${money(p.shipping_cost)}</td><td>${p.stock}</td><td>${p.available}</td><td>${pillStock(p.status)}</td><td>${money(p.price)}</td><td>${marg}</td><td>${esc(fmtDMY(p.purchase_date) || '—')}</td><td class="acts"><button class="btn" onclick="openBuyers('${p.id}')">Clientes</button><button class="btn" onclick="openStock('${p.id}')">+ Stock</button><button class="btn" onclick="openProduct('${p.id}')">Editar</button><button class="btn danger" onclick="delProduct('${p.id}')">Eliminar</button></td></tr>`;
+      return `<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.code || '—')}</td><td>${esc(p.category || '—')}</td><td>${money(p.cost)}</td><td>${money(p.shipping_cost)}</td><td>${p.stock}</td><td>${p.available}</td><td>${pillStock(p.status)}</td><td>${money(p.price)}</td><td>${marg}</td><td data-sort="${esc(String(p.purchase_date || '').slice(0, 10))}">${esc(fmtDMY(p.purchase_date) || '—')}</td><td class="acts"><button class="btn" onclick="openBuyers('${p.id}')">Clientes</button><button class="btn" onclick="openStock('${p.id}')">+ Stock</button><button class="btn" onclick="openProduct('${p.id}')">Editar</button><button class="btn danger" onclick="delProduct('${p.id}')">Eliminar</button></td></tr>`;
     }).join('') : '<tr><td colspan="12" class="empty">Sin productos.</td></tr>') + '</tbody></table></div>');
 }
 // ---- Foto del producto (se sube directo a media.tuliveshop.com con un permiso firmado por la app) ----
@@ -2711,7 +2711,7 @@ async function saveVpAssignments() {
     if (!s || s === '—' || s === '-') return { t: 'e' };
     var iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (iso) return { t: 'd', v: Date.UTC(+iso[1], +iso[2] - 1, +iso[3]) };
-    var dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    var dmy = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);   // dd/mm/aaaa y dd-mm-aaaa (formato que muestra la app)
     if (dmy) return { t: 'd', v: Date.UTC(+dmy[3], +dmy[2] - 1, +dmy[1]) };
     var c = s.replace(/[$%\s]/g, '');
     if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(c)) return { t: 'n', v: parseFloat(c.replace(/\./g, '').replace(',', '.')) };

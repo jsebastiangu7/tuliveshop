@@ -1023,7 +1023,7 @@ function renderInventory() {
   put('invTable', '<div class="tablewrap"><table class="adm"><thead><tr><th>Producto</th><th>Código</th><th>Categoría</th><th>Costo</th><th>Envío</th><th>Stock</th><th>Disponible</th><th>Estado</th><th>Precio</th><th>Margen</th><th>Fecha compra</th><th>Acciones</th></tr></thead><tbody>' +
     (list.length ? list.map(p => {
       const marg = p.price > 0 ? (((Number(p.price) - Number(p.cost) - Number(p.shipping_cost)) / Number(p.price)) * 100).toFixed(1) + '%' : '—';
-      return `<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.code || '—')}</td><td>${esc(p.category || '—')}</td><td>${money(p.cost)}</td><td>${money(p.shipping_cost)}</td><td>${p.stock}</td><td>${p.available}</td><td>${pillStock(p.status)}</td><td>${money(p.price)}</td><td>${marg}</td><td>${esc(fmtDMY(p.purchase_date) || '—')}</td><td class="acts"><button class="btn" onclick="openStock('${p.id}')">+ Stock</button><button class="btn" onclick="openProduct('${p.id}')">Editar</button><button class="btn danger" onclick="delProduct('${p.id}')">Eliminar</button></td></tr>`;
+      return `<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.code || '—')}</td><td>${esc(p.category || '—')}</td><td>${money(p.cost)}</td><td>${money(p.shipping_cost)}</td><td>${p.stock}</td><td>${p.available}</td><td>${pillStock(p.status)}</td><td>${money(p.price)}</td><td>${marg}</td><td>${esc(fmtDMY(p.purchase_date) || '—')}</td><td class="acts"><button class="btn" onclick="openBuyers('${p.id}')">Clientes</button><button class="btn" onclick="openStock('${p.id}')">+ Stock</button><button class="btn" onclick="openProduct('${p.id}')">Editar</button><button class="btn danger" onclick="delProduct('${p.id}')">Eliminar</button></td></tr>`;
     }).join('') : '<tr><td colspan="12" class="empty">Sin productos.</td></tr>') + '</tbody></table></div>');
 }
 // ---- Foto del producto (se sube directo a media.tuliveshop.com con un permiso firmado por la app) ----
@@ -1110,6 +1110,14 @@ async function openStock(id) {
   try {
     await api('/api/admin/products/' + id + '/stock', { method: 'POST', body: { qty: Number(qty) || 0, fecha: fecha || null } });
     toast('✔ Stock actualizado'); loadInventory();
+  } catch (e) { toast('⚠ ' + e.message); }
+}
+async function openBuyers(id) {
+  try {
+    const r = await api('/api/admin/products/' + id + '/buyers');
+    $('buyersBody').innerHTML = `<h3 style="margin:0 0 4px">${esc(r.product)}</h3><p class="note">${r.buyers.length} cliente(s) · ${r.total} unidad(es) vendida(s) (sin contar pedidos cancelados o vencidos; incluye las compradas dentro de kits)</p>` +
+      (r.buyers.length ? `<div class="tablewrap"><table class="adm"><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Pedidos</th><th>Cantidad</th></tr></thead><tbody>${r.buyers.map(b => `<tr><td>${esc(b.name)}</td><td>${esc(b.whatsapp || '—')}</td><td>${b.orders}</td><td><b>${b.qty}</b></td></tr>`).join('')}</tbody></table></div>` : '<p class="note">Nadie ha comprado este producto todavía.</p>');
+    openModal('buyersModal');
   } catch (e) { toast('⚠ ' + e.message); }
 }
 async function delProduct(id) {

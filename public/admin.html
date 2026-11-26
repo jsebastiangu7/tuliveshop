@@ -818,6 +818,13 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 
 <div id="vProdList" role="listbox"></div>
 
+<!-- MODAL: Clientes de un producto -->
+<div class="modal-backdrop" id="buyersModal"><div class="modal">
+  <h2>Clientes del producto</h2>
+  <div id="buyersBody"></div>
+  <div class="modal-actions"><button class="btn" onclick="closeModal('buyersModal')">Cerrar</button></div>
+</div></div>
+
 <!-- MODAL: Importar inventario -->
 <div id="invImportModal" class="modal-backdrop"><div class="modal" style="width:min(1080px,100%)">
   <h2>Revisar archivo de inventario</h2>
@@ -853,7 +860,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 <script src="/legal-docs.js?v=2"></script>
 <script src="/wallets.js?v=1"></script>
 <script src="/scanner.js?v=1"></script>
-<script src="/admin.js?v=20"></script>
+<script src="/admin.js?v=21"></script>
 <script>
 // Toggle de tema
 function toggleTheme() {

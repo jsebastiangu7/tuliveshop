@@ -293,6 +293,31 @@ router.get('/analytics', async (req: AuthRequest, res: Response) => {
 });
 
 /* ─────────────── Productos ─────────────── */
+/* Clientes que han comprado un producto (directo o dentro de kits) y cuántas unidades */
+router.get('/products/:id/buyers', async (req: AuthRequest, res: Response) => {
+  try {
+    const pf = pfOf(req);
+    const { rows: [prod] } = await pool.query(`SELECT id, name FROM products WHERE id=$1 AND portfolio_id=$2`, [req.params.id, pf]);
+    if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
+    const { rows } = await pool.query(
+      `SELECT o.client_id, u.name, u.whatsapp, SUM(x.q)::int AS qty, COUNT(DISTINCT o.id)::int AS orders, MAX(o.created_at) AS last_at
+       FROM (
+         SELECT oi.order_id, oi.quantity AS q FROM order_items oi WHERE oi.product_id = $1
+         UNION ALL
+         SELECT oi.order_id, oi.quantity * kc.quantity FROM order_items oi JOIN kit_components kc ON kc.kit_id = oi.kit_id WHERE kc.product_id = $1
+       ) x
+       JOIN orders o ON o.id = x.order_id AND o.portfolio_id = $2 AND o.status NOT IN ('canceled','expired')
+       LEFT JOIN users u ON u.id = o.client_id
+       GROUP BY o.client_id, u.name, u.whatsapp
+       ORDER BY qty DESC, u.name`, [prod.id, pf]);
+    res.json({
+      product: prod.name,
+      total: rows.reduce((a: number, r: any) => a + r.qty, 0),
+      buyers: rows.map((r: any) => ({ client_id: r.client_id, name: r.name || 'Sin cliente', whatsapp: decrypt(String(r.whatsapp || '')), qty: r.qty, orders: r.orders, last_at: r.last_at })),
+    });
+  } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
+});
+
 router.get('/products', async (req: AuthRequest, res: Response) => {
   try {
     const pf = pfOf(req);

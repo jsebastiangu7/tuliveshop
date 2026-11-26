@@ -1252,7 +1252,7 @@ async function loadOrders() {
   const rows = await api('/api/admin/orders?' + new URLSearchParams({ q, status: f }));
   ORDERS = rows;
   put('ordersTable', rows.length ? '<div class="tablewrap"><table class="adm"><thead><tr><th>N.º</th><th>Cliente</th><th>Fecha</th><th>Estado</th><th>Ítems</th><th>Total</th><th>Abonado</th><th>Saldo</th><th>Acciones</th></tr></thead><tbody>' +
-    rows.map(o => `<tr><td><b>${esc(o.order_number)}</b></td><td>${esc(o.client_name || '—')}</td><td>${String(o.created_at || '').slice(0, 10)}</td><td>${pill(o.status)}</td><td>${o.items_count}</td><td>${money(o.total)}</td><td>${money(o.paid)}</td><td>${money(o.balance)}</td><td class="acts"><button class="btn primary" onclick="openOrder('${o.id}')">Abrir</button></td></tr>`).join('') +
+    rows.map(o => `<tr><td><b>${esc(o.order_number)}</b></td><td>${esc(o.client_name || '—')}</td><td>${String(o.created_at || '').slice(0, 10)}</td><td>${pill(o.status)}</td><td>${o.items_count}</td><td>${money(o.total)}</td><td>${money(o.paid)}</td><td>${money(o.balance)}</td><td class="acts"><button class="btn primary" onclick="openOrder('${o.id}')">Abrir</button> <button class="btn" title="Generar factura PDF" onclick="generateInvoice('${o.id}')">📄 Factura</button></td></tr>`).join('') +
     '</tbody></table></div>' : '<p class="note">No hay pedidos con ese filtro.</p>');
 }
 function optGroups() {
@@ -1267,7 +1267,7 @@ async function openOrder(id) {
     $('orderBody').innerHTML = orderModalHtml(o);
     openModal('orderModal');
     omRenderItems(o.items);
-    omAddRow(true);
+    omAddRow(false);   // fila lista, pero sin foco: no se activa hasta que el usuario la toque
   } catch (e) { toast('⚠ ' + e.message); }
 }
 function orderModalHtml(o) {
@@ -2605,7 +2605,7 @@ async function saveVenta() {
     if (wanted !== 'apartada' && wanted !== cur) await api(`/api/admin/orders/${orderId}`, { method: 'PUT', body: { status: wanted } });
     toast('✔ Pedido ' + orderRes.order_number + ' guardado');
     clearVenta(); ventaMsg('✔ Pedido ' + orderRes.order_number + ' guardado');
-    loadOrders().catch(() => {});
+    showTab('orders');   // al guardar, se abre la pestaña Pedidos (loadTab ya recarga la lista)
   } catch (e) {
     ventaMsg('⚠ ' + e.message);
     toast('⚠ ' + e.message + (orderId ? ' — el pedido quedó creado a medias; revísalo en Pedidos' : ''));

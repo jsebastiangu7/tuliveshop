@@ -25,4 +25,18 @@ export async function ensureSchema() {
   await pool.query(`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS confirmed BOOLEAN NOT NULL DEFAULT TRUE`);
   // Tienda oculta para los clientes (la maneja el superadministrador)
   await pool.query(`ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS hidden BOOLEAN NOT NULL DEFAULT FALSE`);
+  // Reservas de productos agotados (cola de solicitudes de los clientes)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS reservations (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      portfolio_id UUID NOT NULL,
+      client_id    UUID NOT NULL,
+      product_id   UUID,
+      kit_id       UUID,
+      quantity     INTEGER NOT NULL DEFAULT 1,
+      status       TEXT NOT NULL DEFAULT 'pending',
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      resolved_at  TIMESTAMPTZ
+    )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS reservations_portfolio_idx ON reservations (portfolio_id, status)`);
 }

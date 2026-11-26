@@ -300,7 +300,7 @@ router.get('/products/:id/buyers', async (req: AuthRequest, res: Response) => {
     const { rows: [prod] } = await pool.query(`SELECT id, name FROM products WHERE id=$1 AND portfolio_id=$2`, [req.params.id, pf]);
     if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
     const { rows } = await pool.query(
-      `SELECT o.client_id, u.name, u.whatsapp, SUM(x.q)::int AS qty, COUNT(DISTINCT o.id)::int AS orders, MAX(o.created_at) AS last_at
+      `SELECT o.id AS order_id, o.order_number, o.status, o.client_id, u.name, u.whatsapp, SUM(x.q)::int AS qty, o.created_at
        FROM (
          SELECT oi.order_id, oi.quantity AS q FROM order_items oi WHERE oi.product_id = $1
          UNION ALL
@@ -308,13 +308,17 @@ router.get('/products/:id/buyers', async (req: AuthRequest, res: Response) => {
        ) x
        JOIN orders o ON o.id = x.order_id AND o.portfolio_id = $2 AND o.status NOT IN ('canceled','expired')
        LEFT JOIN users u ON u.id = o.client_id
-       GROUP BY o.client_id, u.name, u.whatsapp
-       ORDER BY qty DESC, u.name`, [prod.id, pf]);
-    res.json({
-      product: prod.name,
-      total: rows.reduce((a: number, r: any) => a + r.qty, 0),
-      buyers: rows.map((r: any) => ({ client_id: r.client_id, name: r.name || 'Sin cliente', whatsapp: decrypt(String(r.whatsapp || '')), qty: r.qty, orders: r.orders, last_at: r.last_at })),
-    });
+       GROUP BY o.id, o.order_number, o.status, o.client_id, u.name, u.whatsapp, o.created_at
+       ORDER BY o.created_at DESC`, [prod.id, pf]);
+    const by = new Map<string, any>();
+    for (const r of rows) {
+      const key = r.client_id || 'none';
+      if (!by.has(key)) by.set(key, { client_id: r.client_id, name: r.name || 'Sin cliente', whatsapp: decrypt(String(r.whatsapp || '')), qty: 0, orders: [] });
+      const b = by.get(key); b.qty += r.qty;
+      b.orders.push({ id: r.order_id, order_number: r.order_number, status: r.status, qty: r.qty });
+    }
+    const buyers = [...by.values()].sort((x, y) => y.qty - x.qty || x.name.localeCompare(y.name));
+    res.json({ product: prod.name, total: buyers.reduce((a, b) => a + b.qty, 0), buyers });
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }
 });
 

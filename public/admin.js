@@ -1112,11 +1112,14 @@ async function openStock(id) {
     toast('✔ Stock actualizado'); loadInventory();
   } catch (e) { toast('⚠ ' + e.message); }
 }
+function toggleBuyerOrders(i) { const r = $('buyerOrd' + i); if (r) r.style.display = r.style.display === 'none' ? '' : 'none'; }
+function openOrderFromBuyers(id) { closeModal('buyersModal'); openOrder(id); }
 async function openBuyers(id) {
   try {
     const r = await api('/api/admin/products/' + id + '/buyers');
     $('buyersBody').innerHTML = `<h3 style="margin:0 0 4px">${esc(r.product)}</h3><p class="note">${r.buyers.length} cliente(s) · ${r.total} unidad(es) vendida(s) (sin contar pedidos cancelados o vencidos; incluye las compradas dentro de kits)</p>` +
-      (r.buyers.length ? `<div class="tablewrap"><table class="adm"><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Pedidos</th><th>Cantidad</th></tr></thead><tbody>${r.buyers.map(b => `<tr><td>${esc(b.name)}</td><td>${esc(b.whatsapp || '—')}</td><td>${b.orders}</td><td><b>${b.qty}</b></td></tr>`).join('')}</tbody></table></div>` : '<p class="note">Nadie ha comprado este producto todavía.</p>');
+      (r.buyers.length ? `<div class="tablewrap"><table class="adm"><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Pedidos</th><th>Cantidad</th></tr></thead><tbody>${r.buyers.map((b, i) => `<tr><td>${esc(b.name)}</td><td>${esc(b.whatsapp || '—')}</td><td>${b.orders.length}</td><td><button class="btn" title="Ver los pedidos" onclick="toggleBuyerOrders(${i})"><b>${b.qty}</b> ▾</button></td></tr>
+        <tr id="buyerOrd${i}" style="display:none"><td colspan="4" style="background:var(--surface-2,rgba(128,128,128,.08))">${b.orders.map(o => `<button class="btn" style="margin:2px" title="Abrir pedido" onclick="openOrderFromBuyers('${o.id}')">${esc(o.order_number)} · ${STATUS_LABEL[o.status] || esc(o.status)} · ${o.qty} u.</button>`).join('')}</td></tr>`).join('')}</tbody></table></div>` : '<p class="note">Nadie ha comprado este producto todavía.</p>');
     openModal('buyersModal');
   } catch (e) { toast('⚠ ' + e.message); }
 }
@@ -1285,9 +1288,9 @@ function orderModalHtml(o) {
   <button class="btn primary" onclick="generateInvoice('${o.id}')">📄 Generar factura PDF</button></div>
 <h3>Productos</h3>
 <div class="vlines" style="overflow-x:auto"><div class="ogrid vgh"><span>Producto</span><span>Fecha</span><span>Cant.</span><span>Precio</span><span>Total</span><span></span></div><div id="omItems"></div></div>
-<h3>Agregar productos (Enter agrega y crea la siguiente fila enfocada)</h3>
+<h3>Agregar productos</h3>
 <div class="fgrid" style="margin-bottom:8px"><div class="field" style="grid-column:1/-1"><label>Código de barras (lector o cámara: cada lectura suma 1 unidad)</label><div style="display:flex;gap:6px"><input id="omScan" placeholder="Escanea o escribe el código y Enter" style="flex:1;min-width:0" onkeydown="omScanKey(event)"><button type="button" class="btn" onclick="omScanCam()">📷 Cámara</button></div></div></div>
-<div class="tablewrap"><table class="adm"><tbody id="omRows"></tbody></table></div>
+<div class="vlines" style="overflow-x:auto"><div class="ogrid vgh"><span>Producto</span><span>Fecha</span><span>Cant.</span><span>Precio</span><span>Total</span><span></span></div><div id="omRows"></div></div>
 <div class="actions"><button class="btn" onclick="omAddRow(true)">+ Producto</button></div>
 <div style="display:flex;gap:18px;justify-content:flex-end;font-weight:800;margin:8px 0" id="omTotals">
   <span>Total: ${money(o.total)}</span><span>Abonado: ${money(o.paid)}</span><span>Saldo: ${money(o.balance)}</span>
@@ -1302,42 +1305,36 @@ ${o.payments.length ? `<div class="tablewrap"><table class="adm"><thead><tr><th>
   <div class="field"><label>&nbsp;</label><button class="btn primary" onclick="addOrderPayment('${o.id}')">Registrar abono</button></div>
 </div>`;
 }
+// Productos nuevos del pedido: misma fila y mismos atajos que en Ventas (1er Enter selecciona; 2º Enter o Enter en otro campo agrega y abre la siguiente)
 function omAddRow(focus) {
-  const tb = $('omRows'); if (!tb) return;
-  const tr = document.createElement('tr');
-  tr.innerHTML = `<td><select class="omProd" onkeydown="omKey(event)"><option value="">Seleccionar…</option>${optGroups()}</select></td>
-  <td style="width:90px"><input class="omQty" type="number" min="1" value="1" onkeydown="omKey(event)"></td>
-  <td style="width:120px"><input class="omPrice" type="number" min="0" value="0" onkeydown="omKey(event)" title="Precio (se llena al elegir; editable)"></td>
-  <td class="acts"><button class="btn primary" onclick="omCommit(this.closest('tr'))">Agregar</button> <button class="btn danger" onclick="this.closest('tr').remove()">✕</button></td>`;
-  tb.appendChild(tr);
-  tr.querySelector('.omProd').onchange = (ev) => omPriceAuto(ev.target);
-  if (focus) tr.querySelector('.omProd').focus();
-  return tr;
+  const box = $('omRows'); if (!box) return;
+  const row = vBuildRow('add');
+  const last = box.lastElementChild;
+  row.querySelector('.vd').value = (last && last.querySelector('.vd').value) || today();
+  row.querySelector('.vs').onclick = () => omCommitRow(row, false);
+  row.querySelector('.vx').onclick = () => { if (VROW === row) vClose(); row.remove(); };
+  box.appendChild(row);
+  if (focus) row.querySelector('.vp').focus();
+  return row;
 }
-function omPriceAuto(sel) {
-  const tr = sel.closest('tr');
-  const v = sel.value; if (!v) return;
-  const id = v.slice(2);
-  const p = v.startsWith('p:') ? PRODUCTS.find(x => x.id === id) : KITS.find(x => x.id === id);
-  if (p) tr.querySelector('.omPrice').value = p.price;
-}
-function omKey(ev) {
-  if (ev.key !== 'Enter') return;
-  ev.preventDefault();
-  omCommit(ev.target.closest('tr'), true);
-}
-async function omCommit(row, thenNew) {
-  const v = row.querySelector('.omProd').value;
-  const qty = Math.max(1, Math.floor(Number(row.querySelector('.omQty').value) || 1));
-  if (!v) { if (thenNew) omAddRow(true); return; }
-  const body = v.startsWith('p:') ? { product_id: v.slice(2), quantity: qty } : { kit_id: v.slice(2), quantity: qty };
+async function omCommitRow(row, viaEnter) {
+  const s = row._sel;
+  if (!s) { toast('⚠ Primero elige un producto'); return row.querySelector('.vp').focus(); }
+  if (row._busy) return; row._busy = true;
+  const body = { quantity: Math.max(1, parseInt(row.querySelector('.vq').value) || 1), price: Number(row.querySelector('.vpr').value) || 0, date: row.querySelector('.vd').value || undefined };
+  if (s.kind === 'k') body.kit_id = s.id; else body.product_id = s.id;
   try {
     await api('/api/admin/orders/' + curOrderId + '/items', { method: 'POST', body });
+    const date = row.querySelector('.vd').value;
+    if (VROW === row) vClose();
     row.remove();
-    await omRefresh();
+    await fetchCaches(); await omRefresh(); loadOrders();
     toast('✔ Producto agregado');
-    if (thenNew) omAddRow(true);
-  } catch (e) { toast('⚠ ' + e.message); }
+    const box = $('omRows');
+    let empty = [...box.children].find(r => !r._sel && !r.querySelector('.vp').value.trim());
+    if (!empty) { empty = omAddRow(false); if (date) empty.querySelector('.vd').value = date; }
+    if (viaEnter) empty.querySelector('.vp').focus();
+  } catch (e) { row._busy = false; toast('⚠ ' + e.message); }
 }
 function omRenderItems(items) {
   const box = $('omItems'); if (!box) return;
@@ -2410,7 +2407,7 @@ function vLastDate() {
 }
 // Fila de producto. mode 'venta' = pestaña Ventas · 'edit' = línea existente dentro del modal de un pedido
 function vBuildRow(mode) {
-  const edit = mode === 'edit';
+  const edit = mode === 'edit' || mode === 'add';   // 'add' = producto nuevo dentro del modal de un pedido
   const row = document.createElement('div');
   row.className = (edit ? 'ogrid' : 'vgrid') + ' vrow';
   row.dataset.mode = mode || 'venta';
@@ -2420,7 +2417,7 @@ function vBuildRow(mode) {
     <input class="vq" type="number" min="1" value="1" inputmode="numeric">
     <input class="vpr" type="number" min="0" value="0" inputmode="numeric">
     <input class="vt" readonly tabindex="-1" value="0">
-    ${edit ? '<span class="vact"><button type="button" class="btn primary vs" title="Guardar cambios de esta línea" style="padding:6px 10px">Guardar</button> <button type="button" class="btn danger vx" title="Quitar producto" style="padding:6px 10px">✕</button></span>'
+    ${edit ? `<span class="vact"><button type="button" class="btn primary vs" title="${mode === 'add' ? 'Agregar al pedido' : 'Guardar cambios de esta línea'}" style="padding:6px 10px">${mode === 'add' ? 'Agregar' : 'Guardar'}</button> <button type="button" class="btn danger vx" title="Quitar producto" style="padding:6px 10px">✕</button></span>`
            : '<button type="button" class="btn danger vx" title="Quitar fila" style="padding:6px 10px">✕</button>'}`;
   const p = row.querySelector('.vp');
   p.addEventListener('input', () => { row._sel = null; vSetRowTotal(row); calcVentaTotal(); vOpen(row); });
@@ -2446,6 +2443,7 @@ function vAddRow() {
 // Enter en cualquier campo de la fila: pasa a la fila siguiente (la crea si no existe). En el modal de pedido guarda la línea.
 function vRowEnter(row) {
   if (row.dataset.mode === 'edit') return omSaveItem(row);
+  if (row.dataset.mode === 'add') return omCommitRow(row, true);
   if (!row._sel) { toast('⚠ Primero elige un producto'); return row.querySelector('.vp').focus(); }
   vNextRowFocus(row);
 }
@@ -2459,7 +2457,8 @@ function vSetRowTotal(row) {
 }
 // Cantidad total pedida de un mismo producto/kit en todas las filas de Ventas (para no pasarse del stock)
 function vUsed(kind, id, except) {
-  return [...$('vRows').querySelectorAll('.vrow')].filter(r => r !== except && r._sel && r._sel.kind === kind && r._sel.id === id)
+  const box = (except && except.parentElement) || $('vRows');
+  return [...box.querySelectorAll('.vrow')].filter(r => r !== except && r._sel && r._sel.kind === kind && r._sel.id === id)
     .reduce((a, r) => a + (parseInt(r.querySelector('.vq').value) || 0), 0);
 }
 function vQtyCheck(row) {

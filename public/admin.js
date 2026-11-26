@@ -1471,6 +1471,7 @@ async function saveShipment(action) {
 
 /* ---------- Configuración ---------- */
 async function loadConfig() {
+  try { if ($('voiceOn')) $('voiceOn').checked = localStorage.getItem('pkVoice') !== '0'; } catch (e) {}
   CFG = await api('/api/admin/settings');
   GOALS = await api('/api/admin/goals');
   DONATIONS = await api('/api/admin/donations');
@@ -1979,10 +1980,16 @@ async function executeWipe() {
       document.head.appendChild(s);
     });
   }
+  // Las fuentes de la factura (Montserrat, Nunito, etc.) viven en invoice-fonts.js; sin cargarlo, el PDF cae a Helvetica
+  function ensureFonts() {
+    if (typeof window.registerCustomFonts === 'function') return Promise.resolve();
+    return loadScript('/invoice-fonts.js').catch(function () { /* sin fuentes propias: usa Helvetica */ });
+  }
   function ensurePDF() {
-    if (window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API && typeof window.jspdf.jsPDF.API.autoTable === 'function') return Promise.resolve();
+    if (window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API && typeof window.jspdf.jsPDF.API.autoTable === 'function') return ensureFonts();
     return loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
-      .then(function () { return loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'); });
+      .then(function () { return loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'); })
+      .then(ensureFonts);
   }
   var _generateInvoice = generateInvoice;
   generateInvoice = function (id) {
@@ -2341,16 +2348,40 @@ async function executeWipe() {
   document.body.appendChild(bubble);
   $('pkAbonoSee').onclick = function () { bubble.style.display = 'none'; showTab('abonos'); };
   $('pkAbonoX').onclick = function () { bubble.style.display = 'none'; };
+
+  // --- Voz: "Has recibido un abono de (cliente)" con voz en español latino (la del navegador/dispositivo) ---
+  function voiceOn() { try { return localStorage.getItem('pkVoice') !== '0'; } catch (e) { return true; } }
+  var LATAM = /^es[-_](419|MX|CO|US|AR|CL|PE|VE|UY|EC|BO|PY|CR|PA|GT|HN|NI|SV|DO|PR|CU)/i;
+  function pickVoice() {
+    var vs = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
+    var latam = vs.filter(function (v) { return LATAM.test(v.lang); });
+    var best = ['es-CO', 'es-MX', 'es-419', 'es-US'];
+    for (var i = 0; i < best.length; i++) { var f = latam.find(function (v) { return v.lang.replace('_', '-').toLowerCase() === best[i].toLowerCase(); }); if (f) return f; }
+    return latam[0] || null;   // nunca una voz de España: si no hay latina, se pide es-419 y el sistema elige
+  }
+  function speak(text) {
+    if (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) return false;
+    try {
+      var u = new SpeechSynthesisUtterance(text), v = pickVoice();
+      u.lang = v ? v.lang : 'es-419'; if (v) u.voice = v; u.rate = 0.95;
+      speechSynthesis.speak(u); return true;
+    } catch (e) { return false; }
+  }
+  if ('speechSynthesis' in window) { try { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = function () {}; } catch (e) {} }
+  window.pkAbonoVoice = function (name) { return speak('Has recibido un abono de ' + (name || 'un cliente')); };
+  window.pkVoiceToggle = function (on) { try { localStorage.setItem('pkVoice', on ? '1' : '0'); } catch (e) {} };
+  window.pkVoiceTest = function () { if (!window.pkAbonoVoice('María Pérez')) toast('⚠ Este navegador no tiene voz disponible'); };
   var seen = {}; try { seen = JSON.parse(localStorage.getItem('pkSeenReports') || '{}'); } catch (e) {}
   function checkReports() {
     if (!token || !user || user.role !== 'admin') return;
     api('/api/orders/reports/pending').then(function (rows) {
-      var nuevo = null;
-      rows.forEach(function (r) { if (!seen[r.id]) { seen[r.id] = 1; nuevo = r; } });
+      var nuevo = null, nuevos = [];
+      rows.forEach(function (r) { if (!seen[r.id]) { seen[r.id] = 1; nuevo = r; nuevos.push(r); } });
       localStorage.setItem('pkSeenReports', JSON.stringify(seen));
       if (nuevo) {
         $('pkAbonoTxt').textContent = (nuevo.client_name || 'Cliente') + ' · ' + money(nuevo.amount) + ' · bolsita ' + (nuevo.order_number || '');
         bubble.style.display = 'flex';
+        if (voiceOn()) nuevos.slice(0, 3).forEach(function (r) { window.pkAbonoVoice(r.client_name); });
       }
     }).catch(function () {});
   }

@@ -4,6 +4,7 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 import type { AuthRequest } from '../middleware/auth.js';
 import { productAvailable, kitAvailable, lockProducts, kitProductIds, getOrderTotals, money, ensureShipmentFor } from '../services/inventory.js';
 import { emitPortfolio } from '../realtime.js';
+import { pushToPortfolio, pushToUsers } from '../services/push.js';
 
 const router = Router();
 
@@ -273,6 +274,14 @@ router.post('/:id/separar', authenticate, requireRole('client'), async (req: Aut
       amount,
       clientId: order.client_id,
     });
+    // Push al celular de los administradores de la tienda (no bloquea ni rompe el reporte si falla)
+    pool.query(`SELECT name FROM users WHERE id = $1`, [order.client_id])
+      .then(({ rows: [c] }) => pushToPortfolio(order.portfolio_id, 'admin', {
+        title: '💰 Nuevo abono por confirmar',
+        body: `${order.order_number} · ${money(amount)}${c?.name ? ' · ' + c.name : ''}`,
+        data: { type: 'payment_reported' },
+      }))
+      .catch(() => { /* el push es opcional */ });
 
     const { rows: [pf] } = await pool.query(`SELECT * FROM portfolios WHERE id = $1`, [order.portfolio_id]);
     const { message, whatsapp_link } = buildWhatsapp(pf, order, totals, amount);
@@ -390,6 +399,22 @@ router.post('/reports/:id/resolve', authenticate, requireRole('admin', 'super_ad
       decision,
       newStatus,
     });
+    // Push al cliente con la respuesta de la tienda
+    if (ord?.client_id) {
+      void pushToUsers([ord.client_id], decision === 'approve'
+        ? {
+            title: '✅ Abono aprobado',
+            body: newStatus === 'paid'
+              ? `Tu bolsita ${ord.order_number} quedó pagada por completo.`
+              : `Recibimos tu abono de ${money(Number(report.amount))} en la bolsita ${ord.order_number}.`,
+            data: { type: 'payment_resolved', decision },
+          }
+        : {
+            title: 'Abono no confirmado',
+            body: `No pudimos confirmar tu abono de la bolsita ${ord.order_number}. Escríbele a la tienda.`,
+            data: { type: 'payment_resolved', decision },
+          });
+    }
 
     const totals = await getOrderTotals(report.order_id);
     return res.json({ ok: true, new_status: newStatus, ...totals });

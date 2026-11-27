@@ -39,4 +39,20 @@ export async function ensureSchema() {
       resolved_at  TIMESTAMPTZ
     )`);
   await pool.query(`CREATE INDEX IF NOT EXISTS reservations_portfolio_idx ON reservations (portfolio_id, status)`);
+
+  // Notificaciones push: un token de celular por usuario (un cliente con varias tiendas tiene un usuario por tienda)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS device_tokens (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id      UUID NOT NULL,
+      portfolio_id UUID,
+      role         TEXT NOT NULL,
+      token        TEXT NOT NULL,
+      updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, token)
+    )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS device_tokens_portfolio_idx ON device_tokens (portfolio_id, role)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS device_tokens_token_idx ON device_tokens (token)`);
+  // Último "Anunciar Live" de la tienda (límite de 1 cada 10 minutos)
+  await pool.query(`ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS last_live_push_at TIMESTAMPTZ`);
 }

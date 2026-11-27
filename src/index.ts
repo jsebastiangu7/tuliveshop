@@ -14,6 +14,7 @@ import authRoutes from './routes/auth.js';
 import productRoutes from './routes/products.js';
 import orderRoutes from './routes/orders.js';
 import reservationRoutes from './routes/reservations.js';
+import pushRoutes from './routes/push.js';
 import adminRoutes from './routes/admin.js';
 import superRoutes from './routes/super.js';
 import { ensureSchema } from './schema.js';
@@ -46,6 +47,7 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders/reservations', reservationRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/push', apiLimiter, pushRoutes);
 app.use('/api/admin', apiLimiter, adminRoutes);
 app.use('/api/super', superRoutes);
 

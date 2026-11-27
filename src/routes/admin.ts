@@ -6,7 +6,6 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 import type { AuthRequest } from '../middleware/auth.js';
 import { productAvailable, kitAvailable, lockProducts, kitProductIds, getOrderTotals, ensureShipmentFor } from '../services/inventory.js';
 import { emitAll } from '../realtime.js';
-import { pushToUsers } from '../services/push.js';
 import { decrypt } from '../utils/encryption.js';
 import { mediaConfigured, mediaBase, signMediaToken, cleanImageUrl } from '../utils/media.js';
 import { nextOrderNumber } from './orders.js';
@@ -197,7 +196,7 @@ router.get('/export-data', async (req: AuthRequest, res: Response) => {
         `SELECT o.order_number, (o.created_at AT TIME ZONE '${TZ}')::date::text AS fecha, u.name AS cliente, u.whatsapp, o.status, COALESCE(t.total,0)::float AS total, COALESCE(pa.paid,0)::float AS abonado, COALESCE(t.units,0)::int AS unidades, o.notes
          FROM orders o LEFT JOIN users u ON u.id = o.client_id ${orderTotals}
          WHERE o.portfolio_id = $1 AND (o.created_at AT TIME ZONE '${TZ}')::date BETWEEN $2 AND $3 ORDER BY o.created_at`, [pf, from, to]);
-      out.pedidos = rows.map(r => ({ Pedido: r.order_number, Fecha: r.fecha, Cliente: r.cliente || '', WhatsApp: decrypt(String(r.whatsapp || '')), Estado: r.status, Unidades: r.unidades, Total: r.total, Abonado: r.abonado, Saldo: Math.max(0, r.total - r.abonado), Notas: r.notes || '' }));
+      out.pedidos = rows.map(r => ({ Pedido: r.order_number, Fecha: r.fecha, Cliente: r.cliente || '', WhatsApp: decrypt(String(r.whatsapp || '')), Estado: r.status, Unidades: r.unidades, Total: r.total, Abonado: r.abonado, Saldo: ['canceled', 'expired'].includes(r.status) ? 0 : Math.max(0, r.total - r.abonado), Notas: r.notes || '' }));   // cancelados/vencidos no se cobran: igual que "Por cobrar hoy" y la hoja Cartera
     }
     if (want.has('lineas')) {
       const { rows } = await pool.query(
@@ -898,14 +897,6 @@ router.put('/logistics/:id', async (req: AuthRequest, res: Response) => {
     if (action === 'send') {
       await pool.query(`UPDATE orders SET status='shipped', updated_at=NOW() WHERE id=$1 AND status IN ('paid','apartada','pending_confirm','draft')`, [s.order_id]);
       emitAll('stock-updated', {});
-      // Push al cliente: su pedido salió (opcional, nunca rompe el envío)
-      pool.query(`SELECT client_id, order_number FROM orders WHERE id=$1`, [s.order_id])
-        .then(({ rows: [o] }) => o?.client_id && pushToUsers([o.client_id], {
-          title: '📦 ¡Tu pedido va en camino!',
-          body: `La bolsita ${o.order_number} fue enviada${carrier ? ' por ' + (carrierOther || carrier) : ''}.`,
-          data: { type: 'order_shipped' },
-        }))
-        .catch(() => { /* el push es opcional */ });
     }
     res.json(up);
   } catch (e: any) { res.status(500).json({ error: 'Error del servidor: ' + e.message }); }

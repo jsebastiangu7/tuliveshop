@@ -294,6 +294,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   <a class="brand" href="/admin.html" onclick="showTab('dash');return false" title="Ir al dashboard" style="color:inherit;text-decoration:none;cursor:pointer">Tu <span>Live Shop</span> <i class="dot">•</i> <b id="brandStore">Admin</b></a>
   <nav id="tabs" class="chips"></nav>
   <div class="header-right">
+    <button class="btn primary" onclick="openLiveAnnounce()" id="liveBtn" title="Avisar a tus clientes que estás en vivo" style="white-space:nowrap">📣 Anunciar Live</button>
     <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema" id="themeBtn">🌙</button>
     <div class="who-wrap">
       <button class="who-btn" onclick="toggleUserMenu()">👑 <span id="whoName">Admin</span> ▾</button>
@@ -746,6 +747,14 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 </div></div>
 
 <!-- MODAL: Eliminar categoría con productos -->
+<div id="liveModal" class="modal-backdrop"><div class="modal">
+  <h2>📣 Anunciar Live</h2>
+  <p id="liveInfo" class="note">Cargando…</p>
+  <div class="field"><label>Mensaje (opcional)</label><input id="liveMsg" maxlength="120" placeholder="Ej: Hoy llegaron las agendas 2027 🎀"></div>
+  <p class="note">Se envía una notificación a los clientes de tu tienda que tienen la app. Puedes anunciar cada 10 minutos.</p>
+  <div class="modal-actions"><button class="btn" onclick="closeModal('liveModal')">Cancelar</button><button class="btn primary" id="liveSend" onclick="sendLiveAnnounce()">Enviar aviso</button></div>
+</div></div>
+
 <div id="catDelModal" class="modal-backdrop"><div class="modal">
   <h2>Eliminar categoría</h2><input type="hidden" id="cdId">
   <p id="cdMsg" class="note"></p>

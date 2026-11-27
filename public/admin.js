@@ -45,6 +45,31 @@ function toast(msg) { const t = $('toast'); if (!t) return; t.textContent = msg;
 function closeModal(id) { $(id).classList.remove('open'); }
 function openModal(id) { $(id).classList.add('open'); }
 
+/* ---------- Anunciar Live (push a los clientes con la app) ---------- */
+async function openLiveAnnounce() {
+  $('liveMsg').value = '';
+  $('liveInfo').textContent = 'Cargando…';
+  $('liveSend').disabled = true;
+  openModal('liveModal');
+  try {
+    const r = await api('/api/push/live');
+    $('liveInfo').textContent = r.devices
+      ? `${r.devices} ${r.devices === 1 ? 'dispositivo recibirá' : 'dispositivos recibirán'} el aviso.`
+      : 'Aún ningún cliente instaló la app, así que nadie recibiría el aviso.';
+    if (r.wait_min > 0) $('liveInfo').textContent += ` Debes esperar ${r.wait_min} min para volver a anunciar.`;
+    $('liveSend').disabled = !r.devices || r.wait_min > 0;
+  } catch (e) { $('liveInfo').textContent = '⚠ ' + e.message; }
+}
+async function sendLiveAnnounce() {
+  const btn = $('liveSend');
+  btn.disabled = true;
+  try {
+    const r = await api('/api/push/live', { method: 'POST', body: { message: $('liveMsg').value } });
+    closeModal('liveModal');
+    toast(`📣 Aviso enviado a ${r.sent} ${r.sent === 1 ? 'dispositivo' : 'dispositivos'}`);
+  } catch (e) { toast('⚠ ' + e.message); btn.disabled = false; }
+}
+
 /* ---------- Apariencia ---------- */
 function setTheme(mode) {
   document.documentElement.setAttribute('data-theme', mode);

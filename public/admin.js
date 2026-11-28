@@ -24,7 +24,7 @@ const pill = (s) => `<span class="pill ${STATUS_CLASS[s] || ''}">${STATUS_LABEL[
 const pillStock = (s) => `<span class="pill ${s === 'EN STOCK' ? 'ok' : s === 'AGOTADO' ? 'danger' : 'warn'}">${s}</span>`;
 const MONTHS_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const MES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const today = () => { try { return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }); } catch (e) { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); } };   // fecha de hoy en Colombia: coincide con el servidor aunque el dispositivo tenga otra zona
 
 async function api(path, opts = {}) {
   const res = await fetch(path, {
@@ -44,31 +44,6 @@ async function api(path, opts = {}) {
 function toast(msg) { const t = $('toast'); if (!t) return; t.textContent = msg; t.classList.remove('hidden'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.add('hidden'), 3200); }
 function closeModal(id) { $(id).classList.remove('open'); }
 function openModal(id) { $(id).classList.add('open'); }
-
-/* ---------- Anunciar Live (push a los clientes con la app) ---------- */
-async function openLiveAnnounce() {
-  $('liveMsg').value = '';
-  $('liveInfo').textContent = 'Cargando…';
-  $('liveSend').disabled = true;
-  openModal('liveModal');
-  try {
-    const r = await api('/api/push/live');
-    $('liveInfo').textContent = r.devices
-      ? `${r.devices} ${r.devices === 1 ? 'dispositivo recibirá' : 'dispositivos recibirán'} el aviso.`
-      : 'Aún ningún cliente instaló la app, así que nadie recibiría el aviso.';
-    if (r.wait_min > 0) $('liveInfo').textContent += ` Debes esperar ${r.wait_min} min para volver a anunciar.`;
-    $('liveSend').disabled = !r.devices || r.wait_min > 0;
-  } catch (e) { $('liveInfo').textContent = '⚠ ' + e.message; }
-}
-async function sendLiveAnnounce() {
-  const btn = $('liveSend');
-  btn.disabled = true;
-  try {
-    const r = await api('/api/push/live', { method: 'POST', body: { message: $('liveMsg').value } });
-    closeModal('liveModal');
-    toast(`📣 Aviso enviado a ${r.sent} ${r.sent === 1 ? 'dispositivo' : 'dispositivos'}`);
-  } catch (e) { toast('⚠ ' + e.message); btn.disabled = false; }
-}
 
 /* ---------- Apariencia ---------- */
 function setTheme(mode) {
@@ -572,49 +547,88 @@ function presetRange(p) {
   if (p === 'mes') return [ym + '-01', t];
   if (p === 'mesant') { const k = monthKeysBack(2, ym)[0]; const last = addDaysStr(ym + '-01', -1); return [k + '-01', last]; }
   if (p === 'anio') return [y + '-01-01', t];
-  return ['2020-01-01', t]; // todo
+  const lim = addDaysStr(t, -3600); return [lim > '2020-01-01' ? lim : '2020-01-01', t]; // todo (el servidor admite hasta ~10 años)
+}
+let OP_TIMER = null, OP_REQ = 0;
+const OP_LABEL = { hoy: 'Hoy', '7d': '7 días', '30d': '30 días', mes: 'Este mes', mesant: 'Mes anterior', anio: 'Este año', todo: 'Todo' };
+// Resalta el botón rápido que coincide con las fechas puestas (o ninguno si es un rango propio)
+function opMarkPreset() {
+  const f = $('opFrom').value, t = $('opTo').value;
+  let hit = '';
+  for (const k of Object.keys(OP_LABEL)) { const [a, b] = presetRange(k); if (a === f && b === t) { hit = k; break; } }
+  document.querySelectorAll('#opPresets button').forEach(b => b.classList.toggle('primary', b.dataset.p === hit));
 }
 function opPreset(p) {
+  clearTimeout(OP_TIMER);
   const [f, t] = presetRange(p);
   $('opFrom').value = f; $('opTo').value = t;
-  document.querySelectorAll('#opPresets button').forEach(b => b.classList.toggle('primary', b.dataset.p === p));
-  loadOverview();
+  opMarkPreset(); loadOverview();
 }
-function opApply() {
-  document.querySelectorAll('#opPresets button').forEach(b => b.classList.remove('primary'));
-  loadOverview();
+function opApply() { clearTimeout(OP_TIMER); opMarkPreset(); loadOverview(); }
+// Al cambiar una fecha a mano: corrige rangos invertidos y recalcula solo (sin tener que pulsar Aplicar)
+function opDateChanged(which) {
+  const fe = $('opFrom'), te = $('opTo');
+  if (!fe.value || !te.value) return;                      // campo vaciándose: espera
+  if (fe.value > te.value) { if (which === 'from') te.value = fe.value; else fe.value = te.value; }
+  opMarkPreset();
+  clearTimeout(OP_TIMER); OP_TIMER = setTimeout(loadOverview, 350);
+}
+function opInitDates() {
+  const fe = $('opFrom'), te = $('opTo');
+  if (!fe || fe._init) return; fe._init = true;
+  fe.addEventListener('change', () => opDateChanged('from')); te.addEventListener('change', () => opDateChanged('to'));
+  [fe, te].forEach(e => e.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); opApply(); } }));
 }
 async function loadOverview() {
   if (!$('opFrom')) return;
-  if (!$('opFrom').value) { const [f, t] = presetRange('mes'); $('opFrom').value = f; $('opTo').value = t; const b = document.querySelector('#opPresets button[data-p="mes"]'); if (b) b.classList.add('primary'); }
+  opInitDates();
+  if (!$('opFrom').value || !$('opTo').value) { const [f, t] = presetRange('mes'); $('opFrom').value = f; $('opTo').value = t; }
+  opMarkPreset();
   const from = $('opFrom').value, to = $('opTo').value;
-  if (!from || !to || from > to) { toast('⚠ Revisa el rango de fechas'); return; }
+  if (from > to) { toast('⚠ La fecha inicial no puede ser mayor que la final'); return; }
+  const my = ++OP_REQ, panel = $('ownerPanel');
+  panel.classList.add('loading');
   try {
     const d = await api('/api/admin/overview?from=' + from + '&to=' + to);
+    if (my !== OP_REQ) return;                             // llegó una respuesta vieja: ya se pidió otro rango
     OVR = d; renderOverview(d);
-  } catch (e) { toast('⚠ ' + e.message); }
+  } catch (e) { if (my === OP_REQ) toast('⚠ ' + e.message); }
+  finally { if (my === OP_REQ) panel.classList.remove('loading'); }
 }
-function deltaNote(cur, prev, label) {
-  if (!prev) return `<div class="note">${cur ? 'Sin datos en el periodo anterior' : '—'}</div>`;
+function deltaBadge(cur, prev) {
+  if (!prev) return cur ? '<span class="dl new">Nuevo</span>' : '<span class="dl flat">—</span>';
   const p = (cur - prev) / Math.abs(prev) * 100;
-  return `<div class="note" style="color:${p >= 0 ? 'var(--ok, #16a34a)' : 'var(--danger)'}">${p >= 0 ? '▲ ' : '▼ '}${Math.abs(p).toFixed(1)}% vs periodo anterior${label ? ' (' + label(prev) + ')' : ''}</div>`;
+  return `<span class="dl ${p >= 0 ? 'up' : 'down'}">${p >= 0 ? '▲' : '▼'} ${Math.abs(p).toFixed(1)}%</span>`;
 }
+const fmtDay = x => { const m = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']; return Number(x.slice(8, 10)) + ' ' + m[Number(x.slice(5, 7)) - 1] + ' ' + x.slice(0, 4); };
 function renderOverview(d) {
   const k = d.kpis, pv = d.prev;
-  put('opRange', `Del <b>${d.from}</b> al <b>${d.to}</b> · comparado con ${pv.from} → ${pv.to}. “Por cobrar” y las alertas son el estado de hoy.`);
+  put('opRange', (d.from === d.to ? `<b>${fmtDay(d.from)}</b>` : `<b>${fmtDay(d.from)}</b> → <b>${fmtDay(d.to)}</b>`) + ` · se compara con ${pv.from === pv.to ? fmtDay(pv.from) : fmtDay(pv.from) + ' → ' + fmtDay(pv.to)}. «Por cobrar» y las alertas muestran el estado de hoy.`);
   const al = d.alerts;
-  const pill = (n, txt, tab, warn) => n > 0 ? `<button class="btn ${warn ? 'danger' : ''}" onclick="showTab('${tab}')">${txt}: <b>${n}</b></button>` : '';
-  const pills = [pill(al.reportesPendientes, '💰 Abonos por confirmar', 'abonos', true), pill(al.porEnviar, '🚚 Por enviar', 'logis'), pill(al.porVencer, '⏳ Bolsitas por vencer (48 h)', 'orders', true), pill(al.agotados, '📦 Agotados', 'inv', true), pill(al.stockBajo - al.agotados, '📉 Stock bajo', 'inv')].join('');
-  put('opAlerts', '<div class="toolbar" style="margin:10px 0">' + (pills || '<span class="note">✔ Sin pendientes urgentes.</span>') + '</div>');
-  const card = (label, val, note) => `<div class="card"><div class="label">${label}</div><div class="metric">${val}</div>${note || ''}</div>`;
+  const chip = (n, txt, tab, warn) => n > 0 ? `<button class="opchip ${warn ? 'warn' : ''}" onclick="showTab('${tab}')"><b>${n}</b> ${txt}</button>` : '';
+  const chips = [chip(al.reportesPendientes, '💰 abonos por confirmar', 'abonos', true), chip(al.porEnviar, '🚚 por enviar', 'logis'), chip(al.porVencer, '⏳ por vencer (48 h)', 'orders', true), chip(al.agotados, '📦 agotados', 'inv', true), chip(al.stockBajo - al.agotados, '⚠ stock bajo', 'inv')].join('');
+  put('opAlerts', '<div class="opchips">' + (chips || '<span class="opchip ok">✔ Sin pendientes urgentes</span>') + '</div>');
+  // Conversión: de los pedidos creados en el rango (sin borradores), cuántos llegaron a pagados o más
+  const st = {}; d.byStatus.forEach(r => { st[r.status] = (st[r.status] || 0) + r.n; });
+  const pagados = (st.paid || 0) + (st.shipped || 0) + (st.delivered || 0);
+  const totalPed = Object.keys(st).filter(x => x !== 'draft').reduce((a, x) => a + st[x], 0);
+  const conv = totalPed ? pagados / totalPed * 100 : 0;
+  const kpi = (cls, label, val, foot) => `<div class="kpi ${cls}"><div class="label">${label}</div><div class="metric">${val}</div><div class="kfoot">${foot || ''}</div></div>`;
+  const vs = (cur, prev) => deltaBadge(cur, prev) + '<span class="note"> vs anterior</span>';
   put('opKpis',
-    card('Ventas', money(k.ventas), deltaNote(k.ventas, pv.ventas, money)) +
-    card('Cobrado (abonos recibidos)', money(k.cobrado), deltaNote(k.cobrado, pv.cobrado, money)) +
-    card('Por cobrar hoy', money(k.porCobrar), `<div class="note">${k.pedidosPorCobrar} bolsita(s) con saldo</div>`) +
-    card('Utilidad bruta', `<span style="${k.utilidad < 0 ? 'color:var(--danger)' : ''}">${money(k.utilidad)}</span>`, `<div class="note">Margen ${k.margen.toFixed(1)}%</div>` + deltaNote(k.utilidad, pv.utilidad)) +
-    card('Pedidos', k.pedidos.toLocaleString('es-CO'), deltaNote(k.pedidos, pv.pedidos)) +
-    card('Ticket promedio', money(k.ticket), `<div class="note">${k.unidades.toLocaleString('es-CO')} unidades vendidas</div>`) +
-    card('Clientes', k.clientesActivos.toLocaleString('es-CO') + ' activos', `<div class="note">${k.clientesNuevos} nuevo(s) en el rango</div>`));
+    '<div class="opk">' +
+    kpi('hero c1', 'Ventas', money(k.ventas), vs(k.ventas, pv.ventas)) +
+    kpi('hero c2', 'Cobrado', money(k.cobrado), vs(k.cobrado, pv.cobrado)) +
+    kpi('hero c3', 'Utilidad bruta', `<span style="${k.utilidad < 0 ? 'color:var(--danger)' : ''}">${money(k.utilidad)}</span>`, vs(k.utilidad, pv.utilidad) + `<span class="note"> · margen ${k.margen.toFixed(1)}%</span>`) +
+    kpi('hero c4', 'Por cobrar hoy', money(k.porCobrar), `<span class="note">${k.pedidosPorCobrar} bolsita(s) con saldo</span>`) +
+    '</div><div class="opk2">' +
+    kpi('', 'Pedidos', k.pedidos.toLocaleString('es-CO'), vs(k.pedidos, pv.pedidos)) +
+    kpi('', 'Ticket promedio', money(k.ticket), `<span class="note">${k.unidades.toLocaleString('es-CO')} unidades</span>`) +
+    kpi('', 'Conversión a pagado', totalPed ? conv.toFixed(0) + '%' : '—', `<span class="note">${pagados} de ${totalPed} pedidos</span>`) +
+    kpi('', 'Capital a reponer', money(k.costo), '<span class="note">costo de lo vendido</span>') +
+    kpi('', 'Clientes', k.clientesActivos.toLocaleString('es-CO'), `<span class="note">${k.clientesNuevos} nuevo(s) en el rango</span>`) +
+    '</div>');
+  put('opEmpty', (k.pedidos === 0 && k.cobrado === 0) ? '<div class="opempty">📭 No hay ventas ni abonos en este rango. Prueba con <button class="opchip" onclick="opPreset(\'anio\')">Este año</button> o <button class="opchip" onclick="opPreset(\'todo\')">Todo</button>.</div>' : '');
   const s = d.series;
   const lab = s.unit === 'd' ? s.labels.map(x => x.slice(8, 10) + '/' + x.slice(5, 7)) : s.unit === 'm' ? s.labels.map(mesLabel) : s.labels;
   chartBars('opSeries', lab, [{ name: 'Ventas', values: s.ventas, color: CH_COLORS[0] }, { name: 'Cobrado', values: s.cobrado, color: CH_COLORS[2] }], { label: 'Ventas y cobrado' });
@@ -1945,7 +1959,7 @@ async function executeWipe() {
   'use strict';
   if (window.__pkPerf) return; window.__pkPerf = true;
   var TTL = 30000;
-  var NO_CACHE = ['/api/orders/reports/pending'];
+  var NO_CACHE = ['/api/orders/reports/pending', '/api/admin/overview'];   // el Dashboard siempre pide datos frescos (Aplicar / botones de rango)
   var cache = new Map(), inflight = new Map(), gen = 0;
   var _api = api;
   var bar = document.createElement('div'); bar.id = 'pkLoadBar';
